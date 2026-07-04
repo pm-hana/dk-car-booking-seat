@@ -18,6 +18,7 @@ serviceAccountKey.json
 bookings.json
 bookings.json.tmp
 .version_pending
+.version_note
 _backup_*/
 VER/
 
