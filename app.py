@@ -60,31 +60,56 @@ st.markdown("""
         visibility: hidden !important;
     }
 
-    /* 상단 메인 타이틀 배너와 디지털시계 멀티 가로 행 구조 */
+    /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stAppViewBlockContainer"],
+    .block-container {
+        padding-top: 0.4rem !important;
+    }
+
+    /* 상단 헤더: 왼쪽 DAEKHON VINA 로고 · 가운데 큰 타이틀 · 오른쪽 버전/시계 */
     .top-header-container {
         display: flex !important;
-        flex-direction: column !important;   /* 타이틀(1줄) → 버전·시계 행(2줄) 세로 스택 */
-        align-items: stretch !important;
-        width: 100% !important;
-        margin-bottom: 2px !important;
-        padding: 0 10px !important;
-        gap: 6px !important;
-    }
-    /* 버전(왼쪽)·실시간 시계(오른쪽)를 한 줄에 좌우로 벌려 배치 */
-    .header-meta-row {
-        display: flex !important;
         flex-direction: row !important;
-        justify-content: space-between !important;
         align-items: center !important;
+        gap: 16px !important;
         width: 100% !important;
+        margin: 0 0 2px 0 !important;
+        padding: 0 4px !important;
+    }
+    /* 왼쪽 브랜드 로고 락업(🐋 + DAEKHON VINA) */
+    .brand-lockup {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex: 0 0 auto !important;
+    }
+    .brand-mark { font-size: 36px; line-height: 1; }
+    .brand-name {
+        font-size: 15px;
+        font-weight: 800;
+        color: #38bdf8;
+        letter-spacing: 0.5px;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+    /* 오른쪽 버전·실시간 시계(세로 스택, 우측 정렬) */
+    .header-meta {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        flex: 0 0 auto !important;
+        gap: 2px !important;
     }
     .main-title {
-        font-size: 46px;                     /* 34px에서 3단계 추가 확대 */
+        flex: 1 1 auto;
+        font-size: clamp(32px, 7vw, 92px);   /* 기존 46px → 최대 약 200%(92px), 화면폭 따라 축소 */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
-        text-align: center;                  /* 한 줄 가운데 배치 */
-        width: 100%;
+        text-align: center;                  /* 로고와 메타 사이 가운데 배치 */
+        white-space: nowrap;
+        letter-spacing: 1px;
     }
     
     /* 노란색 외곽 테두리 박스를 완전히 없앤 미니멀 폰트 스타일링 */
@@ -455,7 +480,7 @@ lang = "en" if st.session_state.get("lang_toggle") == "ENG" else "ko"
 
 TR = {
     "ko": {
-        "app_title": "🚗 차량 배차 예약",
+        "app_title": "DK CAR BOOKING SEAT",
         "subtitle": "대곤 비나 직원 여러분, 차량 신청은 카시트 배치도를 보고 빈 자리를 선택해 주세요!",
         "legend_empty": "빈 자리", "legend_booked": "예약됨", "legend_selected": "선택 중",
         "legend_driver": "운전석", "legend_drag": "· 예약된 좌석은 드래그해서 빈 자리로 옮길 수 있어요",
@@ -488,7 +513,7 @@ TR = {
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
     },
     "en": {
-        "app_title": "🚗 DK CAR BOOKING SEAT",
+        "app_title": "DK CAR BOOKING SEAT",
         "subtitle": "DAEKHON VINA staff — to request a vehicle, check the seat map and pick an empty seat!",
         "legend_empty": "Empty", "legend_booked": "Booked", "legend_selected": "Selecting",
         "legend_driver": "Driver", "legend_drag": "· Drag a booked seat to move it to an empty one",
@@ -540,8 +565,12 @@ _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
 with _bn_l:
     st.markdown(f"""
     <div class="top-header-container">
+        <div class="brand-lockup">
+            <span class="brand-mark">🐋</span>
+            <span class="brand-name">DAEKHON VINA</span>
+        </div>
         <p class="main-title">{t("app_title")}</p>
-        <div class="header-meta-row">
+        <div class="header-meta">
             <div class="clean-timestamp-stamp">{date_version_str}</div>
             <div id="live-digital-clock" class="clean-timestamp-stamp">{init_time_str}</div>
         </div>
