@@ -104,8 +104,8 @@ st.markdown("""
     }
     /* 버전(0704 ver.N)을 로고 오른쪽에 약간 띄워 배치 */
     .brand-version { margin-left: 8px !important; }
-    /* 실시간 시계를 우측 컬럼 오른쪽 끝에 붙임 */
-    .header-clock { text-align: right !important; width: 100% !important; margin-bottom: 5px !important; }
+    /* 실시간 시계를 메인 타이틀 오른쪽에 배치(헤더 flex 행의 우측 아이템) */
+    .header-clock { flex: 0 0 auto !important; white-space: nowrap !important; text-align: right !important; }
     /* 언어 선택 라디오를 전체 프레임 오른쪽 끝선에 붙여 우측 정렬(여러 계층 커버) */
     .st-key-lang_toggle { display: flex !important; flex-direction: column !important; align-items: flex-end !important; }
     .st-key-lang_toggle div[data-testid="stRadio"] { width: 100% !important; }
@@ -266,7 +266,8 @@ st.markdown("""
         min-height: 0 !important;
     }
     
-    /* 차량 박스를 세로 실사 이미지 비율(뷰박스 160:250)에 맞춰 세로형으로 — 좌우 여백 제거 */
+    /* 차량 박스: 컬럼 폭(=아래 배차 현황 카드 폭)에 꽉 채우고, 높이는 세로 이미지 비율로 자동 산출
+       → 상단 차량 폭과 하단 배차 카드 폭이 정확히 일치, 사진도 왜곡/여백 없이 채워짐 */
     .car-layout-container {
         background-color: #1a1c23;
         border: 2px solid #3f4452;
@@ -275,11 +276,9 @@ st.markdown("""
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 440px !important;
-        aspect-ratio: 160 / 250;     /* 세로 이미지 비율 → 폭은 높이로부터 자동 산출 */
-        width: auto !important;
-        max-width: 100%;
-        margin: 0 auto !important;   /* 컬럼 안에서 가운데 정렬 */
+        width: 100% !important;
+        aspect-ratio: 160 / 250;
+        height: auto !important;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
     
@@ -594,6 +593,7 @@ _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
 brand_mark_html = (f'<img class="brand-logo-img" src="{DAEKHON_LOGO_URI}" alt="DAEKHON VINA"/>'
                    if DAEKHON_LOGO_URI else '<span class="brand-mark">🐋</span>')
 with _bn_l:
+    # 로고+버전(왼쪽) · 메인 타이틀(가운데) · 실시간 시계(타이틀 오른쪽)
     st.markdown(f"""
     <div class="top-header-container">
         <div class="brand-lockup">
@@ -602,11 +602,11 @@ with _bn_l:
             <span class="clean-timestamp-stamp brand-version">{date_version_str}</span>
         </div>
         <p class="main-title">{t("app_title")}</p>
+        <div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>
     </div>
     """, unsafe_allow_html=True)
 with _bn_r:
-    # 실시간 시계 + 언어 선택을 전체 프레임 오른쪽 끝선에 붙여 우측 정렬
-    st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
+    # 언어 선택을 전체 프레임 오른쪽 끝선에 붙여 우측 정렬
     st.radio("Language", ["한국어", "ENG"], key="lang_toggle",
              horizontal=True, label_visibility="collapsed")
 
