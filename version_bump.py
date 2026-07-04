@@ -23,6 +23,9 @@ COUNTER_FILE = os.path.join(BASE_DIR, "version_counter.json")
 APP_FILE = os.path.join(BASE_DIR, "app.py")
 VER_DIR = os.path.join(BASE_DIR, "VER")
 
+LOG_HEADERS = ["버전", "일시", "완료 내용 (Claude Code)"]
+CONTENT_COL_WIDTH = 150   # 완료 내용 열너비(엑셀 문자 폭 단위)
+
 
 def load_counter():
     if os.path.exists(COUNTER_FILE):
@@ -60,49 +63,89 @@ def _clear_note():
         pass
 
 
+def _read_note():
+    """이번 턴 완료 내용(.version_note, 항목별 줄바꿈)을 읽어 반환. 없으면 미기재 문자열."""
+    note = ""
+    if os.path.exists(NOTE_FILE):
+        try:
+            with open(NOTE_FILE, "r", encoding="utf-8") as f:
+                note = f.read().strip()
+        except Exception:
+            note = ""
+    return note or "(완료 내용 미기재)"
+
+
+def _append_xlsx(path, ver_label, row):
+    """xlsx에 한 줄 추가 — 완료 내용 셀은 줄바꿈 보존(wrap), 완료 내용 열너비 150, 같은 버전 중복 방지.
+    openpyxl 미설치면 ImportError를 그대로 올려 상위에서 CSV 폴백을 타게 한다."""
+    import openpyxl
+    from openpyxl.styles import Alignment, Font
+
+    if os.path.exists(path):
+        wb = openpyxl.load_workbook(path)
+        ws = wb.active
+        for (val,) in ws.iter_rows(min_row=2, max_col=1, values_only=True):
+            if val == ver_label:   # 이미 기록된 버전 → 중복 추가 안 함
+                return
+    else:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "버전 로그"
+        ws.append(LOG_HEADERS)
+        for c in ws[1]:
+            c.font = Font(bold=True)
+            c.alignment = Alignment(vertical="center", horizontal="center")
+
+    ws.append(row)
+    r = ws.max_row
+    ws.cell(r, 1).alignment = Alignment(vertical="top", horizontal="center")
+    ws.cell(r, 2).alignment = Alignment(vertical="top", horizontal="center")
+    ws.cell(r, 3).alignment = Alignment(vertical="top", wrap_text=True)
+    lines = str(row[2]).count("\n") + 1
+    ws.row_dimensions[r].height = max(16, lines * 16)
+
+    ws.column_dimensions["A"].width = 10
+    ws.column_dimensions["B"].width = 14
+    ws.column_dimensions["C"].width = CONTENT_COL_WIDTH
+    ws.freeze_panes = "A2"
+    wb.save(path)
+
+
+def _append_csv(path, ver_label, row):
+    """openpyxl이 없을 때의 폴백 — CSV(줄바꿈은 셀 안에 따옴표로 보존, 열너비는 미지원)."""
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8-sig") as f:
+                if (ver_label + ",") in f.read():
+                    return
+        except Exception:
+            pass
+    new_file = not os.path.exists(path)
+    enc = "utf-8-sig" if new_file else "utf-8"
+    with open(path, "a", encoding=enc, newline="") as f:
+        w = csv.writer(f)
+        if new_file:
+            w.writerow(LOG_HEADERS)
+        w.writerow(row)
+
+
 def append_version_log(display_date, count, now):
-    """버전별 완료 내용을 VER/{mmdd}/{mmdd}_버전별_완료내용.csv 에 한 줄 자동 추가한다.
-    - 완료 내용은 .version_note(Claude Code가 이번 턴에 남긴 항목별 줄바꿈 텍스트)에서 읽는다.
-      CSV 셀 안에서도 줄바꿈이 그대로 보존되어(자동 따옴표 처리) 항목별로 가시성 있게 표시된다.
-    - 노트가 없으면 '(완료 내용 미기재)'로 대체하고, 같은 버전 줄이 이미 있으면 중복 추가하지 않는다.
-    - VER/ 는 .gitignore 대상이라 이 CSV는 로컬 문서로만 유지된다(배포/커밋 안 됨).
+    """버전별 완료 내용을 VER/{mmdd}/{mmdd}_버전별_완료내용.xlsx 에 한 줄 자동 추가한다.
+    - 완료 내용은 .version_note(항목별 줄바꿈 텍스트)에서 읽어 셀 안에 줄바꿈 보존(wrap)한다.
+    - 완료 내용 열너비 150, 같은 버전 줄이 있으면 중복 방지.
+    - openpyxl 미설치 시 같은 이름의 .csv 로 폴백(줄바꿈은 유지, 열너비만 미적용).
+    - VER/ 는 .gitignore 대상이라 로컬 문서로만 유지된다(배포/커밋 안 됨).
     실패해도 훅을 절대 죽이지 않는다."""
     try:
         day_dir = os.path.join(VER_DIR, display_date)
         os.makedirs(day_dir, exist_ok=True)
-        csv_path = os.path.join(day_dir, f"{display_date}_버전별_완료내용.csv")
+        base = os.path.join(day_dir, f"{display_date}_버전별_완료내용")
         ver_label = f"ver.{count}"
-
-        # 완료 내용: Claude Code가 남긴 노트(없으면 미기재)
-        note = ""
-        if os.path.exists(NOTE_FILE):
-            try:
-                with open(NOTE_FILE, "r", encoding="utf-8") as f:
-                    note = f.read().strip()
-            except Exception:
-                note = ""
-        if not note:
-            note = "(완료 내용 미기재)"
-
-        # 같은 버전 줄이 이미 있으면 중복 추가 방지 ('ver.N,' 은 항상 1열 맨 앞·따옴표 없음)
-        if os.path.exists(csv_path):
-            try:
-                with open(csv_path, "r", encoding="utf-8-sig") as f:
-                    if (ver_label + ",") in f.read():
-                        _clear_note()
-                        return
-            except Exception:
-                pass
-
-        new_file = not os.path.exists(csv_path)
-        # 새 파일이면 Excel 한글 대비 BOM 포함(utf-8-sig)으로 헤더부터, 아니면 그대로 이어붙임
-        enc = "utf-8-sig" if new_file else "utf-8"
-        with open(csv_path, "a", encoding=enc, newline="") as f:
-            w = csv.writer(f)
-            if new_file:
-                w.writerow(["버전", "일시", "완료 내용 (Claude Code)"])
-            w.writerow([ver_label, f"{display_date} {now.strftime('%H:%M')}", note])
-
+        row = [ver_label, f"{display_date} {now.strftime('%H:%M')}", _read_note()]
+        try:
+            _append_xlsx(base + ".xlsx", ver_label, row)
+        except ImportError:
+            _append_csv(base + ".csv", ver_label, row)
         _clear_note()
     except Exception:
         pass
