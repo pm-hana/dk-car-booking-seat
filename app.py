@@ -44,7 +44,22 @@ st.markdown("""
     .stApp {
         background-color: #0f1014 !important;
     }
-    
+
+    /* 우측 상단 Streamlit 기본 UI(Fork 배지·GitHub·⋮ 메뉴·상단 데코바·푸터) 전부 숨김 */
+    #MainMenu,
+    header[data-testid="stHeader"],
+    [data-testid="stToolbar"],
+    [data-testid="stMainMenu"],
+    [data-testid="stDecoration"],
+    [data-testid="stStatusWidget"],
+    [data-testid="stAppViewerBadge"],
+    .viewerBadge_container__1QSob,
+    .stAppDeployButton,
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
     /* 상단 메인 타이틀 배너와 디지털시계 멀티 가로 행 구조 */
     .top-header-container {
         display: flex !important;
@@ -64,7 +79,7 @@ st.markdown("""
         width: 100% !important;
     }
     .main-title {
-        font-size: 34px;                     /* 기존 26px에서 2단계 확대 */
+        font-size: 46px;                     /* 34px에서 3단계 추가 확대 */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
@@ -1070,14 +1085,10 @@ for i, car in enumerate(cars_data):
                 seats_count = 7
             display_name = f"{prefix} ({seats_count} SEAT)"
         else:
+            # 택시 외 차량은 인승 배지를 표시하지 않는다(요청). display_name엔 그대로 반영.
             layout_type = car["layout"]
             seats_count = car["seats"]
             display_name = f"{car['name']} ({seats_count} SEAT)"
-            st.markdown(f"""
-            <div style="text-align: center; margin-top: 0px; min-height: 35px; display: flex; align-items: center; justify-content: center;">
-                <span style="display: inline-block; background-color: #2d2f34; color: #8e929e; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; border: 1px solid #3f4452;">{t("badge_seats", n=seats_count)}</span>
-            </div>
-            """, unsafe_allow_html=True)
 
         # 동적으로 늘어난 TAXI 등 신규 차량도 선택 상태 레지스트리에 안전하게 초기화
         st.session_state.selected_seat_state.setdefault(display_name, "-- 선택 --")
@@ -1097,36 +1108,19 @@ for i, car in enumerate(cars_data):
         booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
         available_seats = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked_seats]
 
-        # ⚡ [OPT2 적용 및 완벽 싱크 연동]
-        st.markdown('<div class="dropdown-spacing-wrapper">', unsafe_allow_html=True)
+        # 좌석 선택은 배치도(SVG) 클릭만 사용 — '-- 선택 --' 드롭다운 토글은 제거(요청).
+        # 클릭으로 세팅된 selected_seat_state를 읽어 신청 팝업 트리거를 구성한다.
         if available_seats:
-            sb_key = f"dropdown_trigger_spec_{car_rc['display_name']}"
-            options = ["-- 선택 --"] + available_seats
-            # 위젯 상태가 현재 옵션에 없으면(예: 방금 예약되어 사라진 좌석) 생성 전에 안전하게 초기화
-            if st.session_state.get(sb_key) not in options:
-                st.session_state[sb_key] = "-- 선택 --"
-
-            # 드롭다운 토글(OPT2) — 값은 세션 상태 키가 단일 소스로 구동(도면 클릭과 완전 동기화)
-            chosen_seat = st.selectbox(
-                t("seat_select", car=car_rc['display_name']),
-                options,
-                key=sb_key,
-                label_visibility="collapsed",
-                format_func=lambda o: t("select_ph") if o == "-- 선택 --" else t("seat_n", n=o.split(" ")[1]),
-            )
-
-            # 드롭다운 수동 조작 시에도 역으로 상태 레지스트리 엔진에 동시 동기화 처리
-            if st.session_state.selected_seat_state[car_rc["display_name"]] != chosen_seat:
-                st.session_state.selected_seat_state[car_rc["display_name"]] = chosen_seat
-                # 선택한 좌석이 변경되면 기존의 중복 에러 상태 즉시 리셋
-                st.session_state.duplicate_error_msg = None
-
-            if chosen_seat != "-- 선택 --":
-                seat_num = int(chosen_seat.split(" ")[1])
+            current_sel = st.session_state.selected_seat_state.get(car_rc["display_name"], "-- 선택 --")
+            # 선택 상태가 현재 빈 좌석 목록에 없으면(방금 예약돼 사라진 좌석 등) 안전하게 리셋
+            if current_sel != "-- 선택 --" and current_sel not in available_seats:
+                current_sel = "-- 선택 --"
+                st.session_state.selected_seat_state[car_rc["display_name"]] = "-- 선택 --"
+            if current_sel != "-- 선택 --":
+                seat_num = int(current_sel.split(" ")[1])
                 selected_seat_trigger = (car_rc["display_name"], seat_num)
         else:
             st.error(t("full"))
-        st.markdown('</div>', unsafe_allow_html=True)
 
         # ⚡ [부드러운 클릭 선택] SVG 빈 좌석 클릭 시 JS가 대신 눌러줄 숨김 버튼 세트.
         # 전체 페이지 새로고침(href) 대신 웹소켓 기반 soft rerun으로 처리해 깜빡임을 제거한다.
