@@ -13,6 +13,7 @@ import re
 import json
 import shutil
 import datetime
+import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MARKER = os.path.join(BASE_DIR, ".version_pending")
@@ -46,6 +47,44 @@ def max_backup_count(display_date):
         return mx
     except Exception:
         return 0
+
+
+def git(*args, timeout=60):
+    """BASE_DIR에서 git 명령 실행. (returncode, stdout+stderr) 반환. 실패해도 예외 안 냄."""
+    try:
+        p = subprocess.run(
+            ["git", *args],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+    except Exception as e:
+        return 1, str(e)
+
+
+def auto_deploy(display_date, count):
+    """버전이 오른 턴에 한해 변경사항을 자동 커밋 + push 하여 Streamlit 배포판을 즉시 갱신.
+    실패(오프라인·인증 등)해도 훅을 죽이지 않는다. 로컬 커밋은 남으므로 다음 성공 push가 따라잡는다.
+    안전장치: 현재 브랜치가 main일 때만 push 한다."""
+    # 현재 브랜치 확인 (main 이 아니면 자동 push 하지 않음)
+    rc, branch = git("rev-parse", "--abbrev-ref", "HEAD")
+    if rc != 0 or branch.strip() != "main":
+        return
+
+    # 스테이징 (.gitignore가 VER/·bookings.json 등 로컬 전용 파일을 걸러줌)
+    git("add", "-A")
+
+    # 스테이징된 변경이 없으면 커밋 생략 (--quiet: 변경 있으면 0, 없으면 1)
+    rc, _ = git("diff", "--cached", "--quiet")
+    if rc == 0:
+        # 커밋할 게 없어도 원격이 뒤처져 있을 수 있으니 push 는 시도
+        git("push", "origin", "main")
+        return
+
+    git("commit", "-m", f"auto-deploy: {display_date} ver.{count} (app.py 자동 배포)")
+    git("push", "origin", "main")
 
 
 def main():
@@ -82,6 +121,12 @@ def main():
     # 표시 제거 (다음 턴에서 다시 코드 작업이 있어야 재증가)
     try:
         os.remove(MARKER)
+    except Exception:
+        pass
+
+    # 버전이 올랐으니 변경사항을 자동 커밋 + push → Streamlit 배포판 즉시 갱신
+    try:
+        auto_deploy(display_date, count)
     except Exception:
         pass
 
