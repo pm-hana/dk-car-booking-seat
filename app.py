@@ -674,19 +674,35 @@ def _load_car_image_uri():
 
 CAR_IMAGE_URI = _load_car_image_uri()
 
+@st.cache_data(show_spinner=False)
+def _load_taxi_logo_uri():
+    """TAXI 브랜드 로고 이미지(taxi_logo.png 등)를 base64 data URI로 로드. 없으면 빈 문자열."""
+    import base64, os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for fn, mime in (("taxi_logo.png", "image/png"), ("taxi_logo.jpg", "image/jpeg"),
+                     ("taxi_logo.jpeg", "image/jpeg"), ("taxi_logo.webp", "image/webp")):
+        p = os.path.join(base_dir, fn)
+        if os.path.exists(p):
+            b64 = base64.b64encode(open(p, "rb").read()).decode()
+            return f"data:{mime};base64,{b64}"
+    return ""
+
+TAXI_LOGO_URI = _load_taxi_logo_uri()
+
 def render_chassis(mk=None):
     """전 차량 공통 외관: 첨부된 실사 상단뷰 사진을 배경으로 깔고,
     사진에 이미 합성돼 있던 좌석을 가리는 불투명 실내 패널을 덮는다.
     실제 좌석(render_premium_seat)은 이 패널 위에 레이아웃별로 얹혀 클릭·드래그가 유지된다.
     (mk 인자는 하위호환용으로 받기만 하고 무시 — 모든 모델이 동일 외관을 사용)"""
     # 모델별 외관 색상: 공통 사진(어두운 청회색)에 CSS 컬러 필터를 씌워 첨부 색상에 근접
-    #   이노바=샴페인 실버 / 세도나=블랙 / VF5=레드 / 택시=화이트
+    #   이노바=화이트(택시와 동일) / 세도나=블랙 / VF5=레드 / 택시=화이트
+    WHITE_FILTER = "grayscale(1) brightness(1.72) contrast(0.82)"
     MODEL_FILTER = {
-        "innova": "grayscale(1) sepia(0.45) saturate(1.4) brightness(1.22)",
+        "innova": WHITE_FILTER,   # 요청: 이노바 외관을 택시(흰색)와 동일하게
         "sedona": "grayscale(1) brightness(0.42) contrast(1.1)",
         "vf5":    "grayscale(1) sepia(1) saturate(6.5) hue-rotate(-40deg) brightness(1.02)",
-        "taxi4":  "grayscale(1) brightness(1.55) contrast(0.9)",
-        "taxi7":  "grayscale(1) brightness(1.55) contrast(0.9)",
+        "taxi4":  WHITE_FILTER,   # 요청: 택시 외관 흰색
+        "taxi7":  WHITE_FILTER,
     }
     img_filter = MODEL_FILTER.get(mk, "")
     s = []
@@ -975,7 +991,11 @@ def brand_logo(name):
         return (f'<svg {S}>'
                 '<path d="M 3 3 L 13 16 L 23 3 L 18.3 3 L 13 10.5 L 7.7 3 Z" fill="#2f7bc4"/></svg>')
     if "TAXI" in n:
-        # 택시: 옐로우 체커 사인
+        # 택시: taxi_logo.png(첨부 이미지)가 있으면 그 로고를, 없으면 기존 옐로우 체커 SVG로 대체
+        #   크기는 기존 로고 수준(높이 16px)으로 유지
+        if TAXI_LOGO_URI:
+            return (f'<img src="{TAXI_LOGO_URI}" alt="TAXI" '
+                    f'style="height:16px;width:auto;vertical-align:middle;margin-right:7px"/>')
         return ('<svg width="26" height="16" viewBox="0 0 26 16" style="vertical-align:middle;margin-right:7px">'
                 '<rect x="2" y="3" width="22" height="10" rx="2" fill="#f2c200"/>'
                 '<rect x="2" y="3" width="3.6" height="3.3" fill="#111"/><rect x="9.2" y="3" width="3.6" height="3.3" fill="#111"/><rect x="16.4" y="3" width="3.6" height="3.3" fill="#111"/>'
