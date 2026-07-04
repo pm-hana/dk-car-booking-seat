@@ -541,7 +541,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ⚡ [OPT1 트리거 지원] 좌석 배치도 내부 프리미엄 가죽 시트 렌더러 (클릭 이벤트 주입)
-def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip=""):
+def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip="", sub_label=""):
     if is_driver:
         stroke_color = "#e03131"
         main_fill = "#2c1a1a"
@@ -595,7 +595,13 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
 
     # 좁아진 좌석 폭에 맞춰 텍스트가 넘치지 않도록 폭에 맞게 자동 압축(3자 이상)
     len_attr = f' textLength="{w-4}" lengthAdjust="spacingAndGlyphs"' if len(label) >= 3 else ""
-    svg.append(f'<text x="{x + w/2}" y="{y + h/2 + 3}" font-family="sans-serif" font-size="{font_size}" font-weight="bold" fill="{text_color}" text-anchor="middle"{len_attr}>{label}</text>')
+    if sub_label:
+        # 라벨 + 보조라벨(예: 운전자 이름) 두 줄을 좌석 박스 세로 중앙에 함께 정렬
+        svg.append(f'<text x="{x + w/2}" y="{y + h/2 - 3}" font-family="sans-serif" font-size="{font_size}" font-weight="bold" fill="{text_color}" text-anchor="middle"{len_attr}>{label}</text>')
+        sub_len_attr = f' textLength="{w-4}" lengthAdjust="spacingAndGlyphs"' if len(sub_label) >= 3 else ""
+        svg.append(f'<text x="{x + w/2}" y="{y + h/2 + 7}" font-family="sans-serif" font-size="7.5px" font-weight="bold" fill="#fab005" text-anchor="middle"{sub_len_attr}>{sub_label}</text>')
+    else:
+        svg.append(f'<text x="{x + w/2}" y="{y + h/2 + 3}" font-family="sans-serif" font-size="{font_size}" font-weight="bold" fill="{text_color}" text-anchor="middle"{len_attr}>{label}</text>')
 
     svg.append('</g>')
     return "".join(svg)
@@ -824,22 +830,17 @@ def render_car_layout(car_name, layout_type, bookings):
         "2-3":   [(1, RX, R1), (2, LX, R3), (3, MX, R3), (4, RX, R3)],
     }
     if layout_type in seat_map:
-        svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True))
-        # ENG 모드일 때만 운전석 바로 아래에 지정 운전자 이름 표기 (INNOVA=Tuan / SEDONA=Son / VF5=Vuong)
+        # ENG 모드일 때만 운전자 이름 지정 (INNOVA=Tuan / SEDONA=Son / VF5=Vuong)
+        driver_name = ""
         if lang == "en":
-            driver_name = ""
             if "INNOVA" in car_name:
                 driver_name = "Tuan"
             elif "SEDONA" in car_name:
                 driver_name = "Son"
             elif "VF5" in car_name or "VINFAST" in car_name:
                 driver_name = "Vuong"
-            if driver_name:
-                # "Driver" 라벨 바로 아래 줄(운전석 박스 안)에 표기, 색상은 '선택 중(Selecting)'과 동일한 골드(#fab005)
-                svg.append(
-                    f'<text x="{LX + SW/2}" y="{R1 + SH - 4}" font-family="sans-serif" '
-                    f'font-size="7.5" font-weight="bold" fill="#fab005" text-anchor="middle">{driver_name}</text>'
-                )
+        # 운전석: 이름이 있으면 'Driver' 아래 줄로 함께 박스 세로 중앙 정렬(이름은 골드 #fab005)
+        svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, sub_label=driver_name))
         if layout_type == "2-3":
             svg.append('  <line x1="33" y1="150" x2="129" y2="150" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
         for sid, sx, sy in seat_map[layout_type]:
@@ -848,9 +849,9 @@ def render_car_layout(car_name, layout_type, bookings):
 
         # 잔여 좌석 수 배지 — 운전석과의 간격을 좌석 행 간격만큼 벌리기 위해 y=70에 배치
         remaining = sum(1 for _sid, _sx, _sy in seat_map[layout_type] if _sid not in car_bookings)
-        # 잔여 좌석 배지는 '빈 자리' 색(파랑)과 동일하게, 만차일 때만 빨강
-        rc_col = "#1c7ed6" if remaining > 0 else "#ff6b6b"
-        rc_bg = "#1e293b" if remaining > 0 else "#1f1111"
+        # 잔여 좌석 배지(자리 있음/seat left)는 분홍색, 만차일 때만 빨강
+        rc_col = "#f783ac" if remaining > 0 else "#ff6b6b"
+        rc_bg = "#2c1a24" if remaining > 0 else "#1f1111"
         rc_text = t("seats_left", n=remaining)
         svg.append(
             f'<g><rect x="26" y="70" width="54" height="13" rx="6.5" fill="{rc_bg}" '
