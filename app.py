@@ -48,24 +48,28 @@ st.markdown("""
     /* 상단 메인 타이틀 배너와 디지털시계 멀티 가로 행 구조 */
     .top-header-container {
         display: flex !important;
+        flex-direction: column !important;   /* 타이틀(1줄) → 버전·시계 행(2줄) 세로 스택 */
+        align-items: stretch !important;
+        width: 100% !important;
+        margin-bottom: 2px !important;
+        padding: 0 10px !important;
+        gap: 6px !important;
+    }
+    /* 버전(왼쪽)·실시간 시계(오른쪽)를 한 줄에 좌우로 벌려 배치 */
+    .header-meta-row {
+        display: flex !important;
         flex-direction: row !important;
         justify-content: space-between !important;
         align-items: center !important;
         width: 100% !important;
-        margin-bottom: 2px !important;
-        padding: 0 10px !important;
-    }
-    .main-title-box {
-        display: flex !important;
-        flex-direction: column !important;   /* 타이틀(1줄) 아래에 버전(2줄) 세로 스택 */
-        align-items: flex-start !important;
-        gap: 4px !important;
     }
     .main-title {
-        font-size: 26px;
+        font-size: 34px;                     /* 기존 26px에서 2단계 확대 */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
+        text-align: center;                  /* 한 줄 가운데 배치 */
+        width: 100%;
     }
     
     /* 노란색 외곽 테두리 박스를 완전히 없앤 미니멀 폰트 스타일링 */
@@ -521,11 +525,11 @@ _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
 with _bn_l:
     st.markdown(f"""
     <div class="top-header-container">
-        <div class="main-title-box">
-            <p class="main-title">{t("app_title")}</p>
+        <p class="main-title">{t("app_title")}</p>
+        <div class="header-meta-row">
             <div class="clean-timestamp-stamp">{date_version_str}</div>
+            <div id="live-digital-clock" class="clean-timestamp-stamp">{init_time_str}</div>
         </div>
-        <div id="live-digital-clock" class="clean-timestamp-stamp">{init_time_str}</div>
     </div>
     """, unsafe_allow_html=True)
 with _bn_r:
@@ -1013,27 +1017,41 @@ def brand_logo(name):
                 '<rect x="5.6" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="12.8" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="20" y="6.3" width="3.6" height="3.3" fill="#111"/></svg>')
     return '🚙 '
 
-# 5. 차량 타이틀 및 라디오 토글 렌더링 (열 수는 차량 대수에 맞추고, 타이틀/인승 행을 분리해 수평 정렬)
-cols_titles = st.columns(total_cars, vertical_alignment="center")
+# 5·6. 차량별 컬럼: 제목 + 인승 + 좌석 배치도를 한 컬럼에 묶어 렌더링한다.
+#       (모바일에서 컬럼이 세로로 쌓여도 각 차량의 이름·인승이 자기 배치도 바로 위에 오도록 병합)
 
-# 1행: 차량명 렌더링 (TAXI 1, TAXI 2 포함 — 모두 텍스트 한 줄로 높이 통일)
+# 좌석 클릭 콜백: rerun 전에 실행되므로 selectbox 위젯 상태를 안전하게 동기화할 수 있다.
+def on_seat_click(car_name, seat):
+    seat_label = f"좌석 {seat}"
+    # 처음 선택했던 같은 빈자리를 다시 누르면 → 선택 해제(빈자리로 리셋), 팝업도 닫힘
+    if st.session_state.selected_seat_state.get(car_name) == seat_label:
+        st.session_state.selected_seat_state[car_name] = "-- 선택 --"
+        st.session_state[f"dropdown_trigger_spec_{car_name}"] = "-- 선택 --"
+        st.session_state.editing_booking = None
+    else:
+        # 빈자리 선택 → 하단 selectbox 상태까지 동기화하고 신청 팝업 대상 차량 지정
+        st.session_state.selected_seat_state[car_name] = seat_label
+        st.session_state[f"dropdown_trigger_spec_{car_name}"] = seat_label
+        st.session_state.active_booking_car = car_name
+    st.session_state.duplicate_error_msg = None
+
+cols_cars = st.columns(total_cars)
+resolved_cars = []
+selected_seat_trigger = None
+
 for i, car in enumerate(cars_data):
-    with cols_titles[i]:
+    with cols_cars[i]:
+        # ── (1) 차량명 ──────────────────────────────────────────────
         if car["name"] == "TAXI":
             ti = car["taxi_index"]
             st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}TAXI {ti}</p></div>', unsafe_allow_html=True)
         else:
             st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo(car["name"])}{car["name"]}</p></div>', unsafe_allow_html=True)
 
-cols_badges = st.columns(total_cars, vertical_alignment="center")
-resolved_cars = []
-
-# 2행: 인승 라벨 및 라디오 버튼 렌더링
-for i, car in enumerate(cars_data):
-    with cols_badges[i]:
+        # ── (2) 인승 배지 / TAXI 4·7인승 라디오 ─────────────────────
         if car["name"] == "TAXI":
             ti = car["taxi_index"]
-            # 4/7 인승 선택 라디오 (제목 아래 배지행 = 고정 인승과 동일 위치·스타일)
+            # 4/7 인승 선택 라디오 (제목 아래 = 고정 인승과 동일 위치·스타일)
             taxi_choice = st.radio(
                 f"TAXI {ti} Layout Select",
                 ["4인승", "7인승"],
@@ -1063,47 +1081,26 @@ for i, car in enumerate(cars_data):
 
         # 동적으로 늘어난 TAXI 등 신규 차량도 선택 상태 레지스트리에 안전하게 초기화
         st.session_state.selected_seat_state.setdefault(display_name, "-- 선택 --")
-
-        resolved_cars.append({
+        car_rc = {
             "display_name": display_name,
             "layout": layout_type,
             "seats": seats_count,
             "is_taxi": car["name"] == "TAXI",
             "taxi_index": car.get("taxi_index"),
-        })
+        }
+        resolved_cars.append(car_rc)
 
-# 좌석 클릭 콜백: rerun 전에 실행되므로 selectbox 위젯 상태를 안전하게 동기화할 수 있다.
-def on_seat_click(car_name, seat):
-    seat_label = f"좌석 {seat}"
-    # 처음 선택했던 같은 빈자리를 다시 누르면 → 선택 해제(빈자리로 리셋), 팝업도 닫힘
-    if st.session_state.selected_seat_state.get(car_name) == seat_label:
-        st.session_state.selected_seat_state[car_name] = "-- 선택 --"
-        st.session_state[f"dropdown_trigger_spec_{car_name}"] = "-- 선택 --"
-        st.session_state.editing_booking = None
-    else:
-        # 빈자리 선택 → 하단 selectbox 상태까지 동기화하고 신청 팝업 대상 차량 지정
-        st.session_state.selected_seat_state[car_name] = seat_label
-        st.session_state[f"dropdown_trigger_spec_{car_name}"] = seat_label
-        st.session_state.active_booking_car = car_name
-    st.session_state.duplicate_error_msg = None
+        # ── (3) 좌석 배치도 본체 + 선택 연동 (바로 위가 이 차량의 제목·인승) ──
+        st.markdown(f'<div class="car-layout-container">{render_car_layout(car_rc["display_name"], car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
 
-# 6. 차량별 배치도 본체 카드 프레임 및 선택 연동 구역 (OPT1 & OPT2 하이브리드 연동)
-cols_diagrams = st.columns(total_cars)
-selected_seat_trigger = None
-
-for i, car in enumerate(resolved_cars):
-    with cols_diagrams[i]:
-        # 배치도 렌더링 가동 (세션의 선택 상태에 의거해 클릭된 시트는 실시간 에메랄드 하이라이트 가동)
-        st.markdown(f'<div class="car-layout-container">{render_car_layout(car["display_name"], car["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
-        
         # 실시간 빈 좌석 리스트 동적 추출
-        booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car["display_name"]]
-        available_seats = [f"좌석 {seat}" for seat in range(1, car["seats"] + 1) if seat not in booked_seats]
-        
+        booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
+        available_seats = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked_seats]
+
         # ⚡ [OPT2 적용 및 완벽 싱크 연동]
         st.markdown('<div class="dropdown-spacing-wrapper">', unsafe_allow_html=True)
         if available_seats:
-            sb_key = f"dropdown_trigger_spec_{car['display_name']}"
+            sb_key = f"dropdown_trigger_spec_{car_rc['display_name']}"
             options = ["-- 선택 --"] + available_seats
             # 위젯 상태가 현재 옵션에 없으면(예: 방금 예약되어 사라진 좌석) 생성 전에 안전하게 초기화
             if st.session_state.get(sb_key) not in options:
@@ -1111,7 +1108,7 @@ for i, car in enumerate(resolved_cars):
 
             # 드롭다운 토글(OPT2) — 값은 세션 상태 키가 단일 소스로 구동(도면 클릭과 완전 동기화)
             chosen_seat = st.selectbox(
-                t("seat_select", car=car['display_name']),
+                t("seat_select", car=car_rc['display_name']),
                 options,
                 key=sb_key,
                 label_visibility="collapsed",
@@ -1119,14 +1116,14 @@ for i, car in enumerate(resolved_cars):
             )
 
             # 드롭다운 수동 조작 시에도 역으로 상태 레지스트리 엔진에 동시 동기화 처리
-            if st.session_state.selected_seat_state[car["display_name"]] != chosen_seat:
-                st.session_state.selected_seat_state[car["display_name"]] = chosen_seat
+            if st.session_state.selected_seat_state[car_rc["display_name"]] != chosen_seat:
+                st.session_state.selected_seat_state[car_rc["display_name"]] = chosen_seat
                 # 선택한 좌석이 변경되면 기존의 중복 에러 상태 즉시 리셋
                 st.session_state.duplicate_error_msg = None
 
             if chosen_seat != "-- 선택 --":
                 seat_num = int(chosen_seat.split(" ")[1])
-                selected_seat_trigger = (car["display_name"], seat_num)
+                selected_seat_trigger = (car_rc["display_name"], seat_num)
         else:
             st.error(t("full"))
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1134,13 +1131,13 @@ for i, car in enumerate(resolved_cars):
         # ⚡ [부드러운 클릭 선택] SVG 빈 좌석 클릭 시 JS가 대신 눌러줄 숨김 버튼 세트.
         # 전체 페이지 새로고침(href) 대신 웹소켓 기반 soft rerun으로 처리해 깜빡임을 제거한다.
         # on_click 콜백은 위젯 생성 전에 실행되어 selectbox 상태를 안전하게 세팅할 수 있다.
-        for seat in range(1, car["seats"] + 1):
+        for seat in range(1, car_rc["seats"] + 1):
             if f"좌석 {seat}" in available_seats:
                 st.button(
-                    f"SEATSEL::{car['display_name']}::{seat}",
-                    key=f"seatsel_{car['display_name']}_{seat}",
+                    f"SEATSEL::{car_rc['display_name']}::{seat}",
+                    key=f"seatsel_{car_rc['display_name']}_{seat}",
                     on_click=on_seat_click,
-                    args=(car["display_name"], seat)
+                    args=(car_rc["display_name"], seat)
                 )
 
 # 7. 좌석 선택 시 뜨는 외근 신청 정보 입력 팝업(모달 다이얼로그)
