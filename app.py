@@ -276,9 +276,10 @@ st.markdown("""
         display: flex;
         justify-content: center;
         align-items: center;
-        width: 100% !important;
+        width: 80% !important;        /* 컬럼 폭의 80%로 축소 */
         aspect-ratio: 160 / 250;
-        height: auto !important;
+        height: auto !important;      /* 높이는 폭에서 자동 산출(세로 비율 유지) */
+        margin: 0 auto !important;    /* 컬럼 안에서 가운데 정렬 */
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
     
