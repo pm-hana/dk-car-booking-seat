@@ -445,18 +445,18 @@ TR = {
         "f_name": "1. 신청자 이름", "f_name_ph": "예: 홍길동 PM",
         "f_dep": "2. 출발지", "f_dep_ph": "예: 본사 오피스",
         "f_dest": "3. 목적지 (위치)", "f_dest_ph": "예: 하노이 박닌 공장",
-        "f_date": "4. 출발 날짜", "f_time": "5. 출발 시간",
+        "f_date": "4. 출발 날짜", "f_time": "5. 출발 시간", "f_arrive": "6. 도착 시간",
         "btn_update": "수정 완료", "btn_submit": "신청 완료", "btn_cancel": "취소",
         "err_name_dest": "이름과 목적지를 정확히 입력해 주세요!",
         "toast_booked": "🎉 [{name}]님 좌석 {seat} 신청(수정) 완료!",
         "toast_moved": "🔄 [{name}]님의 예약이 [{car}] 좌석 {seat}(으)로 이동되었습니다!",
         "list_title": "📋 실시간 차량 배차 예약 현황 ({n}건)",
         "search_ph": "🔍 신청자 이름 · 차량 · 목적지로 검색",
-        "csv_headers": ["차량", "좌석", "신청자", "출발지", "목적지", "출발날짜", "출발시간"],
+        "csv_headers": ["차량", "좌석", "신청자", "출발지", "목적지", "출발날짜", "출발시간", "도착시간"],
         "csv_file": "배차예약_{date}.csv",
         "no_result": "🔍 [{q}] 검색 결과가 없습니다.",
         "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "목적지:",
-        "c_date": "출발날짜:", "c_time": "출발시간:", "edit_tip": "예약 수정하기",
+        "c_date": "출발날짜:", "c_time": "출발시간:", "c_arrive": "도착시간:", "edit_tip": "예약 수정하기",
         "btn_edit_bk": "예약 수정", "btn_cancel_bk": "예약 취소", "btn_reset_all": "🗑️ 전체 예약 초기화",
         "reset_warn": "⚠️ 정말 모든 예약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
         "btn_reset_yes": "네, 전체 삭제", "toast_reset": "🧹 모든 예약이 초기화되었습니다.",
@@ -478,18 +478,18 @@ TR = {
         "f_name": "1. Applicant name", "f_name_ph": "e.g. John Doe (PM)",
         "f_dep": "2. Departure", "f_dep_ph": "e.g. HQ Office",
         "f_dest": "3. Destination", "f_dest_ph": "e.g. Hanoi Bac Ninh Plant",
-        "f_date": "4. Departure date", "f_time": "5. Departure time",
+        "f_date": "4. Departure date", "f_time": "5. Departure time", "f_arrive": "6. Arrival time",
         "btn_update": "Update", "btn_submit": "Submit", "btn_cancel": "Cancel",
         "err_name_dest": "Please enter a valid name and destination!",
         "toast_booked": "🎉 [{name}] — seat {seat} request saved!",
         "toast_moved": "🔄 [{name}]'s booking moved to [{car}] seat {seat}!",
         "list_title": "📋 Live Dispatch Bookings ({n})",
         "search_ph": "🔍 Search by name · vehicle · destination",
-        "csv_headers": ["Vehicle", "Seat", "Applicant", "Departure", "Destination", "Date", "Time"],
+        "csv_headers": ["Vehicle", "Seat", "Applicant", "Departure", "Destination", "Date", "Time", "Arrival"],
         "csv_file": "dispatch_{date}.csv",
         "no_result": "🔍 No results for [{q}].",
         "c_applicant": "Applicant:", "c_departure": "Departure:", "c_destination": "Destination:",
-        "c_date": "Date:", "c_time": "Time:", "edit_tip": "Edit booking",
+        "c_date": "Date:", "c_time": "Time:", "c_arrive": "Arrival:", "edit_tip": "Edit booking",
         "btn_edit_bk": "Edit", "btn_cancel_bk": "Cancel", "btn_reset_all": "🗑️ Reset all bookings",
         "reset_warn": "⚠️ Delete ALL bookings? This cannot be undone.",
         "btn_reset_yes": "Yes, delete all", "toast_reset": "🧹 All bookings have been reset.",
@@ -942,6 +942,11 @@ elif "edit_car" in query_params and "edit_seat" in query_params:
                 st.session_state.input_user_departure_time_tick = datetime.time(h, m)
             except Exception:
                 pass
+            try:
+                h, m = map(int, info.get("arrive", "").split(":"))
+                st.session_state.input_user_arrival_time_tick = datetime.time(h, m)
+            except Exception:
+                pass
             # 예약된 차량의 좌석 상태를 타깃팅하여 활성화
             st.session_state.selected_seat_state[edit_car] = f"좌석 {edit_seat}"
             st.session_state.editing_booking = edit_key
@@ -1163,11 +1168,14 @@ def booking_dialog(car_target, seat_target):
     u_name = st.text_input(t("f_name"), placeholder=t("f_name_ph"), key="input_user_real_name")
     u_dep = st.text_input(t("f_dep"), placeholder=t("f_dep_ph"), key="input_user_departure_loc")
     u_dest = st.text_input(t("f_dest"), placeholder=t("f_dest_ph"), key="input_user_destination_loc")
-    fc1, fc2 = st.columns(2)
+    # 4·5·6번 필드를 동일 폭 3등분으로 병렬 배치
+    fc1, fc2, fc3 = st.columns(3)
     with fc1:
         u_date = st.date_input(t("f_date"), key="input_user_departure_date")
     with fc2:
         u_time = st.time_input(t("f_time"), step=300, key="input_user_departure_time_tick")
+    with fc3:
+        u_arrive = st.time_input(t("f_arrive"), step=300, key="input_user_arrival_time_tick")
 
     act_col1, act_col2 = st.columns(2)
     with act_col1:
@@ -1190,6 +1198,7 @@ def booking_dialog(car_target, seat_target):
                     st.rerun()
                 else:
                     time_str = u_time.strftime("%H:%M")
+                    arrive_str = u_arrive.strftime("%H:%M") if u_arrive else ""
                     date_str = u_date.strftime("%Y-%m-%d") if u_date else datetime.date.today().strftime("%Y-%m-%d")
 
                     # 예약 수정 모드였을 시 기존 예약을 삭제 후 이동 등록
@@ -1204,7 +1213,8 @@ def booking_dialog(car_target, seat_target):
                         "departure": u_dep.strip() if u_dep else "",
                         "destination": u_dest.strip(),
                         "date": date_str,
-                        "time": time_str
+                        "time": time_str,
+                        "arrive": arrive_str
                     }
                     st.session_state.duplicate_error_msg = None  # 성공 시 기존 경고 제거
                     save_bookings(st.session_state.bookings)
@@ -1259,7 +1269,8 @@ if st.session_state.bookings:
         for (c_name, s_num), c_info in st.session_state.bookings.items():
             writer.writerow([
                 c_name, s_num, c_info.get("name", ""), c_info.get("departure", ""),
-                c_info.get("destination", ""), c_info.get("date", ""), c_info.get("time", "")
+                c_info.get("destination", ""), c_info.get("date", ""), c_info.get("time", ""),
+                c_info.get("arrive", "")
             ])
         st.download_button(
             "⬇️ CSV",
@@ -1300,6 +1311,11 @@ if st.session_state.bookings:
             st.session_state.input_user_departure_time_tick = datetime.time(h, m)
         except Exception:
             pass
+        try:
+            h, m = map(int, info.get("arrive", "").split(":"))
+            st.session_state.input_user_arrival_time_tick = datetime.time(h, m)
+        except Exception:
+            pass
         st.session_state.selected_seat_state[bc_name] = f"좌석 {bseat}"
         st.session_state.editing_booking = (bc_name, bseat)
         st.session_state.active_booking_car = bc_name
@@ -1308,6 +1324,7 @@ if st.session_state.bookings:
     # 예약 카드 1장 렌더 (차량 컬럼 폭에 맞춘 컴팩트 카드 + 예약 수정/취소 버튼)
     def _render_booking_card(bc_name, bseat, binfo):
         date_line = f"<strong>{t('c_date')}</strong> {binfo['date']}<br>" if binfo.get("date") else ""
+        arrive_line = f"<br><strong>{t('c_arrive')}</strong> {binfo['arrive']}" if binfo.get("arrive") else ""
         st.markdown(f"""
         <div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">
             <div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">
@@ -1319,7 +1336,7 @@ if st.session_state.bookings:
                 <strong>{t('c_applicant')}</strong> {binfo.get('name', '')}<br>
                 <strong>{t('c_departure')}</strong> {binfo.get('departure', '')}<br>
                 <strong>{t('c_destination')}</strong> {binfo.get('destination', '')}<br>
-                {date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}
+                {date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}{arrive_line}
             </div>
         </div>
         """, unsafe_allow_html=True)
