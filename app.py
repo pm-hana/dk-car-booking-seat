@@ -835,9 +835,10 @@ def render_car_layout(car_name, layout_type, bookings):
             elif "VF5" in car_name or "VINFAST" in car_name:
                 driver_name = "Vuong"
             if driver_name:
+                # "Driver" 라벨 바로 아래 줄(운전석 박스 안)에 표기, 색상은 '선택 중(Selecting)'과 동일한 골드(#fab005)
                 svg.append(
-                    f'<text x="{LX + SW/2}" y="{R1 + SH + 9}" font-family="sans-serif" '
-                    f'font-size="7.5" font-weight="bold" fill="#ff8787" text-anchor="middle">{driver_name}</text>'
+                    f'<text x="{LX + SW/2}" y="{R1 + SH - 4}" font-family="sans-serif" '
+                    f'font-size="7.5" font-weight="bold" fill="#fab005" text-anchor="middle">{driver_name}</text>'
                 )
         if layout_type == "2-3":
             svg.append('  <line x1="33" y1="150" x2="129" y2="150" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
