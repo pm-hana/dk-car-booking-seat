@@ -1,0 +1,16 @@
+# Cloud Run / Firebase Hosting 프록시 뒤에서 안정 동작하도록 하는 Streamlit 서버 설정
+[server]
+headless = true
+# Cloud Run·Firebase 리버스 프록시 뒤에서는 CORS/XSRF 보호가 웹소켓을 끊을 수 있어 비활성화
+enableCORS = false
+enableXsrfProtection = false
+# 저장할 때마다 자동 rerun하지 않음 → 버전 카운트가 편집(저장)마다 오르지 않고
+# 최종 코딩 후 브라우저 새로고침(최초 접속) 시에만 1회 증가하도록 고정
+runOnSave = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#38bdf8"
