@@ -57,9 +57,9 @@ st.markdown("""
     }
     .main-title-box {
         display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        gap: 15px !important;
+        flex-direction: column !important;   /* 타이틀(1줄) 아래에 버전(2줄) 세로 스택 */
+        align-items: flex-start !important;
+        gap: 4px !important;
     }
     .main-title {
         font-size: 26px;
@@ -76,6 +76,11 @@ st.markdown("""
         font-weight: bold !important;
         padding: 0 !important;
         line-height: 1 !important;
+        white-space: nowrap !important;    /* 버전·시계가 두 줄로 접히지 않게 */
+    }
+    /* 현재 시각은 헤더 오른쪽에 정렬 */
+    #live-digital-clock {
+        text-align: right !important;
     }
     .sub-title {
         font-size: 13px;
@@ -431,7 +436,7 @@ lang = "en" if st.session_state.get("lang_toggle") == "ENG" else "ko"
 
 TR = {
     "ko": {
-        "app_title": "🚗 DK CAR BOOKING SEAT(차량 배차 예약)",
+        "app_title": "🚗 차량 배차 예약",
         "subtitle": "대곤 비나 직원 여러분, 차량 신청은 카시트 배치도를 보고 빈 자리를 선택해 주세요!",
         "legend_empty": "빈 자리", "legend_booked": "예약됨", "legend_selected": "선택 중",
         "legend_driver": "운전석", "legend_drag": "· 예약된 좌석은 드래그해서 빈 자리로 옮길 수 있어요",
@@ -464,7 +469,7 @@ TR = {
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
     },
     "en": {
-        "app_title": "🚗 DK CAR BOOKING SEAT(차량 배차 예약)",
+        "app_title": "🚗 DK CAR BOOKING SEAT",
         "subtitle": "DAEKHON VINA staff — to request a vehicle, check the seat map and pick an empty seat!",
         "legend_empty": "Empty", "legend_booked": "Booked", "legend_selected": "Selecting",
         "legend_driver": "Driver", "legend_drag": "· Drag a booked seat to move it to an empty one",
