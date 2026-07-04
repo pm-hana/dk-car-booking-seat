@@ -363,6 +363,43 @@ st.markdown("""
     [draggable="true"]:active {
         cursor: grabbing !important;
     }
+
+    /* ===== 모바일/좁은 화면 자동 최적화 (max-width 768px) =====
+       화면 폭 기준이라 ?m=1 파라미터가 없어도(안드로이드 홈화면 앱 등) 폰에서 자동 적용.
+       PC(넓은 화면)에는 전혀 영향 없음. */
+    @media (max-width: 768px) {
+        /* 좌우 여백 최소화 + 가로 스크롤 방지 */
+        .block-container { padding: 0.3rem 0.6rem 2.5rem !important; max-width: 100% !important; }
+        html, body, .stApp { overflow-x: hidden !important; }
+
+        /* 헤더: 로고 → 타이틀 → 시계를 세로로 접어 가운데 정렬, 타이틀 축소 */
+        .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
+        .brand-lockup { order: 1; width: 100% !important; justify-content: center !important; }
+        .main-title { order: 2; flex: 1 1 100% !important; font-size: 24px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
+        .header-clock { order: 3; flex: 1 1 100% !important; text-align: center !important; font-size: 12px !important; }
+        .brand-logo-img { height: 28px !important; }
+        .brand-name { font-size: 12px !important; }
+        .brand-version { font-size: 12px !important; margin-left: 6px !important; }
+        .sub-title { font-size: 11px !important; text-align: center !important; margin-bottom: 8px !important; }
+
+        /* 언어 선택은 모바일에선 가운데 정렬 */
+        .st-key-lang_toggle, .st-key-lang_toggle [role="radiogroup"] { justify-content: center !important; align-items: center !important; }
+
+        /* 차량/예약 컬럼을 한 화면에 하나씩 세로로 강제 스택 */
+        div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"],
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+
+        /* 차량 박스: 화면 폭 88%·세로비율(160:250)로, 가운데 */
+        .car-layout-container { width: 88% !important; height: auto !important; aspect-ratio: 160 / 250 !important; max-height: 62vh; margin: 2px auto 6px !important; padding: 6px !important; }
+        .car-title-text { font-size: 16px !important; }
+        .car-header-center { min-height: 26px !important; }
+        .board-title { font-size: 14px !important; }
+    }
     </style>
 """, unsafe_allow_html=True)
 

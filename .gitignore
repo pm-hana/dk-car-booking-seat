@@ -30,3 +30,8 @@ VER/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# 로컬 실행 런처(모바일 앱 바로가기 — 배포 불필요)
+모바일앱_실행.bat
+DK_모바일예약.url
+*.lnk
