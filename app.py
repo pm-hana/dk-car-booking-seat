@@ -366,6 +366,45 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# 2-b. 모바일 전용 주소(?m=1 또는 ?view=mobile) 감지 → 모바일 최적화 CSS만 추가 적용.
+#      파라미터가 없으면 기존 PC 화면 그대로(불변). 폰에서 이 주소를 북마크해 사용.
+try:
+    _qp = st.query_params
+    IS_MOBILE = (_qp.get("m") == "1") or (str(_qp.get("view", "")).lower() == "mobile")
+except Exception:
+    IS_MOBILE = False
+
+if IS_MOBILE:
+    st.markdown("""
+    <style>
+    /* ===== 모바일 전용(?m=1) 화면 최적화 — PC 화면에는 영향 없음 ===== */
+    /* 좌우 여백 최소화 + 가로 스크롤 방지 */
+    .block-container { padding: 0.3rem 0.6rem 2.5rem !important; max-width: 100% !important; }
+    html, body, .stApp { overflow-x: hidden !important; }
+
+    /* 헤더: 로고 → 타이틀 → 시계를 세로로 접어 가운데 정렬, 타이틀 축소 */
+    .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
+    .brand-lockup { order: 1; width: 100% !important; justify-content: center !important; }
+    .main-title { order: 2; flex: 1 1 100% !important; font-size: 26px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
+    .header-clock { order: 3; flex: 1 1 100% !important; text-align: center !important; font-size: 13px !important; }
+    .brand-logo-img { height: 30px !important; }
+    .brand-name { font-size: 13px !important; }
+    .brand-version { font-size: 13px !important; margin-left: 6px !important; }
+    .sub-title { font-size: 11px !important; text-align: center !important; margin-bottom: 10px !important; }
+
+    /* 언어 선택은 모바일에선 가운데 정렬 */
+    .st-key-lang_toggle, .st-key-lang_toggle [role="radiogroup"] { justify-content: center !important; align-items: center !important; }
+
+    /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
+    .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
+    .car-title-text { font-size: 16px !important; }
+    .car-header-center { min-height: 26px !important; }
+
+    /* 예약 현황판 제목·카드 폰트 소폭 축소 */
+    .board-title { font-size: 14px !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
 # 3. 세션 상태 레지스트리 저장소 선언 및 영속화 로직
 #    - 배포(Streamlit Cloud 등): Firestore에 저장 → 서버 재시작·다중 사용자에도 예약 유지
 #    - 로컬 개발: 자격증명이 없으면 자동으로 bookings.json 파일 방식으로 대체 동작
