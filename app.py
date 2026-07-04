@@ -85,6 +85,7 @@ st.markdown("""
         flex: 0 0 auto !important;
     }
     .brand-mark { font-size: 36px; line-height: 1; }
+    .brand-logo-img { height: 42px; width: auto; display: block; }
     .brand-name {
         font-size: 15px;
         font-weight: 800;
@@ -103,9 +104,13 @@ st.markdown("""
     }
     /* 버전(0704 ver.N)을 로고 오른쪽에 약간 띄워 배치 */
     .brand-version { margin-left: 8px !important; }
-    /* 언어 선택 라디오를 오른쪽 끝선에 맞춰 정렬 */
-    .st-key-lang_toggle { align-items: flex-end !important; }
-    .st-key-lang_toggle [role="radiogroup"] { justify-content: flex-end !important; }
+    /* 실시간 시계를 우측 컬럼 오른쪽 끝에 붙임 */
+    .header-clock { text-align: right !important; width: 100% !important; margin-bottom: 5px !important; }
+    /* 언어 선택 라디오를 전체 프레임 오른쪽 끝선에 붙여 우측 정렬(여러 계층 커버) */
+    .st-key-lang_toggle { display: flex !important; flex-direction: column !important; align-items: flex-end !important; }
+    .st-key-lang_toggle div[data-testid="stRadio"] { width: 100% !important; }
+    .st-key-lang_toggle div[data-testid="stRadio"] > div { display: flex !important; justify-content: flex-end !important; }
+    .st-key-lang_toggle div[role="radiogroup"] { justify-content: flex-end !important; margin-left: auto !important; }
     .main-title {
         flex: 1 1 auto;
         font-size: clamp(32px, 7vw, 92px);   /* 기존 46px → 최대 약 200%(92px), 화면폭 따라 축소 */
@@ -261,16 +266,20 @@ st.markdown("""
         min-height: 0 !important;
     }
     
-    /* 창 크기 맞춤 최적화 및 스크롤바 최소화용 380px 고정 컨테이너 */
+    /* 차량 박스를 세로 실사 이미지 비율(뷰박스 160:250)에 맞춰 세로형으로 — 좌우 여백 제거 */
     .car-layout-container {
         background-color: #1a1c23;
         border: 2px solid #3f4452;
         border-radius: 12px;
-        padding: 16px;
+        padding: 10px;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 380px !important; 
+        height: 440px !important;
+        aspect-ratio: 160 / 250;     /* 세로 이미지 비율 → 폭은 높이로부터 자동 산출 */
+        width: auto !important;
+        max-width: 100%;
+        margin: 0 auto !important;   /* 컬럼 안에서 가운데 정렬 */
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
     
@@ -567,21 +576,23 @@ init_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # 좌측: 타이틀/버전/실시간 시계 배너  ·  우측: 언어 선택 토글(한국어/ENG)
 _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
+# 로고 파일이 있으면 이미지, 없으면 이모지 폴백
+brand_mark_html = (f'<img class="brand-logo-img" src="{DAEKHON_LOGO_URI}" alt="DAEKHON VINA"/>'
+                   if DAEKHON_LOGO_URI else '<span class="brand-mark">🐋</span>')
 with _bn_l:
     st.markdown(f"""
     <div class="top-header-container">
         <div class="brand-lockup">
-            <span class="brand-mark">🐋</span>
+            {brand_mark_html}
             <span class="brand-name">DAEKHON VINA</span>
             <span class="clean-timestamp-stamp brand-version">{date_version_str}</span>
         </div>
         <p class="main-title">{t("app_title")}</p>
-        <div class="header-meta">
-            <div id="live-digital-clock" class="clean-timestamp-stamp">{init_time_str}</div>
-        </div>
     </div>
     """, unsafe_allow_html=True)
 with _bn_r:
+    # 실시간 시계 + 언어 선택을 전체 프레임 오른쪽 끝선에 붙여 우측 정렬
+    st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
     st.radio("Language", ["한국어", "ENG"], key="lang_toggle",
              horizontal=True, label_visibility="collapsed")
 
@@ -720,10 +731,11 @@ def _checker_row(xs, xe, y, size):
 
 @st.cache_data(show_spinner=False)
 def _load_car_image_uri():
-    """프로젝트 폴더의 실사 상단뷰 사진을 base64 data URI로 로드 (오프라인·배포 호환)."""
+    """전 차량 공통 외관 배경(세로 실사 상단뷰)을 base64 data URI로 로드.
+    세로 원본 car_topview_src.png 우선(뷰박스 160x250 세로에 맞음)."""
     import base64, os
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    for fn, mime in (("car_topview.jpg", "image/jpeg"), ("car_topview.png", "image/png")):
+    for fn, mime in (("car_topview_src.png", "image/png"), ("car_topview.jpg", "image/jpeg"), ("car_topview.png", "image/png")):
         p = os.path.join(base_dir, fn)
         if os.path.exists(p):
             b64 = base64.b64encode(open(p, "rb").read()).decode()
@@ -731,6 +743,19 @@ def _load_car_image_uri():
     return ""
 
 CAR_IMAGE_URI = _load_car_image_uri()
+
+def _load_brand_logo_uri():
+    """DAEKHON VINA 로고 이미지를 base64 data URI로 로드. 없으면 빈 문자열(→ 이모지 폴백)."""
+    import base64, os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for fn, mime in (("DAEKHON VINA LOGO.png", "image/png"), ("daekhon_vina_logo.png", "image/png")):
+        p = os.path.join(base_dir, fn)
+        if os.path.exists(p):
+            b64 = base64.b64encode(open(p, "rb").read()).decode()
+            return f"data:{mime};base64,{b64}"
+    return ""
+
+DAEKHON_LOGO_URI = _load_brand_logo_uri()
 
 @st.cache_data(show_spinner=False)
 def _load_taxi_logo_uri():
