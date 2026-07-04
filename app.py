@@ -574,6 +574,20 @@ def t(key, **kw):
 # 상단 배너 디자인 - 깔끔하게 버전 텍스트 및 실시간 자바스크립트 디지털시계 탑재
 init_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+# DAEKHON VINA 로고 이미지 로드 (아래 헤더에서 사용하므로 헤더보다 먼저 정의)
+def _load_brand_logo_uri():
+    """DAEKHON VINA 로고 이미지를 base64 data URI로 로드. 없으면 빈 문자열(→ 이모지 폴백)."""
+    import base64, os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for fn, mime in (("DAEKHON VINA LOGO.png", "image/png"), ("daekhon_vina_logo.png", "image/png")):
+        p = os.path.join(base_dir, fn)
+        if os.path.exists(p):
+            b64 = base64.b64encode(open(p, "rb").read()).decode()
+            return f"data:{mime};base64,{b64}"
+    return ""
+
+DAEKHON_LOGO_URI = _load_brand_logo_uri()
+
 # 좌측: 타이틀/버전/실시간 시계 배너  ·  우측: 언어 선택 토글(한국어/ENG)
 _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
 # 로고 파일이 있으면 이미지, 없으면 이모지 폴백
@@ -743,19 +757,6 @@ def _load_car_image_uri():
     return ""
 
 CAR_IMAGE_URI = _load_car_image_uri()
-
-def _load_brand_logo_uri():
-    """DAEKHON VINA 로고 이미지를 base64 data URI로 로드. 없으면 빈 문자열(→ 이모지 폴백)."""
-    import base64, os
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    for fn, mime in (("DAEKHON VINA LOGO.png", "image/png"), ("daekhon_vina_logo.png", "image/png")):
-        p = os.path.join(base_dir, fn)
-        if os.path.exists(p):
-            b64 = base64.b64encode(open(p, "rb").read()).decode()
-            return f"data:{mime};base64,{b64}"
-    return ""
-
-DAEKHON_LOGO_URI = _load_brand_logo_uri()
 
 @st.cache_data(show_spinner=False)
 def _load_taxi_logo_uri():
