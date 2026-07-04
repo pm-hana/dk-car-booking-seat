@@ -93,7 +93,7 @@ st.markdown("""
         line-height: 1.1;
         white-space: nowrap;
     }
-    /* 오른쪽 버전·실시간 시계(세로 스택, 우측 정렬) */
+    /* 오른쪽 실시간 시계(세로 스택, 우측 정렬) */
     .header-meta {
         display: flex !important;
         flex-direction: column !important;
@@ -101,6 +101,11 @@ st.markdown("""
         flex: 0 0 auto !important;
         gap: 2px !important;
     }
+    /* 버전(0704 ver.N)을 로고 오른쪽에 약간 띄워 배치 */
+    .brand-version { margin-left: 8px !important; }
+    /* 언어 선택 라디오를 오른쪽 끝선에 맞춰 정렬 */
+    .st-key-lang_toggle { align-items: flex-end !important; }
+    .st-key-lang_toggle [role="radiogroup"] { justify-content: flex-end !important; }
     .main-title {
         flex: 1 1 auto;
         font-size: clamp(32px, 7vw, 92px);   /* 기존 46px → 최대 약 200%(92px), 화면폭 따라 축소 */
@@ -568,10 +573,10 @@ with _bn_l:
         <div class="brand-lockup">
             <span class="brand-mark">🐋</span>
             <span class="brand-name">DAEKHON VINA</span>
+            <span class="clean-timestamp-stamp brand-version">{date_version_str}</span>
         </div>
         <p class="main-title">{t("app_title")}</p>
         <div class="header-meta">
-            <div class="clean-timestamp-stamp">{date_version_str}</div>
             <div id="live-digital-clock" class="clean-timestamp-stamp">{init_time_str}</div>
         </div>
     </div>
@@ -1085,25 +1090,22 @@ selected_seat_trigger = None
 
 for i, car in enumerate(cars_data):
     with cols_cars[i]:
-        # ── (1) 차량명 ──────────────────────────────────────────────
+        # ── (1) 차량명 + (2) 인승 선택 ────────────────────────────────
         if car["name"] == "TAXI":
             ti = car["taxi_index"]
-            st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}TAXI {ti}</p></div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo(car["name"])}{car["name"]}</p></div>', unsafe_allow_html=True)
-
-        # ── (2) 인승 배지 / TAXI 4·7인승 라디오 ─────────────────────
-        if car["name"] == "TAXI":
-            ti = car["taxi_index"]
-            # 4/7 인승 선택 라디오 (제목 아래 = 고정 인승과 동일 위치·스타일)
-            taxi_choice = st.radio(
-                f"TAXI {ti} Layout Select",
-                ["4인승", "7인승"],
-                key=f"taxi_seatcount_radio_{ti}",
-                label_visibility="collapsed",
-                horizontal=True,
-                format_func=lambda o: t("taxi_4") if o == "4인승" else t("taxi_7"),
-            )
+            # TAXI: 제목(왼쪽) + 4·7인승 라디오(오른쪽)를 한 줄에 나란히 배치
+            tcol_title, tcol_radio = st.columns([1, 1], vertical_alignment="center")
+            with tcol_title:
+                st.markdown(f'<div class="car-header-center" style="justify-content:flex-start;"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}TAXI {ti}</p></div>', unsafe_allow_html=True)
+            with tcol_radio:
+                taxi_choice = st.radio(
+                    f"TAXI {ti} Layout Select",
+                    ["4인승", "7인승"],
+                    key=f"taxi_seatcount_radio_{ti}",
+                    label_visibility="collapsed",
+                    horizontal=True,
+                    format_func=lambda o: t("taxi_4") if o == "4인승" else t("taxi_7"),
+                )
             # 첫 TAXI는 기존 예약 호환을 위해 접미 번호 없이 'TAXI (N SEAT)' 유지
             prefix = "TAXI" if ti == 1 else f"TAXI {ti}"
             if "4인승" in taxi_choice:
@@ -1114,7 +1116,8 @@ for i, car in enumerate(cars_data):
                 seats_count = 7
             display_name = f"{prefix} ({seats_count} SEAT)"
         else:
-            # 택시 외 차량은 인승 배지를 표시하지 않는다(요청). display_name엔 그대로 반영.
+            # 택시 외 차량: 제목만 표시(인승 배지 없음)
+            st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo(car["name"])}{car["name"]}</p></div>', unsafe_allow_html=True)
             layout_type = car["layout"]
             seats_count = car["seats"]
             display_name = f"{car['name']} ({seats_count} SEAT)"
