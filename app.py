@@ -695,14 +695,15 @@ def render_chassis(mk=None):
     실제 좌석(render_premium_seat)은 이 패널 위에 레이아웃별로 얹혀 클릭·드래그가 유지된다.
     (mk 인자는 하위호환용으로 받기만 하고 무시 — 모든 모델이 동일 외관을 사용)"""
     # 모델별 외관 색상: 공통 사진(어두운 청회색)에 CSS 컬러 필터를 씌워 첨부 색상에 근접
-    #   이노바=화이트(택시와 동일) / 세도나=블랙 / VF5=레드 / 택시=화이트
+    #   이노바=화이트 / 세도나=블랙 / VF5=레드 / 택시=옐로우
     WHITE_FILTER = "grayscale(1) brightness(1.72) contrast(0.82)"
+    YELLOW_FILTER = "grayscale(1) sepia(1) saturate(7) hue-rotate(5deg) brightness(1.15)"  # 택시 옐로우
     MODEL_FILTER = {
         "innova": WHITE_FILTER,   # 요청: 이노바 외관을 택시(흰색)와 동일하게
         "sedona": "grayscale(1) brightness(0.42) contrast(1.1)",
         "vf5":    "grayscale(1) sepia(1) saturate(6.5) hue-rotate(-40deg) brightness(1.02)",
-        "taxi4":  WHITE_FILTER,   # 요청: 택시 외관 흰색
-        "taxi7":  WHITE_FILTER,
+        "taxi4":  YELLOW_FILTER,   # 요청: 택시 외관 노란색
+        "taxi7":  YELLOW_FILTER,
     }
     img_filter = MODEL_FILTER.get(mk, "")
     s = []
