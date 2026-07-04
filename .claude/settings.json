@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/version_mark.py\" 2>/dev/null || true",
+            "statusMessage": "버전 변경 감지"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/version_bump.py\" 2>/dev/null || true",
+            "statusMessage": "버전 카운트 갱신"
+          }
+        ]
+      }
+    ]
+  }
+}

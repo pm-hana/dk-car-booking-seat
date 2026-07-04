@@ -11,117 +11,31 @@ import re
 
 COUNTER_FILE = "version_counter.json"
 
-def get_app_mtime():
-    try:
-        if os.path.exists("app.py"):
-            return os.path.getmtime("app.py")
-    except Exception:
-        pass
-    return 0.0
-
-def get_max_backup_count(display_date):
-    """VER/{mmdd} 폴더의 app_ver_N.py 중 가장 큰 N을 반환(없으면 0).
-    JSON 카운터가 유실·손상돼도 실제 백업 파일에서 차수를 복구해
-    번호 재사용(되감김)으로 기존 백업을 덮어쓰는 것을 원천 차단한다."""
-    try:
-        backup_dir = os.path.join("VER", display_date)
-        if not os.path.isdir(backup_dir):
-            return 0
-        mx = 0
-        for fn in os.listdir(backup_dir):
-            m = re.match(r"app_ver_(\d+)\.py$", fn)
-            if m:
-                mx = max(mx, int(m.group(1)))
-        return mx
-    except Exception:
-        return 0
-
-def _saved_count_for_today(today_str):
-    """오늘 날짜에 저장된 카운트(파일 없음·날짜 다름·손상 시 0)."""
+# [버전 표시 — 읽기 전용]
+#   버전 카운트는 "Claude Code가 app.py 코드 작업을 완료할 때"만 1 증가한다.
+#   실제 증가·백업은 version_bump.py(Claude Code Stop 훅)가 담당하고,
+#   앱은 version_counter.json에 저장된 값을 화면에 "표시만" 한다.
+#   → 브라우저 새로고침·사용자 저장·수동 rerun 으로는 절대 증가하지 않는다.
+def read_display_version():
+    now = datetime.datetime.now()
     if os.path.exists(COUNTER_FILE):
         try:
             with open(COUNTER_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if data.get("date", "") == today_str:
-                return int(data.get("count", 0))
+            count = max(int(data.get("count", 1) or 1), 1)
+            # 저장된 날짜(YYYY-MM-DD)를 mmdd 접두사로 변환
+            try:
+                display_date = datetime.datetime.strptime(
+                    str(data.get("date", "")), "%Y-%m-%d").strftime("%m%d")
+            except Exception:
+                display_date = now.strftime("%m%d")
+            return f"{display_date} ver.{count}"
         except Exception:
             pass
-    return 0
+    return now.strftime("%m%d") + " ver.1"
 
-def get_current_version_without_increment():
-    now = datetime.datetime.now()
-    today_str = now.strftime("%Y-%m-%d")
-    display_date = now.strftime("%m%d")
-    # 현재 차수 = max(저장 카운트, 실제 백업 최대 번호) — 절대 되감기지 않음
-    count = max(_saved_count_for_today(today_str), get_max_backup_count(display_date), 1)
-    return f"{display_date} ver.{count}"
-
-def increment_and_get_version():
-    now = datetime.datetime.now()
-    today_str = now.strftime("%Y-%m-%d")
-    display_date = now.strftime("%m%d")
-    current_mtime = get_app_mtime()
-
-    # 다음 차수 = max(저장 카운트, 실제 백업 최대 번호) + 1
-    #   → JSON이 손상/유실되거나 예외가 나도 이전 번호를 재사용하지 않고 항상 단조 증가
-    base = max(_saved_count_for_today(today_str), get_max_backup_count(display_date))
-    count = base + 1
-
-    try:
-        with open(COUNTER_FILE, "w", encoding="utf-8") as f:
-            json.dump({"date": today_str, "count": count, "last_modified": current_mtime}, f, ensure_ascii=False, indent=4)
-    except Exception:
-        pass
-
-    # ⚡ [백업 로직] VER/[MMDD] 폴더에 app.py 복사 백업 (count가 항상 최대+1이라 덮어쓰기 없음)
-    try:
-        import shutil
-        backup_dir = os.path.join("VER", display_date)
-        if not os.path.exists(backup_dir):
-            os.makedirs(backup_dir, exist_ok=True)
-        backup_path = os.path.join(backup_dir, f"app_ver_{count}.py")
-        if os.path.exists("app.py"):
-            shutil.copy2("app.py", backup_path)
-    except Exception:
-        pass
-
-    return f"{display_date} ver.{count}"
-
-# [핵심 감지 엔진] 현재 app.py의 수정 시각과 파일 기록을 대조하여 디버깅(수정 저장) 상태 감지
-current_mtime = get_app_mtime()
-code_changed = False
-
-if os.path.exists(COUNTER_FILE):
-    try:
-        with open(COUNTER_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            saved_mtime = data.get("last_modified", 0.0)
-            if abs(current_mtime - saved_mtime) > 0.1:
-                code_changed = True
-    except Exception:
-        pass
-else:
-    code_changed = True
-
-# 00시 기준 날짜 접두사 체크
-current_date_prefix = datetime.datetime.now().strftime("%m%d")
-date_changed = False
-if os.path.exists(COUNTER_FILE):
-    try:
-        with open(COUNTER_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if data.get("date", "") != datetime.datetime.now().strftime("%Y-%m-%d"):
-                date_changed = True
-    except Exception:
-        pass
-
-# 코드 변경이 감지되었거나 날짜가 바뀌어 00시 초기화가 필요한 경우 버전을 올리고, 평소에는 무조건 기존 저장된 버전 카운트만 유지
-if code_changed or date_changed:
-    date_version_str = increment_and_get_version()
-    st.session_state.current_version_str = date_version_str
-else:
-    date_version_str = get_current_version_without_increment()
-    st.session_state.current_version_str = date_version_str
+date_version_str = read_display_version()
+st.session_state.current_version_str = date_version_str
 
 # UI 고도화 및 PM님 요청 간격 비율을 100% 매칭하기 위한 프리미엄 커스텀 CSS
 st.markdown("""

@@ -17,9 +17,13 @@ serviceAccountKey.json
 # 로컬 전용 데이터/백업 (배포 시 Firestore를 쓰므로 불필요)
 bookings.json
 bookings.json.tmp
-version_counter.json
+.version_pending
 _backup_*/
 VER/
+
+# 주의: version_counter.json 은 일부러 gitignore 하지 않는다.
+#   이 파일이 배포 앱의 화면 버전(0704 ver.N)을 결정하므로 반드시 커밋해야
+#   서버에서도 로컬과 같은 버전이 표시된다.
 
 # 에디터/OS
 .vscode/
