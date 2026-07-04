@@ -825,6 +825,20 @@ def render_car_layout(car_name, layout_type, bookings):
     }
     if layout_type in seat_map:
         svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True))
+        # ENG 모드일 때만 운전석 바로 아래에 지정 운전자 이름 표기 (INNOVA=Tuan / SEDONA=Son / VF5=Vuong)
+        if lang == "en":
+            driver_name = ""
+            if "INNOVA" in car_name:
+                driver_name = "Tuan"
+            elif "SEDONA" in car_name:
+                driver_name = "Son"
+            elif "VF5" in car_name or "VINFAST" in car_name:
+                driver_name = "Vuong"
+            if driver_name:
+                svg.append(
+                    f'<text x="{LX + SW/2}" y="{R1 + SH + 9}" font-family="sans-serif" '
+                    f'font-size="7.5" font-weight="bold" fill="#ff8787" text-anchor="middle">{driver_name}</text>'
+                )
         if layout_type == "2-3":
             svg.append('  <line x1="33" y1="150" x2="129" y2="150" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
         for sid, sx, sy in seat_map[layout_type]:
