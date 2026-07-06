@@ -129,7 +129,7 @@ st.markdown("""
     .st-key-csv_inset { padding: 0 10% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
-        font-size: 30px;                     /* DAEKHON VINA(15px)의 2배 고정 */
+        font-size: 40px;                     /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
@@ -170,7 +170,8 @@ st.markdown("""
         font-size: 15px;
         font-weight: bold;
         color: #fafafa;
-        padding: 0 !important;      /* 상하 패딩 제거 → 오른쪽 '예약 이력' 버튼과 수직 중심선 일치 */
+        /* 상하 0 → 오른쪽 '예약 이력' 버튼과 수직 중심선 일치. 왼쪽 5% → INNOVA 박스(80%가운데) 왼쪽 끝선 정렬 */
+        padding: 0 0 0 5% !important;
         min-height: 38px;           /* download_button 높이에 맞춰 라인 정렬 */
         display: flex;
         align-items: center;
@@ -356,7 +357,7 @@ st.markdown("""
         /* 헤더: 로고 → 타이틀 → 시계를 세로로 접어 가운데 정렬, 타이틀 축소 */
         .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
         .brand-lockup { order: 1; width: 100% !important; justify-content: center !important; }
-        .main-title { order: 2; flex: 1 1 100% !important; font-size: 24px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
+        .main-title { order: 2; flex: 1 1 100% !important; font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
         .header-clock { order: 3; flex: 1 1 100% !important; text-align: center !important; font-size: 12px !important; }
         .brand-logo-img { height: 28px !important; }
         .brand-name { font-size: 12px !important; }
@@ -403,7 +404,7 @@ if IS_MOBILE:
     /* 헤더: 로고 → 타이틀 → 시계를 세로로 접어 가운데 정렬, 타이틀 축소 */
     .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
     .brand-lockup { order: 1; width: 100% !important; justify-content: center !important; }
-    .main-title { order: 2; flex: 1 1 100% !important; font-size: 26px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
+    .main-title { order: 2; flex: 1 1 100% !important; font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
     .header-clock { order: 3; flex: 1 1 100% !important; text-align: center !important; font-size: 13px !important; }
     .brand-logo-img { height: 30px !important; }
     .brand-name { font-size: 13px !important; }
