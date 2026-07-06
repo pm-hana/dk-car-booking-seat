@@ -146,7 +146,10 @@ st.markdown("""
         font-size: 15px;
         font-weight: bold;
         color: #fafafa;
-        padding: 6px 0;
+        padding: 0 !important;      /* 상하 패딩 제거 → 오른쪽 '예약 이력' 버튼과 수직 중심선 일치 */
+        min-height: 38px;           /* download_button 높이에 맞춰 라인 정렬 */
+        display: flex;
+        align-items: center;
         white-space: nowrap;
     }
     
@@ -171,19 +174,7 @@ st.markdown("""
         max-width: 100%;
     }
     
-    /* TAXI 문구 아래 라디오 버튼 세트를 포함한 헤더 정중앙 정렬용 컨테이너 */
-    .taxi-header-ultimate-center {
-        text-align: center !important;
-        margin-top: 10px !important;
-        min-height: 55px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 100% !important;
-    }
-    
-    /* TAXI의 라디오 버튼 컨테이너가 부모 요소 내에서 항상 정중앙에 배치되도록 플렉스 정렬 */
+    /* 라디오 버튼(현재는 언어 토글 한국어/ENG) 컨테이너 기본 플렉스 정렬 */
     div[data-testid="stRadio"] {
         margin: 5px auto 0 auto !important;
         padding: 0 !important;
@@ -214,82 +205,6 @@ st.markdown("""
     }
     .st-key-lang_toggle div[role="radiogroup"] label {
         white-space: nowrap !important;
-    }
-
-    /* TAXI 4/7 인승 라디오: 배지행 중앙에 고정 인승 배지와 동일한 회색 알약(11px) */
-    [class*="st-key-taxi_seatcount_radio"] div[role="radiogroup"] {
-        justify-content: center !important;
-        gap: 6px !important;
-    }
-    [class*="st-key-taxi_seatcount_radio"] label {
-        background-color: #2d2f34 !important;
-        border: 1px solid #3f4452 !important;
-        border-radius: 12px !important;
-        padding: 2px 8px !important;      /* 고정 인승 배지와 동일한 크기로 축소 */
-        margin: 0 !important;
-        min-height: 0 !important;
-        line-height: 1.2 !important;
-    }
-    /* 라디오 라벨 내부 여백 제거(고정 배지 높이와 일치) */
-    [class*="st-key-taxi_seatcount_radio"] label > div {
-        padding: 0 !important;
-        margin: 0 !important;
-        min-height: 0 !important;
-    }
-    [class*="st-key-taxi_seatcount_radio"] label p {
-        color: #8e929e !important;
-        font-size: 11px !important;
-        font-weight: bold !important;
-        line-height: 1.2 !important;
-        margin: 0 !important;
-    }
-    /* 선택된 인승 = '예약됨'과 동일한 초록색 */
-    [class*="st-key-taxi_seatcount_radio"] label:has(input:checked) {
-        background-color: #1b3b22 !important;
-        border-color: #40c057 !important;
-    }
-    [class*="st-key-taxi_seatcount_radio"] label:has(input:checked) p {
-        color: #40c057 !important;
-    }
-    [class*="st-key-taxi_seatcount_radio"] label > div:has(input) {
-        display: none !important;
-    }
-    /* 4/7 인승 라디오를 제목 아래 배지행에서 고정 인승 배지와 동일 높이(35px)로 정렬 */
-    [class*="st-key-taxi_seatcount_radio"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 35px !important;
-        min-height: 35px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    [class*="st-key-taxi_seatcount_radio"] > div,
-    [class*="st-key-taxi_seatcount_radio"] div[role="radiogroup"] {
-        margin: 0 !important;
-        min-height: 0 !important;
-    }
-
-    /* ── TAXI 헤더 행(제목+인승 라디오): 다른 차량 헤더(.car-header-center)와
-       완전히 동일한 상하 여백·높이·중심선으로 통일 →
-       (1) 인승 토글이 브랜드명 라인과 일직선, (2) 좌석 배치도가 VF5와 같은 높이에서 시작 ── */
-    [class*="st-key-taxi_hdr_"] {
-        margin: 10px 0 5px 0 !important;   /* 다른 차량 .car-header-center와 동일한 상하 여백 */
-    }
-    /* 내부 요소 세로 간격 제거 → TAXI만 추가로 밀려 내려가던 여백 제거(배치도 높이 일치) */
-    [class*="st-key-taxi_hdr_"] div[data-testid="stVerticalBlock"] {
-        gap: 0 !important;
-    }
-    [class*="st-key-taxi_hdr_"] div[data-testid="stHorizontalBlock"] {
-        align-items: center !important;    /* 제목·라디오 수직 중심선 일치 */
-        min-height: 35px !important;
-        gap: 8px !important;
-    }
-    /* 내부 제목의 자체 상하 여백 제거(바깥 래퍼가 여백 담당) → 비대칭 마진에 의한 어긋남 제거 */
-    [class*="st-key-taxi_hdr_"] .car-header-center {
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-        min-height: 35px !important;
     }
 
     /* 차량 박스: 컬럼 폭(=아래 배차 현황 카드 폭)에 꽉 채우고, 높이는 세로 이미지 비율로 자동 산출
@@ -631,8 +546,8 @@ TR = {
         "err_name_dest": "이름과 목적지를 정확히 입력해 주세요!",
         "toast_booked": "🎉 [{name}]님 좌석 {seat} 신청(수정) 완료!",
         "toast_moved": "🔄 [{name}]님의 예약이 [{car}] 좌석 {seat}(으)로 이동되었습니다!",
-        "list_title": "📋 실시간 차량 예약 현황 (Live Seat Booking) · {n}건",
-        "csv_btn": "📄 예약 이력 (Booking History)",
+        "list_title": "📋 실시간 차량 예약 현황 · {n}건",
+        "csv_btn": "📄 예약 이력",
         "search_ph": "🔍 신청자 이름 · 차량 · 목적지로 검색",
         "csv_headers": ["차량", "좌석", "신청자", "출발지", "목적지", "출발날짜", "출발시간", "도착시간"],
         "csv_file": "배차예약_{date}.csv",
@@ -845,7 +760,8 @@ def _model_key(car_name):
     if "VF5" in n or "VINFAST" in n:
         return "vf5"
     if "TAXI" in n:
-        return "taxi7" if "7" in n else "taxi4"
+        # 6·7인승은 MPV형(taxi7), 그 외(4인승)는 세단형(taxi4)
+        return "taxi7" if ("7" in n or "6" in n) else "taxi4"
     return "innova"
 
 def _body_path(x0, y0, x1, y1, rf, rr):
@@ -1050,6 +966,8 @@ def render_car_layout(car_name, layout_type, bookings):
         "2-3-3": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, MX, R3), (7, RX, R3)],
         "2-2-3": [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, MX, R3), (6, RX, R3)],
         "2-3":   [(1, RX, R1), (2, LX, R3), (3, MX, R3), (4, RX, R3)],
+        # TAXI 6인승: 앞(운전석+1)·중(3)·뒤(2), 뒤열은 좌/우로 벌려 배치
+        "2-3-2": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, RX, R3)],
     }
     if layout_type in seat_map:
         # ENG 모드일 때만 운전자 이름 지정 (INNOVA=Tuan / SEDONA=Son / VF5=Vuong)
@@ -1170,7 +1088,7 @@ elif "car" in query_params and "seat" in query_params:
     # 유격 싱크가 끝났으므로 URL 주소창 파라미터는 즉시 초기화하여 다중 재호출 Rerun 현상 전면 차단
     st.query_params.clear()
 
-# 4. 차량 기본 구성 데이터 명세 수립 (TAXI는 TAXI 1 한 대)
+# 4. 차량 기본 구성 데이터 명세 수립 (TAXI는 TAXI 1 한 대, 6인승 2-3-2 고정)
 n_taxi = 1
 cars_data = [
     {"name": "TOYOTA INNOVA", "layout": "2-3-3", "seats": 7},
@@ -1178,7 +1096,7 @@ cars_data = [
     {"name": "VINFAST VF5", "layout": "2-3", "seats": 4},
 ]
 for _ti in range(1, n_taxi + 1):
-    cars_data.append({"name": "TAXI", "layout": "DYNAMIC", "seats": 0, "taxi_index": _ti})
+    cars_data.append({"name": "TAXI", "layout": "2-3-2", "seats": 6, "taxi_index": _ti})
 
 total_cars = len(cars_data)  # 고정 3종 + TAXI n대
 
@@ -1240,31 +1158,14 @@ for i, car in enumerate(cars_data):
         # ── (1) 차량명 + (2) 인승 선택 ────────────────────────────────
         if car["name"] == "TAXI":
             ti = car["taxi_index"]
-            # TAXI: 제목(왼쪽) + 4·7인승 라디오(오른쪽)를 한 줄에 나란히 배치.
-            #  keyed 컨테이너(st-key-taxi_hdr_N)로 감싸 다른 차량 헤더와 동일한 높이·중심선으로 CSS 정렬.
-            with st.container(key=f"taxi_hdr_{ti}"):
-                tcol_title, tcol_radio = st.columns([1, 1], vertical_alignment="center")
-                with tcol_title:
-                    # 택시 1대(n_taxi=1)뿐이라 번호 없이 'TAXI'만 표시. (다대수 확장 시 'TAXI {ti}')
-                    taxi_title = "TAXI" if ti == 1 else f"TAXI {ti}"
-                    st.markdown(f'<div class="car-header-center" style="justify-content:flex-start;"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}{taxi_title}</p></div>', unsafe_allow_html=True)
-                with tcol_radio:
-                    taxi_choice = st.radio(
-                        f"TAXI {ti} Layout Select",
-                        ["4인승", "7인승"],
-                        key=f"taxi_seatcount_radio_{ti}",
-                        label_visibility="collapsed",
-                        horizontal=True,
-                        format_func=lambda o: t("taxi_4") if o == "4인승" else t("taxi_7"),
-                    )
+            # TAXI: 인승 선택(4/7 토글) 삭제 → 6인승(2-3-2) 고정. 제목은 다른 차량과 동일하게 중앙 정렬.
+            #  택시 1대(n_taxi=1)뿐이라 번호 없이 'TAXI'만 표시. (다대수 확장 시 'TAXI {ti}')
+            taxi_title = "TAXI" if ti == 1 else f"TAXI {ti}"
+            st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}{taxi_title}</p></div>', unsafe_allow_html=True)
             # 첫 TAXI는 기존 예약 호환을 위해 접미 번호 없이 'TAXI (N SEAT)' 유지
             prefix = "TAXI" if ti == 1 else f"TAXI {ti}"
-            if "4인승" in taxi_choice:
-                layout_type = "2-3"
-                seats_count = 4
-            else:
-                layout_type = "2-3-3"
-                seats_count = 7
+            layout_type = car["layout"]      # "2-3-2"
+            seats_count = car["seats"]       # 6
             display_name = f"{prefix} ({seats_count} SEAT)"
         else:
             # 택시 외 차량: 제목만 표시(인승 배지 없음)
