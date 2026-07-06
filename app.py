@@ -161,10 +161,14 @@ st.markdown("""
         align-items: center;
     }
     .car-title-text {
-        font-size: 19px;
+        font-size: clamp(13px, 1.5vw, 19px);   /* 창 폭에 따라 자동 축소 → 좁은 창에서 옆 칸 침범 방지 */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
+        white-space: nowrap;                    /* 브랜드명 줄바꿈 금지 → 4칸 헤더 높이 균일 유지 */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
     
     /* TAXI 문구 아래 라디오 버튼 세트를 포함한 헤더 정중앙 정렬용 컨테이너 */
@@ -265,7 +269,29 @@ st.markdown("""
         margin: 0 !important;
         min-height: 0 !important;
     }
-    
+
+    /* ── TAXI 헤더 행(제목+인승 라디오): 다른 차량 헤더(.car-header-center)와
+       완전히 동일한 상하 여백·높이·중심선으로 통일 →
+       (1) 인승 토글이 브랜드명 라인과 일직선, (2) 좌석 배치도가 VF5와 같은 높이에서 시작 ── */
+    [class*="st-key-taxi_hdr_"] {
+        margin: 10px 0 5px 0 !important;   /* 다른 차량 .car-header-center와 동일한 상하 여백 */
+    }
+    /* 내부 요소 세로 간격 제거 → TAXI만 추가로 밀려 내려가던 여백 제거(배치도 높이 일치) */
+    [class*="st-key-taxi_hdr_"] div[data-testid="stVerticalBlock"] {
+        gap: 0 !important;
+    }
+    [class*="st-key-taxi_hdr_"] div[data-testid="stHorizontalBlock"] {
+        align-items: center !important;    /* 제목·라디오 수직 중심선 일치 */
+        min-height: 35px !important;
+        gap: 8px !important;
+    }
+    /* 내부 제목의 자체 상하 여백 제거(바깥 래퍼가 여백 담당) → 비대칭 마진에 의한 어긋남 제거 */
+    [class*="st-key-taxi_hdr_"] .car-header-center {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        min-height: 35px !important;
+    }
+
     /* 차량 박스: 컬럼 폭(=아래 배차 현황 카드 폭)에 꽉 채우고, 높이는 세로 이미지 비율로 자동 산출
        → 상단 차량 폭과 하단 배차 카드 폭이 정확히 일치, 사진도 왜곡/여백 없이 채워짐 */
     .car-layout-container {
@@ -362,6 +388,22 @@ st.markdown("""
     }
     [draggable="true"]:active {
         cursor: grabbing !important;
+    }
+
+    /* ===== 중간 폭(창 축소·태블릿) 자동 최적화 (769px~1200px) =====
+       4개 차량 컬럼을 그대로 유지하되, 제목·간격·배치도를 창 폭에 맞춰 자동 축소해
+       좁은 창에서 옆 칸과 겹치는(오버랩) 현상을 방지. 폰(≤768px)·풀와이드에는 영향 없음. */
+    @media (min-width: 769px) and (max-width: 1200px) {
+        /* 가로 넘침 원천 차단 */
+        html, body, .stApp { overflow-x: hidden !important; }
+        .block-container { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+        /* 차량 컬럼 사이 간격 축소 → 각 칸에 여유 폭 확보 */
+        div[data-testid="stHorizontalBlock"] { gap: 0.4rem !important; }
+        /* 제목·헤더 축소로 브랜드명이 옆 칸을 침범하지 않게 */
+        .car-title-text { font-size: clamp(11px, 1.4vw, 16px) !important; }
+        .car-header-center { min-height: 30px !important; }
+        /* 배치도 박스는 컬럼 폭을 더 채우되(90%) 넘치지 않도록 패딩 축소 */
+        .car-layout-container { width: 90% !important; padding: 6px !important; }
     }
 
     /* ===== 모바일/좁은 화면 자동 최적화 (max-width 768px) =====
@@ -1196,19 +1238,21 @@ for i, car in enumerate(cars_data):
         # ── (1) 차량명 + (2) 인승 선택 ────────────────────────────────
         if car["name"] == "TAXI":
             ti = car["taxi_index"]
-            # TAXI: 제목(왼쪽) + 4·7인승 라디오(오른쪽)를 한 줄에 나란히 배치
-            tcol_title, tcol_radio = st.columns([1, 1], vertical_alignment="center")
-            with tcol_title:
-                st.markdown(f'<div class="car-header-center" style="justify-content:flex-start;"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}TAXI {ti}</p></div>', unsafe_allow_html=True)
-            with tcol_radio:
-                taxi_choice = st.radio(
-                    f"TAXI {ti} Layout Select",
-                    ["4인승", "7인승"],
-                    key=f"taxi_seatcount_radio_{ti}",
-                    label_visibility="collapsed",
-                    horizontal=True,
-                    format_func=lambda o: t("taxi_4") if o == "4인승" else t("taxi_7"),
-                )
+            # TAXI: 제목(왼쪽) + 4·7인승 라디오(오른쪽)를 한 줄에 나란히 배치.
+            #  keyed 컨테이너(st-key-taxi_hdr_N)로 감싸 다른 차량 헤더와 동일한 높이·중심선으로 CSS 정렬.
+            with st.container(key=f"taxi_hdr_{ti}"):
+                tcol_title, tcol_radio = st.columns([1, 1], vertical_alignment="center")
+                with tcol_title:
+                    st.markdown(f'<div class="car-header-center" style="justify-content:flex-start;"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}TAXI {ti}</p></div>', unsafe_allow_html=True)
+                with tcol_radio:
+                    taxi_choice = st.radio(
+                        f"TAXI {ti} Layout Select",
+                        ["4인승", "7인승"],
+                        key=f"taxi_seatcount_radio_{ti}",
+                        label_visibility="collapsed",
+                        horizontal=True,
+                        format_func=lambda o: t("taxi_4") if o == "4인승" else t("taxi_7"),
+                    )
             # 첫 TAXI는 기존 예약 호환을 위해 접미 번호 없이 'TAXI (N SEAT)' 유지
             prefix = "TAXI" if ti == 1 else f"TAXI {ti}"
             if "4인승" in taxi_choice:
