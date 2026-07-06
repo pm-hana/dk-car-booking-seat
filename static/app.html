@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DK CAR BOOKING SEAT</title>
+<link rel="manifest" href="/app/static/manifest.json">
+<link rel="apple-touch-icon" href="/app/static/icon-192.png">
+<meta name="theme-color" content="#0e1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DK CAR">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #0e1117; color: #f0f3f8;
+    font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 28px 22px; gap: 18px; min-height: 100%;
+  }
+  img.icon { width: 128px; height: 128px; border-radius: 26px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  h1 { font-size: 22px; margin: 6px 0 0; font-weight: 800; letter-spacing: .3px; }
+  p.sub { font-size: 14px; color: #8e929e; margin: 0; line-height: 1.5; max-width: 340px; }
+  .btn {
+    display: none; width: 100%; max-width: 340px; padding: 15px 18px; border: none; border-radius: 12px;
+    background: #38bdf8; color: #06222f; font-size: 16px; font-weight: 800; cursor: pointer;
+  }
+  .btn:active { filter: brightness(.92); }
+  a.open { color: #38bdf8; font-size: 14px; text-decoration: none; margin-top: 2px; }
+  .guide {
+    background: #15161a; border: 1px solid #2d2f34; border-radius: 12px; padding: 14px 16px;
+    font-size: 13px; color: #c7ccd6; line-height: 1.7; max-width: 340px; text-align: left; width: 100%;
+  }
+  .guide b { color: #f0f3f8; }
+</style>
+</head>
+<body>
+  <img class="icon" src="/app/static/icon-192.png" alt="DK CAR">
+  <h1>DK CAR BOOKING SEAT</h1>
+  <p class="sub">이 페이지에서 <b>앱을 홈 화면에 설치</b>하면,<br>아이콘을 눌러 전체화면 앱처럼 사용할 수 있어요.</p>
+
+  <button id="installBtn" class="btn" onclick="doInstall()">📲 홈 화면에 앱 설치</button>
+
+  <div class="guide" id="guide">
+    설치 버튼이 안 보이면 크롬 <b>⋮ 메뉴 → “홈 화면에 추가”</b>(또는 “앱 설치”)를 눌러주세요.
+    옵션이 없으면 잠시 후 이 페이지를 <b>새로고침</b> 후 다시 시도해 보세요.
+  </div>
+
+  <a class="open" href="/?m=1">→ 설치 없이 웹으로 바로 열기</a>
+
+<script>
+  // 1) 설치된 앱(전체화면)으로 실행된 경우 → 실제 배차 앱으로 이동
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (standalone) { location.replace('/?m=1'); }
+
+  // 2) 서비스워커 등록 (크롬 '설치 가능' 조건)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/app/static/sw.js').catch(function(){});
+  }
+
+  // 3) 설치 프롬프트 버튼
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    document.getElementById('installBtn').style.display = 'block';
+  });
+  function doInstall() {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.finally(function(){ deferred = null; document.getElementById('installBtn').style.display = 'none'; });
+  }
+  // 설치 완료 후 앱 열기 유도
+  window.addEventListener('appinstalled', function () {
+    document.getElementById('guide').innerHTML = '✅ 설치 완료! 홈 화면의 <b>DK CAR</b> 아이콘으로 실행하세요.';
+  });
+</script>
+</body>
+</html>
