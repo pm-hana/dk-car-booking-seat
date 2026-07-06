@@ -3,7 +3,7 @@
   "short_name": "DK CAR",
   "description": "대곤비나 차량 배차 예약 - 카시트 배치도에서 빈 자리를 선택해 신청하세요.",
   "lang": "ko",
-  "start_url": "/app/static/app.html",
+  "start_url": "/?m=1",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
