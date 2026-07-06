@@ -631,7 +631,8 @@ TR = {
         "err_name_dest": "이름과 목적지를 정확히 입력해 주세요!",
         "toast_booked": "🎉 [{name}]님 좌석 {seat} 신청(수정) 완료!",
         "toast_moved": "🔄 [{name}]님의 예약이 [{car}] 좌석 {seat}(으)로 이동되었습니다!",
-        "list_title": "📋 실시간 차량 배차 예약 현황 ({n}건)",
+        "list_title": "📋 실시간 차량 예약 현황 (Live Seat Booking) · {n}건",
+        "csv_btn": "📄 예약 이력 (Booking History)",
         "search_ph": "🔍 신청자 이름 · 차량 · 목적지로 검색",
         "csv_headers": ["차량", "좌석", "신청자", "출발지", "목적지", "출발날짜", "출발시간", "도착시간"],
         "csv_file": "배차예약_{date}.csv",
@@ -664,7 +665,8 @@ TR = {
         "err_name_dest": "Please enter a valid name and destination!",
         "toast_booked": "🎉 [{name}] — seat {seat} request saved!",
         "toast_moved": "🔄 [{name}]'s booking moved to [{car}] seat {seat}!",
-        "list_title": "📋 Live Dispatch Bookings ({n})",
+        "list_title": "📋 Live Seat Booking · {n}",
+        "csv_btn": "📄 Booking History",
         "search_ph": "🔍 Search by name · vehicle · destination",
         "csv_headers": ["Vehicle", "Seat", "Applicant", "Departure", "Destination", "Date", "Time", "Arrival"],
         "csv_file": "dispatch_{date}.csv",
@@ -1243,7 +1245,9 @@ for i, car in enumerate(cars_data):
             with st.container(key=f"taxi_hdr_{ti}"):
                 tcol_title, tcol_radio = st.columns([1, 1], vertical_alignment="center")
                 with tcol_title:
-                    st.markdown(f'<div class="car-header-center" style="justify-content:flex-start;"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}TAXI {ti}</p></div>', unsafe_allow_html=True)
+                    # 택시 1대(n_taxi=1)뿐이라 번호 없이 'TAXI'만 표시. (다대수 확장 시 'TAXI {ti}')
+                    taxi_title = "TAXI" if ti == 1 else f"TAXI {ti}"
+                    st.markdown(f'<div class="car-header-center" style="justify-content:flex-start;"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}{taxi_title}</p></div>', unsafe_allow_html=True)
                 with tcol_radio:
                     taxi_choice = st.radio(
                         f"TAXI {ti} Layout Select",
@@ -1423,39 +1427,42 @@ num_bookings = len(st.session_state.bookings)
 st.write("")
 
 search_query = ""
-if st.session_state.bookings:
-    # 제목(왼쪽) + 검색·CSV(오른쪽, 선택 토글 크기) 한 줄 헤더
-    h_title, h_search, h_csv = st.columns([2, 1, 1], vertical_alignment="center")
-    with h_title:
-        st.markdown(f'<div class="board-title">{t("list_title", n=num_bookings)}</div>', unsafe_allow_html=True)
-    with h_search:
+# 현황판 헤더(제목 + 검색 + 예약이력 다운로드)는 예약 유무와 무관하게 항상 렌더.
+#  → 예약 신청이 없더라도 '실시간 차량 예약 현황' 제목과 '예약 이력(CSV)' 버튼이 항상 노출된다.
+h_title, h_search, h_csv = st.columns([2, 1, 1], vertical_alignment="center")
+with h_title:
+    st.markdown(f'<div class="board-title">{t("list_title", n=num_bookings)}</div>', unsafe_allow_html=True)
+with h_search:
+    # 검색창은 예약이 있을 때만 노출(빈 상태에서 빈 검색창 방지). CSV 위치는 컬럼으로 고정 유지.
+    if st.session_state.bookings:
         search_query = st.text_input(
             t("search_ph"),
             placeholder=t("search_ph"),
             key="booking_search_query",
             label_visibility="collapsed"
         )
-    with h_csv:
-        # CSV 내보내기 (엑셀에서 바로 열림, UTF-8 BOM으로 한글 깨짐 방지)
-        import io, csv
-        csv_buffer = io.StringIO()
-        writer = csv.writer(csv_buffer)
-        writer.writerow(t("csv_headers"))
-        for (c_name, s_num), c_info in st.session_state.bookings.items():
-            writer.writerow([
-                c_name, s_num, c_info.get("name", ""), c_info.get("departure", ""),
-                c_info.get("destination", ""), c_info.get("date", ""), c_info.get("time", ""),
-                c_info.get("arrive", "")
-            ])
-        st.download_button(
-            "⬇️ CSV",
-            data="﻿" + csv_buffer.getvalue(),
-            file_name=t("csv_file", date=datetime.date.today().strftime('%Y%m%d')),
-            mime="text/csv",
-            use_container_width=True,
-            key="download_csv_btn"
-        )
+with h_csv:
+    # 예약 이력(CSV) 내보내기 — 예약이 없어도 항상 노출(헤더만 있는 빈 파일). UTF-8 BOM으로 한글 깨짐 방지.
+    import io, csv
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer)
+    writer.writerow(t("csv_headers"))
+    for (c_name, s_num), c_info in st.session_state.bookings.items():
+        writer.writerow([
+            c_name, s_num, c_info.get("name", ""), c_info.get("departure", ""),
+            c_info.get("destination", ""), c_info.get("date", ""), c_info.get("time", ""),
+            c_info.get("arrive", "")
+        ])
+    st.download_button(
+        t("csv_btn"),
+        data="﻿" + csv_buffer.getvalue(),
+        file_name=t("csv_file", date=datetime.date.today().strftime('%Y%m%d')),
+        mime="text/csv",
+        use_container_width=True,
+        key="download_csv_btn"
+    )
 
+if st.session_state.bookings:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)
     q = (search_query or "").strip().lower()
     filtered_items = []
@@ -1564,7 +1571,7 @@ if st.session_state.bookings:
                 st.session_state.confirm_reset_all = False
                 st.rerun()
 else:
-    st.markdown(f'<div class="board-title">{t("list_title", n=0)}</div>', unsafe_allow_html=True)
+    # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
 
 # 9. 드래그 앤 드롭 이벤트를 부모 DOM에 강제로 바인딩하는 투명 JS 브릿지 컴포넌트 및 실시간 시계 가동
