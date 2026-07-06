@@ -102,24 +102,34 @@ st.markdown("""
         flex: 0 0 auto !important;
         gap: 2px !important;
     }
-    /* 버전(0704 ver.N)을 로고 오른쪽에 약간 띄워 배치 */
-    .brand-version { margin-left: 8px !important; }
-    /* 실시간 시계를 메인 타이틀 오른쪽에 배치(헤더 flex 행의 우측 아이템) */
+    /* 버전(0706 ver.N)을 메인 타이틀 오른쪽에 SEAT(4글자)만큼 띄워 배치 */
+    .brand-version { margin-left: 4ch !important; }
+    /* 실시간 시계: 오른쪽 컬럼에서 우측 정렬(언어 토글 위에 세로 스택) */
     .header-clock { flex: 0 0 auto !important; white-space: nowrap !important; text-align: right !important; }
     /* 언어 선택 라디오를 전체 프레임 오른쪽 끝선에 붙여 우측 정렬(여러 계층 커버) */
     .st-key-lang_toggle { display: flex !important; flex-direction: column !important; align-items: flex-end !important; }
+    /* 언어 토글 라벨을 실시간 시계와 동일 크기(16px)로 */
+    .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: 16px !important; }
     .st-key-lang_toggle div[data-testid="stRadio"] { width: 100% !important; }
     .st-key-lang_toggle div[data-testid="stRadio"] > div { display: flex !important; justify-content: flex-end !important; }
     .st-key-lang_toggle div[role="radiogroup"] { justify-content: flex-end !important; margin-left: auto !important; }
     .main-title {
-        flex: 1 1 auto;
-        font-size: clamp(32px, 7vw, 92px);   /* 기존 46px → 최대 약 200%(92px), 화면폭 따라 축소 */
+        flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
+        font-size: 30px;                     /* DAEKHON VINA(15px)의 2배 고정 */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
-        text-align: center;                  /* 로고와 메타 사이 가운데 배치 */
+        text-align: center;
         white-space: nowrap;
         letter-spacing: 1px;
+    }
+    /* 메인 타이틀 + 버전을 한 묶음으로 가운데 배치, 버전은 타이틀 오른쪽에 붙는다 */
+    .title-group {
+        flex: 1 1 auto;
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        min-width: 0;
     }
     
     /* 노란색 외곽 테두리 박스를 완전히 없앤 미니멀 폰트 스타일링 */
@@ -629,20 +639,22 @@ _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
 brand_mark_html = (f'<img class="brand-logo-img" src="{DAEKHON_LOGO_URI}" alt="DAEKHON VINA"/>'
                    if DAEKHON_LOGO_URI else '<span class="brand-mark">🐋</span>')
 with _bn_l:
-    # 로고+버전(왼쪽) · 메인 타이틀(가운데) · 실시간 시계(타이틀 오른쪽)
+    # 로고+브랜드명(왼쪽) · 메인 타이틀+버전 묶음(가운데). 시계는 오른쪽 컬럼으로 이동.
     st.markdown(f"""
     <div class="top-header-container">
         <div class="brand-lockup">
             {brand_mark_html}
             <span class="brand-name">DAEKHON VINA</span>
+        </div>
+        <div class="title-group">
+            <p class="main-title">{t("app_title")}</p>
             <span class="clean-timestamp-stamp brand-version">{date_version_str}</span>
         </div>
-        <p class="main-title">{t("app_title")}</p>
-        <div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>
     </div>
     """, unsafe_allow_html=True)
 with _bn_r:
-    # 언어 선택을 전체 프레임 오른쪽 끝선에 붙여 우측 정렬
+    # 실시간 시계(위) + 언어 토글(아래)을 세로로 쌓아 오른쪽 프레임 끝으로 정렬
+    st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock" style="margin-bottom:6px;">{init_time_str}</div>', unsafe_allow_html=True)
     st.radio("Language", ["한국어", "ENG"], key="lang_toggle",
              horizontal=True, label_visibility="collapsed")
 
