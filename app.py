@@ -655,7 +655,6 @@ st.markdown(f"""
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#1b3b22; border:2px solid #40c057; display:inline-block;"></span>{t("legend_booked")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3a2f15; border:2px solid #fab005; display:inline-block;"></span>{t("legend_selected")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#2c1a1a; border:2px solid #e03131; display:inline-block;"></span>{t("legend_driver")}</span>
-    <span style="color:#8e929e; margin-left:4px;">{t("legend_drag")}</span>
 </div>
 """, unsafe_allow_html=True)
 
