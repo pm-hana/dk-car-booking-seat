@@ -113,6 +113,20 @@ st.markdown("""
     .st-key-lang_toggle div[data-testid="stRadio"] { width: 100% !important; }
     .st-key-lang_toggle div[data-testid="stRadio"] > div { display: flex !important; justify-content: flex-end !important; }
     .st-key-lang_toggle div[role="radiogroup"] { justify-content: flex-end !important; margin-left: auto !important; }
+    /* 오른쪽 헤더 묶음: 시계(위)+토글(아래)을 컴팩트 세로 스택으로 프레임 오른쪽 끝선에 정렬·수직 중앙 */
+    .st-key-hdr_right {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;   /* 오른쪽 끝선 정렬 */
+        justify-content: center !important;
+        gap: 2px !important;
+        padding-right: 10% !important;      /* 차량 박스(80% 가운데정렬)의 우측 10% 여백과 동일 끝선 */
+    }
+    .st-key-hdr_right div[data-testid="stVerticalBlock"] { gap: 2px !important; }
+    .st-key-hdr_right [data-testid="stElementContainer"] { margin: 0 !important; }
+    .st-key-hdr_right .st-key-lang_toggle { margin: 0 !important; padding: 0 !important; }
+    /* 예약 이력 버튼: TAXI 박스(width 80% 가운데정렬)와 동일 끝선·폭으로 → 박스 바로 아래 한 줄 정렬 */
+    .st-key-csv_inset { padding: 0 10% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 30px;                     /* DAEKHON VINA(15px)의 2배 고정 */
@@ -653,10 +667,11 @@ with _bn_l:
     </div>
     """, unsafe_allow_html=True)
 with _bn_r:
-    # 실시간 시계(위) + 언어 토글(아래)을 세로로 쌓아 오른쪽 프레임 끝으로 정렬
-    st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock" style="margin-bottom:6px;">{init_time_str}</div>', unsafe_allow_html=True)
-    st.radio("Language", ["한국어", "ENG"], key="lang_toggle",
-             horizontal=True, label_visibility="collapsed")
+    # 실시간 시계(위) + 언어 토글(아래)을 컴팩트 세로 스택으로 묶어 오른쪽 프레임 끝선에 정렬
+    with st.container(key="hdr_right"):
+        st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
+        st.radio("Language", ["한국어", "ENG"], key="lang_toggle",
+                 horizontal=True, label_visibility="collapsed")
 
 st.markdown(f'<div class="sub-title">{t("subtitle")}</div>', unsafe_allow_html=True)
 
@@ -1365,14 +1380,16 @@ with h_csv:
             c_info.get("destination", ""), c_info.get("date", ""), c_info.get("time", ""),
             c_info.get("arrive", "")
         ])
-    st.download_button(
-        t("csv_btn"),
-        data="﻿" + csv_buffer.getvalue(),
-        file_name=t("csv_file", date=datetime.date.today().strftime('%Y%m%d')),
-        mime="text/csv",
-        use_container_width=True,
-        key="download_csv_btn"
-    )
+    # 버튼을 TAXI 박스와 동일하게 80% 가운데 정렬(양쪽 10% 여백) → 박스 오른쪽 끝선과 한 줄
+    with st.container(key="csv_inset"):
+        st.download_button(
+            t("csv_btn"),
+            data="﻿" + csv_buffer.getvalue(),
+            file_name=t("csv_file", date=datetime.date.today().strftime('%Y%m%d')),
+            mime="text/csv",
+            use_container_width=True,
+            key="download_csv_btn"
+        )
 
 if st.session_state.bookings:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)
