@@ -129,7 +129,7 @@ st.markdown("""
     .st-key-csv_inset { padding: 0 10% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
-        font-size: 40px;                     /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
+        font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
         font-weight: bold;
         color: #ffffff;
         margin: 0 !important;
