@@ -7,6 +7,8 @@ enableXsrfProtection = false
 # 저장할 때마다 자동 rerun하지 않음 → 버전 카운트가 편집(저장)마다 오르지 않고
 # 최종 코딩 후 브라우저 새로고침(최초 접속) 시에만 1회 증가하도록 고정
 runOnSave = false
+# PWA(홈 화면 추가)용 정적 파일 서빙 — static/ 폴더가 /app/static/ 로 노출됨(manifest.json, 아이콘)
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

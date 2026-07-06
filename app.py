@@ -424,6 +424,35 @@ if IS_MOBILE:
     </style>
     """, unsafe_allow_html=True)
 
+# 2-c. PWA(홈 화면 추가) 설정 주입 — 안드로이드 크롬 메뉴 '홈 화면에 추가' 시 아이콘·전체화면(standalone) 앱으로 실행.
+#      Streamlit은 <head>를 직접 못 건드리므로, 컴포넌트(iframe)에서 부모 document의 <head>에 manifest·메타를 주입한다.
+#      manifest/아이콘은 static/ 폴더(enableStaticServing) → /app/static/ 로 서빙된다.
+import streamlit.components.v1 as _pwa_components
+_pwa_components.html("""
+<script>
+(function () {
+  try {
+    var head = window.parent.document.head;
+    if (head.querySelector('link[rel="manifest"]')) return;   // 중복 주입 방지
+    var tags = [
+      ['link', {rel: 'manifest', href: '/app/static/manifest.json'}],
+      ['link', {rel: 'apple-touch-icon', href: '/app/static/icon-192.png'}],
+      ['meta', {name: 'theme-color', content: '#0e1117'}],
+      ['meta', {name: 'mobile-web-app-capable', content: 'yes'}],
+      ['meta', {name: 'apple-mobile-web-app-capable', content: 'yes'}],
+      ['meta', {name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent'}],
+      ['meta', {name: 'apple-mobile-web-app-title', content: 'DK CAR'}]
+    ];
+    tags.forEach(function (t) {
+      var el = window.parent.document.createElement(t[0]);
+      for (var k in t[1]) el.setAttribute(k, t[1][k]);
+      head.appendChild(el);
+    });
+  } catch (e) { /* 크로스오리진 등 예외는 무시 */ }
+})();
+</script>
+""", height=0)
+
 # 3. 세션 상태 레지스트리 저장소 선언 및 영속화 로직
 #    - 배포(Streamlit Cloud 등): Firestore에 저장 → 서버 재시작·다중 사용자에도 예약 유지
 #    - 로컬 개발: 자격증명이 없으면 자동으로 bookings.json 파일 방식으로 대체 동작
