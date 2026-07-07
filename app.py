@@ -455,6 +455,9 @@ if IS_MOBILE:
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
     /* 단, 카드 안쪽 버튼 3열(중첩 컬럼)은 위 폭 규칙 제외 → 동일 flex로 1/3씩 균등 병렬 */
     .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
+    /* 앱에서 버튼 3개가 세로로 접히지 않고 가로 병렬 유지(적층형 → 병렬 3개형) */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
+    .st-key-booking_board .stButton button { padding: 3px 2px !important; font-size: 11px !important; white-space: nowrap !important; min-height: 32px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1321,6 +1324,16 @@ CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8
     "taxi7":  ("linear-gradient(180deg,#ccab38,#c29204)", "#191b1f", "#a77b00"),
 }
 
+# 예약 현황 카드 배경색: 차량 로고 바탕색(=car_title_frame 배경)보다 다시 20% 어둡게(프레임색 ×0.8).
+#  (배경 top/bottom, 본문 텍스트색, 테두리)
+CAR_CARD_STYLE = {
+    "innova": ("linear-gradient(180deg,#9e9e9f,#8e8f92)", "#14171c", "#7e8186"),  # 화이트/실버
+    "sedona": ("linear-gradient(180deg,#31333a,#1a1c20)", "#eef1f5", "#3a3d43"),  # 블랙
+    "vf5":    ("linear-gradient(180deg,#912e28,#7a1812)", "#ffffff", "#651310"),  # 레드
+    "taxi4":  ("linear-gradient(180deg,#a3892d,#9b7503)", "#191b1f", "#856102"),  # 옐로우
+    "taxi7":  ("linear-gradient(180deg,#a3892d,#9b7503)", "#191b1f", "#856102"),
+}
+
 def car_title_frame(mk, inner_html):
     """차량명(로고+이름)을 외관색 배경의 사각 프레임으로 감싼 HTML을 반환."""
     bg, fg, bd = CAR_FRAME_STYLE.get(mk, CAR_FRAME_STYLE["innova"])
@@ -1739,15 +1752,17 @@ if st.session_state.bookings:
     #  · 앱(모바일 ?m=1): 박스 안에서 정보(좌) + 버튼 3단 세로(우) 가로 배치
     #  · PC(웹): 좁은 차량 컬럼(1/N) → 정보 1단 세로 + 버튼(수정·취소 한 줄 + 도착완료 전체폭)
     def _render_booking_card(bc_name, bseat, binfo):
+        # 카드 배경·글자색 = 해당 차량 색(로고 바탕색보다 20% 어둡게). 차량명도 같은 톤으로.
+        c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(_model_key(bc_name), CAR_CARD_STYLE["innova"])
         header_html = (
             # 타이틀 행: 차량명(왼쪽, 한 줄 유지 → 길면 … 줄임) + 좌석 배지(오른쪽 고정). 이미지처럼 정렬.
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
-            f'<span style="color: #38bdf8; font-weight: bold; font-size: 20px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
-            f'<span style="flex: 0 0 auto; background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: 20px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
+            f'<span style="flex: 0 0 auto; border: 1px solid {c_fg}; color: {c_fg}; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
-            '<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">'
+            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 8px 0;">'
             # 정보 2단(3줄): 좌(신청자·출발지·목적지) / 우(출발날짜·출발시간·도착시간) → 박스 높이 절반으로 축소
-            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 12px; color: #e0e0e0; line-height: 1.5;">'
+            f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 12px; color: {c_fg}; line-height: 1.5;">'
             f"<div><strong>{t('c_applicant')}</strong> {binfo.get('name', '')}</div>"
             f"<div><strong>{t('c_date')}</strong> {binfo.get('date', '')}</div>"
             f"<div><strong>{t('c_departure')}</strong> {binfo.get('departure', '')}</div>"
@@ -1770,17 +1785,18 @@ if st.session_state.bookings:
             # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제).
             if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
                 st.session_state.arrive_target = (bc_name, bseat)
-                # 도착 시간 기본값 = 출발 시각의 0분 슬롯(출발시간의 '시'에 분은 00). 예: 출발 08:10 → 도착 기본 08:00
+                # 도착 시간 기본값 = 출발 시각과 동일. 예: 출발 08:10 → 도착 기본 08:10
                 try:
-                    _dh = int(str(binfo.get("time", "")).split(":")[0]) % 24
+                    _dh, _dm = (int(x) for x in str(binfo.get("time", "")).split(":")[:2])
+                    _dh, _dm = _dh % 24, _dm % 60
                 except Exception:
-                    _dh = 0
-                st.session_state.arrive_input_tick = datetime.time(_dh, 0)
+                    _dh, _dm = 0, 0
+                st.session_state.arrive_input_tick = datetime.time(_dh, _dm)
                 st.rerun()
 
-        # PC·앱 공통: 정보 박스(전체폭) + 예약수정·예약취소·도착완료 버튼을 한 줄에 1/3씩 병렬 배치
+        # PC·앱 공통: 정보 박스(차량색 배경) + 예약수정·예약취소·도착완료 버튼을 한 줄에 1/3씩 병렬 배치
         st.markdown(
-            f'<div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">{header_html}</div>',
+            f'<div style="background: {c_bg}; border: 1px solid {c_bd}; border-radius: 8px; padding: 10px; margin-bottom: 4px;">{header_html}</div>',
             unsafe_allow_html=True,
         )
         e_col, c_col, d_col = st.columns(3)
