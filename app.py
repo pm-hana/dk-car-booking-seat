@@ -206,12 +206,14 @@ st.markdown("""
         text-overflow: ellipsis;
         max-width: 100%;
     }
-    /* 차량명 사각 프레임: 배경색은 각 차량 외관색(이노바=화이트/세도나=블랙/VF5=레드/택시=옐로우) 기준 */
+    /* 차량명 사각 프레임: 배경색은 각 차량 외관색(이노바=화이트/세도나=블랙/VF5=레드/택시=옐로우) 기준.
+       폭은 아래 차량 사진 박스(.car-layout-container 80%)와 동일하게 80% 가운데 정렬로 좌우 끝선 일치. */
     .car-name-frame {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 100%;
+        width: 80%;
+        margin: 0 auto;
         box-sizing: border-box;
         padding: 7px 12px;
         border-radius: 9px;
@@ -447,6 +449,8 @@ if IS_MOBILE:
 
     /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
+    /* 차량명 프레임: 모바일에선 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
+    .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
     /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
     /* 단, 카드 안쪽 버튼 3열(중첩 컬럼)은 위 폭 규칙 제외 → 동일 flex로 1/3씩 균등 병렬 */
@@ -1305,12 +1309,12 @@ def brand_logo(name):
     return '🚙 '
 
 # 차량명 프레임 색: 각 차량 외관색 기준(배경 그라디언트 + 대비 텍스트 + 테두리)
-CAR_FRAME_STYLE = {
-    "innova": ("linear-gradient(180deg,#f6f7f9,#dde0e5)", "#14171c", "#c6cad1"),  # 화이트/실버
-    "sedona": ("linear-gradient(180deg,#4c505a,#292c32)", "#f2f4f7", "#565b64"),  # 블랙
-    "vf5":    ("linear-gradient(180deg,#e2493f,#bf261d)", "#ffffff", "#9e1c14"),  # 레드
-    "taxi4":  ("linear-gradient(180deg,#ffd646,#f2b705)", "#191b1f", "#d19a00"),  # 옐로우
-    "taxi7":  ("linear-gradient(180deg,#ffd646,#f2b705)", "#191b1f", "#d19a00"),
+CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8) 적용
+    "innova": ("linear-gradient(180deg,#c5c6c7,#b1b3b7)", "#14171c", "#9ea2a7"),  # 화이트/실버
+    "sedona": ("linear-gradient(180deg,#3d4048,#212328)", "#f2f4f7", "#454950"),  # 블랙
+    "vf5":    ("linear-gradient(180deg,#b53a32,#991e17)", "#ffffff", "#7e1610"),  # 레드
+    "taxi4":  ("linear-gradient(180deg,#ccab38,#c29204)", "#191b1f", "#a77b00"),  # 옐로우
+    "taxi7":  ("linear-gradient(180deg,#ccab38,#c29204)", "#191b1f", "#a77b00"),
 }
 
 def car_title_frame(mk, inner_html):
