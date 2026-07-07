@@ -1563,9 +1563,10 @@ if st.session_state.bookings:
         date_line = f"<strong>{t('c_date')}</strong> {binfo['date']}<br>" if binfo.get("date") else ""
         arrive_line = f"<br><strong>{t('c_arrive')}</strong> {binfo['arrive']}" if binfo.get("arrive") else ""
         header_html = (
-            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
-            f'<span style="color: #38bdf8; font-weight: bold;">🚙 {bc_name}</span>'
-            f'<span style="background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            # 타이틀 행: 차량명(왼쪽, 한 줄 유지 → 길면 … 줄임) + 좌석 배지(오른쪽 고정). 이미지처럼 정렬.
+            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
+            f'<span style="color: #38bdf8; font-weight: bold; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
+            f'<span style="flex: 0 0 auto; background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             '<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">'
             '<div style="font-size: 11px; color: #e0e0e0; line-height: 1.5;">'
