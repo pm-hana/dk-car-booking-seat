@@ -127,8 +127,8 @@ st.markdown("""
     .st-key-hdr_right .st-key-lang_toggle { margin: 0 !important; padding: 0 !important; }
     /* 예약 이력 버튼: TAXI 박스(width 80% 가운데정렬)와 동일 끝선·폭으로 → 박스 바로 아래 한 줄 정렬 */
     .st-key-csv_inset { padding: 0 10% !important; }
-    /* 예약 현황 카드 프레임: 위 좌석 차량 박스(.car-layout-container width 80%)와 동일 폭·끝선으로 인셋 */
-    .st-key-booking_board [data-testid="stColumn"] { padding: 0 10% !important; }
+    /* 예약 현황 카드: 좁은 차량 컬럼(1/N) 폭을 최대한 살리도록 인셋 없이 컬럼 전체폭 사용(글자 깨짐 방지) */
+    .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -1549,9 +1549,11 @@ if st.session_state.bookings:
         st.session_state.active_booking_car = bc_name
         st.session_state.duplicate_error_msg = None
 
-    # 예약 카드 1장 렌더 (차량 컬럼 폭에 맞춘 컴팩트 카드 + 예약 수정/취소/도착완료 버튼)
-    #  정보는 2단 그리드(좌: 신청자·출발지·목적지 / 우: 출발날짜·출발시간·도착시간)로 배치.
+    # 예약 카드 1장 렌더 (차량 컬럼 폭 1/N에 맞춘 컴팩트 카드).
+    #  좁은 컬럼 폭에 맞춰 정보는 1단 세로로 쌓고, 버튼은 수정·취소 한 줄 + 도착완료 전체폭 한 줄.
     def _render_booking_card(bc_name, bseat, binfo):
+        date_line = f"<strong>{t('c_date')}</strong> {binfo['date']}<br>" if binfo.get("date") else ""
+        arrive_line = f"<br><strong>{t('c_arrive')}</strong> {binfo['arrive']}" if binfo.get("arrive") else ""
         st.markdown(f"""
         <div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">
             <div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">
@@ -1559,17 +1561,15 @@ if st.session_state.bookings:
                 <span style="background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>
             </div>
             <hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 11px; color: #e0e0e0; line-height: 1.6;">
-                <div><strong>{t('c_applicant')}</strong> {binfo.get('name', '')}</div>
-                <div><strong>{t('c_date')}</strong> {binfo.get('date', '')}</div>
-                <div><strong>{t('c_departure')}</strong> {binfo.get('departure', '')}</div>
-                <div><strong>{t('c_time')}</strong> {binfo.get('time', '')}</div>
-                <div><strong>{t('c_destination')}</strong> {binfo.get('destination', '')}</div>
-                <div><strong>{t('c_arrive')}</strong> {binfo.get('arrive', '')}</div>
+            <div style="font-size: 11px; color: #e0e0e0; line-height: 1.5;">
+                <strong>{t('c_applicant')}</strong> {binfo.get('name', '')}<br>
+                <strong>{t('c_departure')}</strong> {binfo.get('departure', '')}<br>
+                <strong>{t('c_destination')}</strong> {binfo.get('destination', '')}<br>
+                {date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}{arrive_line}
             </div>
         </div>
         """, unsafe_allow_html=True)
-        e_col, c_col, d_col = st.columns(3)
+        e_col, c_col = st.columns(2)
         with e_col:
             if st.button(t("btn_edit_bk"), key=f"edit_btn_{bc_name}_{bseat}", use_container_width=True):
                 _start_edit(bc_name, bseat)
@@ -1579,14 +1579,14 @@ if st.session_state.bookings:
                 del st.session_state.bookings[(bc_name, bseat)]
                 save_bookings(st.session_state.bookings)
                 st.rerun()
-        with d_col:
-            # 도착 완료: 탑승 이력 아카이브에 적재(월/일별 통계·엑셀 근거) 후 현황판에서 제거 → 좌석 해제
-            if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
-                archive_booking(bc_name, bseat, binfo, status="완료")
-                del st.session_state.bookings[(bc_name, bseat)]
-                save_bookings(st.session_state.bookings)
-                st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
-                st.rerun()
+        # 도착 완료: 좁은 컬럼에서 글자 깨짐 방지 위해 아래 전체폭 한 줄로 단독 배치.
+        #  탑승 이력 아카이브에 적재(월/일별 통계·엑셀 근거) 후 현황판에서 제거 → 좌석 해제
+        if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
+            archive_booking(bc_name, bseat, binfo, status="완료")
+            del st.session_state.bookings[(bc_name, bseat)]
+            save_bookings(st.session_state.bookings)
+            st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
+            st.rerun()
 
     # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열.
     #  카드 프레임 폭은 위 좌석 차량 박스(.car-layout-container)와 같은 폭으로 맞춘다(booking_board 인셋 CSS).
