@@ -127,6 +127,8 @@ st.markdown("""
     .st-key-hdr_right .st-key-lang_toggle { margin: 0 !important; padding: 0 !important; }
     /* 예약 이력 버튼: TAXI 박스(width 80% 가운데정렬)와 동일 끝선·폭으로 → 박스 바로 아래 한 줄 정렬 */
     .st-key-csv_inset { padding: 0 10% !important; }
+    /* 예약 현황 카드 프레임: 위 좌석 차량 박스(.car-layout-container width 80%)와 동일 폭·끝선으로 인셋 */
+    .st-key-booking_board [data-testid="stColumn"] { padding: 0 10% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -428,6 +430,8 @@ if IS_MOBILE:
 
     /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
+    /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
+    .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -471,6 +475,14 @@ _pwa_components.html("""
 #    - 로컬 개발: 자격증명이 없으면 자동으로 bookings.json 파일 방식으로 대체 동작
 DB_FILE = "bookings.json"
 COLLECTION = "bookings"
+# 탑승 이력 아카이브: 도착완료(또는 이후 확장)된 예약을 월/일별 통계·엑셀 내보내기용으로 영속 보관.
+#  현재 예약(bookings)은 완료·취소 시 삭제되므로, 이력 조회의 근거 데이터는 이 아카이브에만 남는다.
+HISTORY_FILE = "history.json"
+HISTORY_COLLECTION = "history"
+
+# 베트남(UTC+7) 실시간 — 상단 시계·출발시간 기본값과 동일 기준. 서버가 UTC라도 현지시각으로 기록.
+def now_vn():
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
 
 _db_cache = "uninit"  # "uninit" | None(파일모드) | Firestore client
 
@@ -565,6 +577,43 @@ def save_bookings(bookings):
     except Exception:
         pass
 
+def archive_booking(car_name, seat_num, info, status="완료"):
+    """완료 처리된 예약 1건을 탑승 이력 아카이브에 적재(2단계 월/일별 통계·엑셀 조회 근거).
+    현황판 예약과 달리 삭제되지 않고 누적된다. Firestore 우선, 실패 시 history.json 폴백."""
+    record = {
+        "created_at": info.get("created_at", ""),   # 신청일시(신청완료 클릭 시각)
+        "car": car_name,
+        "seat": seat_num,
+        "name": info.get("name", ""),
+        "date": info.get("date", ""),
+        "departure": info.get("departure", ""),
+        "destination": info.get("destination", ""),
+        "time": info.get("time", ""),
+        "arrive": info.get("arrive", ""),
+        "status": status,
+        "completed_at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(HISTORY_COLLECTION).add(record)
+            return
+        except Exception:
+            pass  # Firestore 오류 시 파일 폴백
+    # 파일 모드: history.json에 append(원자적 저장)
+    try:
+        history = []
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        history.append(record)
+        tmp_file = HISTORY_FILE + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=4)
+        os.replace(tmp_file, HISTORY_FILE)
+    except Exception:
+        pass
+
 # 파일로부터 기존 예약 정보 상시 로딩
 st.session_state.bookings = load_bookings()
 
@@ -616,12 +665,14 @@ TR = {
         "list_title": "📋 실시간 차량 예약 현황 · {n}건",
         "csv_btn": "📄 예약 이력",
         "search_ph": "🔍 신청자 이름 · 차량 · 목적지로 검색",
-        "csv_headers": ["차량", "좌석", "신청자", "출발지", "목적지", "출발날짜", "출발시간", "도착시간"],
+        "csv_headers": ["신청일시", "차량", "좌석", "신청자", "출발날짜", "출발지", "목적지", "출발시간", "도착시간"],
         "csv_file": "예약 이력_{date}.csv",
         "no_result": "🔍 [{q}] 검색 결과가 없습니다.",
         "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "목적지:",
         "c_date": "출발날짜:", "c_time": "출발시간:", "c_arrive": "도착시간:", "edit_tip": "예약 수정하기",
-        "btn_edit_bk": "예약 수정", "btn_cancel_bk": "예약 취소", "btn_reset_all": "🗑️ 전체 예약 초기화",
+        "btn_edit_bk": "예약 수정", "btn_cancel_bk": "예약 취소", "btn_done_bk": "도착 완료",
+        "toast_done": "🏁 [{name}]님 좌석 {seat} 도착 완료로 처리되었습니다.",
+        "btn_reset_all": "🗑️ 전체 예약 초기화",
         "reset_warn": "⚠️ 정말 모든 예약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
         "btn_reset_yes": "네, 전체 삭제", "toast_reset": "🧹 모든 예약이 초기화되었습니다.",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
@@ -650,12 +701,14 @@ TR = {
         "list_title": "📋 Live Seat Booking · {n}",
         "csv_btn": "📄 Booking History",
         "search_ph": "🔍 Search by name · vehicle · destination",
-        "csv_headers": ["Car", "Seat", "Applicant", "Departure", "Destination", "Date", "Departure", "Arrival"],
+        "csv_headers": ["Requested At", "Car", "Seat", "Applicant", "Date", "Departure", "Destination", "Time", "Arrival"],
         "csv_file": "Booking History_{date}.csv",
         "no_result": "🔍 No results for [{q}].",
         "c_applicant": "Applicant:", "c_departure": "Departure:", "c_destination": "Destination:",
         "c_date": "Date:", "c_time": "Time:", "c_arrive": "Arrival:", "edit_tip": "Edit booking",
-        "btn_edit_bk": "Edit", "btn_cancel_bk": "Cancel", "btn_reset_all": "🗑️ Reset all bookings",
+        "btn_edit_bk": "Edit", "btn_cancel_bk": "Cancel", "btn_done_bk": "Arrived",
+        "toast_done": "🏁 [{name}] — seat {seat} marked as arrived.",
+        "btn_reset_all": "🗑️ Reset all bookings",
         "reset_warn": "⚠️ Delete ALL bookings? This cannot be undone.",
         "btn_reset_yes": "Yes, delete all", "toast_reset": "🧹 All bookings have been reset.",
         "no_bookings": "No dispatch requests yet.",
@@ -1362,10 +1415,17 @@ def booking_dialog(car_target, seat_target):
                     arrive_str = u_arrive.strftime("%H:%M") if u_arrive else ""
                     date_str = u_date.strftime("%Y-%m-%d") if u_date else datetime.date.today().strftime("%Y-%m-%d")
 
+                    # 신청일시: 신규 신청은 신청완료 클릭 순간의 실시간(베트남 UTC+7)으로 자동 기록.
+                    #  수정 모드면 기존 신청일시를 보존(수정은 최초 신청 시각을 바꾸지 않음).
+                    created_at = now_vn().strftime("%Y-%m-%d %H:%M:%S")
+
                     # 예약 수정 모드였을 시 기존 예약을 삭제 후 이동 등록
                     if st.session_state.editing_booking:
                         old_key = st.session_state.editing_booking
                         if old_key in st.session_state.bookings:
+                            prev = st.session_state.bookings[old_key]
+                            if prev.get("created_at"):
+                                created_at = prev["created_at"]  # 최초 신청일시 유지
                             del st.session_state.bookings[old_key]
                         st.session_state.editing_booking = None
 
@@ -1375,7 +1435,8 @@ def booking_dialog(car_target, seat_target):
                         "destination": u_dest.strip(),
                         "date": date_str,
                         "time": time_str,
-                        "arrive": arrive_str
+                        "arrive": arrive_str,
+                        "created_at": created_at
                     }
                     st.session_state.duplicate_error_msg = None  # 성공 시 기존 경고 제거
                     save_bookings(st.session_state.bookings)
@@ -1430,10 +1491,11 @@ with h_csv:
     writer = csv.writer(csv_buffer)
     writer.writerow(t("csv_headers"))
     for (c_name, s_num), c_info in st.session_state.bookings.items():
+        # 열 순서: 신청일시 · 차량 · 좌석 · 신청자 · 출발날짜 · 출발지 · 목적지 · 출발시간 · 도착시간
         writer.writerow([
-            c_name, s_num, c_info.get("name", ""), c_info.get("departure", ""),
-            c_info.get("destination", ""), c_info.get("date", ""), c_info.get("time", ""),
-            c_info.get("arrive", "")
+            c_info.get("created_at", ""), c_name, s_num, c_info.get("name", ""),
+            c_info.get("date", ""), c_info.get("departure", ""), c_info.get("destination", ""),
+            c_info.get("time", ""), c_info.get("arrive", "")
         ])
     # 버튼을 TAXI 박스와 동일하게 80% 가운데 정렬(양쪽 10% 여백) → 박스 오른쪽 끝선과 한 줄
     with st.container(key="csv_inset"):
@@ -1487,10 +1549,9 @@ if st.session_state.bookings:
         st.session_state.active_booking_car = bc_name
         st.session_state.duplicate_error_msg = None
 
-    # 예약 카드 1장 렌더 (차량 컬럼 폭에 맞춘 컴팩트 카드 + 예약 수정/취소 버튼)
+    # 예약 카드 1장 렌더 (차량 컬럼 폭에 맞춘 컴팩트 카드 + 예약 수정/취소/도착완료 버튼)
+    #  정보는 2단 그리드(좌: 신청자·출발지·목적지 / 우: 출발날짜·출발시간·도착시간)로 배치.
     def _render_booking_card(bc_name, bseat, binfo):
-        date_line = f"<strong>{t('c_date')}</strong> {binfo['date']}<br>" if binfo.get("date") else ""
-        arrive_line = f"<br><strong>{t('c_arrive')}</strong> {binfo['arrive']}" if binfo.get("arrive") else ""
         st.markdown(f"""
         <div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">
             <div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">
@@ -1498,15 +1559,17 @@ if st.session_state.bookings:
                 <span style="background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>
             </div>
             <hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">
-            <div style="font-size: 11px; color: #e0e0e0; line-height: 1.5;">
-                <strong>{t('c_applicant')}</strong> {binfo.get('name', '')}<br>
-                <strong>{t('c_departure')}</strong> {binfo.get('departure', '')}<br>
-                <strong>{t('c_destination')}</strong> {binfo.get('destination', '')}<br>
-                {date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}{arrive_line}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 11px; color: #e0e0e0; line-height: 1.6;">
+                <div><strong>{t('c_applicant')}</strong> {binfo.get('name', '')}</div>
+                <div><strong>{t('c_date')}</strong> {binfo.get('date', '')}</div>
+                <div><strong>{t('c_departure')}</strong> {binfo.get('departure', '')}</div>
+                <div><strong>{t('c_time')}</strong> {binfo.get('time', '')}</div>
+                <div><strong>{t('c_destination')}</strong> {binfo.get('destination', '')}</div>
+                <div><strong>{t('c_arrive')}</strong> {binfo.get('arrive', '')}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
-        e_col, c_col = st.columns(2)
+        e_col, c_col, d_col = st.columns(3)
         with e_col:
             if st.button(t("btn_edit_bk"), key=f"edit_btn_{bc_name}_{bseat}", use_container_width=True):
                 _start_edit(bc_name, bseat)
@@ -1516,19 +1579,29 @@ if st.session_state.bookings:
                 del st.session_state.bookings[(bc_name, bseat)]
                 save_bookings(st.session_state.bookings)
                 st.rerun()
+        with d_col:
+            # 도착 완료: 탑승 이력 아카이브에 적재(월/일별 통계·엑셀 근거) 후 현황판에서 제거 → 좌석 해제
+            if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
+                archive_booking(bc_name, bseat, binfo, status="완료")
+                del st.session_state.bookings[(bc_name, bseat)]
+                save_bookings(st.session_state.bookings)
+                st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
+                st.rerun()
 
-    # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열
-    list_cols = st.columns(total_cars)
-    shown = set()
-    for ci, rcar in enumerate(resolved_cars):
-        with list_cols[ci]:
-            car_items = sorted(
-                [it for it in filtered_items if it[0][0] == rcar["display_name"]],
-                key=lambda kv: kv[0][1]
-            )
-            for (bc_name, bseat), binfo in car_items:
-                shown.add((bc_name, bseat))
-                _render_booking_card(bc_name, bseat, binfo)
+    # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열.
+    #  카드 프레임 폭은 위 좌석 차량 박스(.car-layout-container)와 같은 폭으로 맞춘다(booking_board 인셋 CSS).
+    with st.container(key="booking_board"):
+        list_cols = st.columns(total_cars)
+        shown = set()
+        for ci, rcar in enumerate(resolved_cars):
+            with list_cols[ci]:
+                car_items = sorted(
+                    [it for it in filtered_items if it[0][0] == rcar["display_name"]],
+                    key=lambda kv: kv[0][1]
+                )
+                for (bc_name, bseat), binfo in car_items:
+                    shown.add((bc_name, bseat))
+                    _render_booking_card(bc_name, bseat, binfo)
     # 현재 차량 구성에 없는(4/7 설정 변경·삭제된 차량 등) 예약은 아래에 이어서 전체폭 표시
     for (bc_name, bseat), binfo in filtered_items:
         if (bc_name, bseat) not in shown:
