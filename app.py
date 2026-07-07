@@ -453,11 +453,11 @@ if IS_MOBILE:
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
     /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
-    /* 앱(모바일 최적화): 카드 버튼 3개(예약수정/취소/도착완료)를 세로로 나란히(각 전체폭) 배치.
-       좁은 화면에선 가로 3분할보다 세로 전체폭이 탭하기 편하다 → 중첩 버튼 컬럼을 100%폭으로 강제해 세로 스택. */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 6px !important; }
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 100% !important; width: 100% !important; min-width: 100% !important; margin: 0 !important; }
-    .st-key-booking_board .stButton button { min-height: 38px !important; font-size: 13px !important; }
+    /* 앱(모바일): 카드 버튼 3개(예약수정/취소/도착완료)를 PC 웹처럼 한 줄에 가로 3분할(동일 크기)로.
+       중첩 버튼 컬럼을 nowrap + flex 1 1 0%로 균등 1/3 유지, 좁은 폭 대응 위해 폰트·패딩 압축. */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
+    .st-key-booking_board .stButton button { min-height: 34px !important; font-size: 11px !important; padding: 3px 2px !important; white-space: nowrap !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1324,14 +1324,14 @@ CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8
     "taxi7":  ("linear-gradient(180deg,#ccab38,#c29204)", "#191b1f", "#a77b00"),
 }
 
-# 예약 현황 카드 배경색: 차량 로고 바탕색(=car_title_frame 배경)보다 20% 밝게(프레임색 ×1.2).
-#  (배경 top/bottom, 본문 텍스트색, 테두리)
+# 예약 현황 카드 배경색: 차량 로고 바탕색을 20% 알파 투명도로 틴트(어두운 페이지 위 은은한 차량색).
+#  낮은 알파라 실효 배경은 어두워지므로 본문 글자색은 전 차량 밝게 통일. (배경 rgba, 텍스트색, 테두리 rgba)
 CAR_CARD_STYLE = {
-    "innova": ("linear-gradient(180deg,#eceeef,#d4d7dc)", "#14171c", "#b6bac1"),  # 화이트/실버
-    "sedona": ("linear-gradient(180deg,#494d56,#282a30)", "#f2f4f7", "#5a5f68"),  # 블랙
-    "vf5":    ("linear-gradient(180deg,#d9463c,#b8241c)", "#ffffff", "#8f1a13"),  # 레드
-    "taxi4":  ("linear-gradient(180deg,#f5cd43,#e9af05)", "#191b1f", "#c99400"),  # 옐로우
-    "taxi7":  ("linear-gradient(180deg,#f5cd43,#e9af05)", "#191b1f", "#c99400"),
+    "innova": ("rgba(203,208,216,0.20)", "#eef1f5", "rgba(203,208,216,0.55)"),  # 화이트/실버
+    "sedona": ("rgba(120,128,142,0.20)", "#eef1f5", "rgba(120,128,142,0.55)"),  # 블랙
+    "vf5":    ("rgba(214,72,62,0.22)",   "#ffffff", "rgba(214,72,62,0.60)"),    # 레드
+    "taxi4":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),   # 옐로우
+    "taxi7":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),
 }
 
 def car_title_frame(mk, inner_html):
