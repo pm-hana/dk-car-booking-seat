@@ -772,24 +772,31 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
         safe_tip = tooltip.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         svg.append(f'<title>{safe_tip}</title>')
 
-    svg.append(f'<rect class="clickable-seat-rect" x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="{main_fill}" stroke="{stroke_color}" stroke-width="1.8" />')
-    svg.append(f'<rect x="{x+4}" y="{y+4}" width="{w-8}" height="{h-8}" rx="5" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="0.8" stroke-dasharray="2 1" opacity="0.8" />')
-    svg.append(f'<rect x="{x+(w/4)}" y="{y-6}" width="{w/2}" height="8" rx="3" fill="{main_fill}" stroke="{stroke_color}" stroke-width="1.5" />')
-    svg.append(f'<path d="M {x+2} {y+h-6} Q {x+(w/2)} {y+h-2} {x+w-2} {y+h-6}" fill="none" stroke="{stroke_color}" stroke-width="1.2" />')
+    # ── 좌석 형상(첨부 이미지 형): 팔걸이(양쪽) + 시트 쿠션(아래) + 등받이(메인) ──
+    aw = w * 0.20  # 팔걸이 폭
+    svg.append(f'<rect class="clickable-seat-rect" x="{x:.1f}" y="{y+h*0.34:.1f}" width="{aw:.1f}" height="{h*0.52:.1f}" rx="{aw*0.5:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3" />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x+w-aw:.1f}" y="{y+h*0.34:.1f}" width="{aw:.1f}" height="{h*0.52:.1f}" rx="{aw*0.5:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3" />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.13:.1f}" y="{y+h*0.58:.1f}" width="{w*0.74:.1f}" height="{h*0.40:.1f}" rx="{w*0.14:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3" />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.12:.1f}" y="{y:.1f}" width="{w*0.76:.1f}" height="{h*0.66:.1f}" rx="{w*0.26:.1f}" fill="{main_fill}" stroke="{stroke_color}" stroke-width="1.8" />')
 
-    font_size = "9px"
-    if len(label) > 4: font_size = "7.5px"
-    if len(label) > 6: font_size = "6px"
-
-    # 좁아진 좌석 폭에 맞춰 텍스트가 넘치지 않도록 폭에 맞게 자동 압축(3자 이상)
-    len_attr = f' textLength="{w-4}" lengthAdjust="spacingAndGlyphs"' if len(label) >= 3 else ""
-    if sub_label:
-        # 라벨 + 보조라벨(예: 운전자 이름) 두 줄을 좌석 박스 세로 중앙에 함께 정렬
-        svg.append(f'<text x="{x + w/2}" y="{y + h/2 - 3}" font-family="sans-serif" font-size="{font_size}" font-weight="bold" fill="{text_color}" text-anchor="middle"{len_attr}>{label}</text>')
-        sub_len_attr = f' textLength="{w-4}" lengthAdjust="spacingAndGlyphs"' if len(sub_label) >= 3 else ""
-        svg.append(f'<text x="{x + w/2}" y="{y + h/2 + 7}" font-family="sans-serif" font-size="7.5px" font-weight="bold" fill="#fab005" text-anchor="middle"{sub_len_attr}>{sub_label}</text>')
+    cx = x + w/2
+    if is_driver or is_booked:
+        # 운전석 / 예약자 이름: 등받이 중앙 한 줄(길면 자동 축소). 보조라벨(운전자명)은 아랫줄.
+        fs = 8.0
+        if len(label) > 3: fs = 6.5
+        if len(label) > 5: fs = 5.5
+        lattr = f' textLength="{w*0.66:.1f}" lengthAdjust="spacingAndGlyphs"' if len(label) >= 4 else ""
+        if sub_label:
+            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.30:.1f}" font-family="sans-serif" font-size="{fs}" font-weight="bold" fill="{text_color}" text-anchor="middle"{lattr}>{label}</text>')
+            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.48:.1f}" font-family="sans-serif" font-size="6" font-weight="bold" fill="#fab005" text-anchor="middle">{sub_label}</text>')
+        else:
+            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.40:.1f}" font-family="sans-serif" font-size="{fs}" font-weight="bold" fill="{text_color}" text-anchor="middle"{lattr}>{label}</text>')
     else:
-        svg.append(f'<text x="{x + w/2}" y="{y + h/2 + 3}" font-family="sans-serif" font-size="{font_size}" font-weight="bold" fill="{text_color}" text-anchor="middle"{len_attr}>{label}</text>')
+        # 빈 좌석: "좌석"(윗줄, 작게) / 숫자(아랫줄, 크게) — label 예: "좌석 5" / "Seat 5"
+        _p = label.rsplit(" ", 1)
+        _word, _num = (_p[0], _p[1]) if len(_p) == 2 else (label, "")
+        svg.append(f'<text x="{cx:.1f}" y="{y+h*0.27:.1f}" font-family="sans-serif" font-size="5.5" font-weight="bold" fill="{text_color}" text-anchor="middle">{_word}</text>')
+        svg.append(f'<text x="{cx:.1f}" y="{y+h*0.52:.1f}" font-family="sans-serif" font-size="11" font-weight="bold" fill="{text_color}" text-anchor="middle">{_num}</text>')
 
     svg.append('</g>')
     return "".join(svg)
