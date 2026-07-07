@@ -127,6 +127,9 @@ st.markdown("""
     .st-key-hdr_right .st-key-lang_toggle { margin: 0 !important; padding: 0 !important; }
     /* 예약 이력 버튼: TAXI 박스(width 80% 가운데정렬)와 동일 끝선·폭으로 → 박스 바로 아래 한 줄 정렬 */
     .st-key-csv_inset { padding: 0 10% !important; }
+    /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
+    .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
+    .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
     /* 예약 현황 카드: 좁은 차량 컬럼(1/N) 폭을 최대한 살리도록 인셋 없이 컬럼 전체폭 사용(글자 깨짐 방지) */
     .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; }
     /* 예약 수정·취소·도착완료 3버튼(1/3씩 병렬): 좁은 폭에서도 한 줄 유지되도록 폰트·패딩 압축 */
@@ -619,6 +622,23 @@ def archive_booking(car_name, seat_num, info, status="완료"):
     except Exception:
         pass
 
+def load_history():
+    """탑승 이력 아카이브 전체를 리스트로 반환(월/일별 통계·엑셀 조회용). Firestore 우선, 실패 시 history.json."""
+    db = _get_db()
+    if db is not None:
+        try:
+            return [doc.to_dict() for doc in db.collection(HISTORY_COLLECTION).stream()]
+        except Exception:
+            pass
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        except Exception:
+            return []
+    return []
+
 # 파일로부터 기존 예약 정보 상시 로딩
 st.session_state.bookings = load_bookings()
 
@@ -672,6 +692,10 @@ TR = {
         "search_ph": "🔍 신청자 이름 · 차량 · 목적지로 검색",
         "csv_headers": ["신청일시", "차량", "좌석", "신청자", "출발날짜", "출발지", "목적지", "출발시간", "도착시간"],
         "csv_file": "예약 이력_{date}.csv",
+        "export_title": "📥 엑셀 데이터 내보내기", "export_year": "연도", "export_month": "월", "export_day": "일",
+        "export_all": "전체", "export_btn": "⬇️ 엑셀 다운로드",
+        "export_caption": "선택한 연도·월·일의 탑승 이력을 파이어베이스에서 조회하여 엑셀(XLSX) 파일로 내보냅니다.",
+        "export_file": "탑승 이력_{ym}.xlsx", "export_empty": "선택한 기간에 해당하는 탑승 이력이 없습니다.",
         "no_result": "🔍 [{q}] 검색 결과가 없습니다.",
         "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "목적지:",
         "c_date": "출발날짜:", "c_time": "출발시간:", "c_arrive": "도착시간:", "edit_tip": "예약 수정하기",
@@ -708,6 +732,10 @@ TR = {
         "search_ph": "🔍 Search by name · vehicle · destination",
         "csv_headers": ["Requested At", "Car", "Seat", "Applicant", "Date", "Departure", "Destination", "Time", "Arrival"],
         "csv_file": "Booking History_{date}.csv",
+        "export_title": "📥 Export Excel Data", "export_year": "Year", "export_month": "Month", "export_day": "Day",
+        "export_all": "All", "export_btn": "⬇️ Download Excel",
+        "export_caption": "Queries the ride history from Firebase for the selected year/month/day and exports an Excel (XLSX) file.",
+        "export_file": "Ride History_{ym}.xlsx", "export_empty": "No ride history for the selected period.",
         "no_result": "🔍 No results for [{q}].",
         "c_applicant": "Applicant:", "c_departure": "Departure:", "c_destination": "Destination:",
         "c_date": "Date:", "c_time": "Time:", "c_arrive": "Arrival:", "edit_tip": "Edit booking",
@@ -1470,6 +1498,102 @@ if selected_seat_trigger:
     st.session_state.active_booking_car = car_target
     booking_dialog(car_target, seat_target)
 
+# ── 엑셀 데이터 내보내기(탑승 이력) 팝업 ─────────────────────────────
+def _build_history_xlsx(rows):
+    """필터된 탑승 이력 rows를 예약이력 스키마(csv_headers 순서)로 XLSX 바이트 생성.
+    openpyxl 미설치 시 CSV 바이트로 폴백."""
+    headers = t("csv_headers")
+    def _cells(r):
+        return [
+            r.get("created_at", ""), r.get("car", ""), r.get("seat", ""), r.get("name", ""),
+            r.get("date", ""), r.get("departure", ""), r.get("destination", ""),
+            r.get("time", ""), r.get("arrive", ""),
+        ]
+    try:
+        import io as _io, openpyxl
+        from openpyxl.styles import Font, Alignment
+        from openpyxl.utils import get_column_letter
+        wb = openpyxl.Workbook(); ws = wb.active; ws.title = "탑승 이력"
+        ws.append(headers)
+        for c in ws[1]:
+            c.font = Font(bold=True); c.alignment = Alignment(horizontal="center", vertical="center")
+        for r in rows:
+            ws.append(_cells(r))
+        for i, w in enumerate([20, 20, 6, 12, 12, 14, 16, 10, 10], start=1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+        ws.freeze_panes = "A2"
+        buf = _io.BytesIO(); wb.save(buf)
+        return buf.getvalue(), "xlsx"
+    except Exception:
+        import io as _io, csv as _csv
+        sb = _io.StringIO(); w = _csv.writer(sb); w.writerow(headers)
+        for r in rows:
+            w.writerow(_cells(r))
+        return ("﻿" + sb.getvalue()).encode("utf-8"), "csv"
+
+
+def _close_export():
+    st.session_state.export_open = False
+
+
+@st.dialog(t("export_title"), on_dismiss=_close_export)
+def excel_export_dialog():
+    history = load_history()
+
+    def _ymd(r):
+        d = (r.get("date") or str(r.get("created_at", ""))[:10])
+        if len(d) >= 10 and d[4] == "-" and d[7] == "-":
+            try:
+                return int(d[:4]), int(d[5:7]), int(d[8:10])
+            except Exception:
+                return None
+        return None
+
+    vn = now_vn()
+    years = sorted({ymd[0] for r in history if (ymd := _ymd(r))} | {vn.year}, reverse=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        sy = st.selectbox(t("export_year"), years, index=years.index(vn.year), key="exp_year")
+    with c2:
+        sm = st.selectbox(t("export_month"), list(range(1, 13)), index=vn.month - 1, key="exp_month")
+    with c3:
+        day_opts = [t("export_all")] + list(range(1, 32))
+        sd = st.selectbox(t("export_day"), day_opts, index=0, key="exp_day")
+
+    # 선택 연·월(·일) 필터 — 출발날짜 우선, 없으면 신청일시 날짜로 판정
+    rows = []
+    for r in history:
+        ymd = _ymd(r)
+        if not ymd:
+            continue
+        ry, rm, rd = ymd
+        if ry != sy or rm != sm:
+            continue
+        if sd != t("export_all") and rd != sd:
+            continue
+        rows.append(r)
+
+    ym = f"{sy}_{sm:02d}" + ("" if sd == t("export_all") else f"_{sd:02d}")
+    data, ext = _build_history_xlsx(rows)
+    fname = t("export_file", ym=ym)
+    if ext == "csv":
+        fname = fname.rsplit(".", 1)[0] + ".csv"
+    mime = ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            if ext == "xlsx" else "text/csv")
+
+    st.write("")
+    if not rows:
+        st.info(t("export_empty"))
+    with st.container(key="export_dl"):
+        st.download_button(
+            f'{t("export_btn")}  ·  {len(rows)}',
+            data=data, file_name=fname, mime=mime,
+            use_container_width=True, key="export_download_btn",
+        )
+    st.caption(t("export_caption"))
+
+
 # 8. 실시간 배차 예약 현황판 명단 출력 (하단 단독 배치)
 num_bookings = len(st.session_state.bookings)
 st.write("")
@@ -1490,28 +1614,16 @@ with h_search:
             label_visibility="collapsed"
         )
 with h_csv:
-    # 예약 이력(CSV) 내보내기 — 예약이 없어도 항상 노출(헤더만 있는 빈 파일). UTF-8 BOM으로 한글 깨짐 방지.
-    import io, csv
-    csv_buffer = io.StringIO()
-    writer = csv.writer(csv_buffer)
-    writer.writerow(t("csv_headers"))
-    for (c_name, s_num), c_info in st.session_state.bookings.items():
-        # 열 순서: 신청일시 · 차량 · 좌석 · 신청자 · 출발날짜 · 출발지 · 목적지 · 출발시간 · 도착시간
-        writer.writerow([
-            c_info.get("created_at", ""), c_name, s_num, c_info.get("name", ""),
-            c_info.get("date", ""), c_info.get("departure", ""), c_info.get("destination", ""),
-            c_info.get("time", ""), c_info.get("arrive", "")
-        ])
-    # 버튼을 TAXI 박스와 동일하게 80% 가운데 정렬(양쪽 10% 여백) → 박스 오른쪽 끝선과 한 줄
+    # 예약 이력 → 클릭 시 '엑셀 데이터 내보내기' 팝업(연/월/일 선택 후 XLSX 다운로드)을 애니메이션 모달로 오픈.
+    #  버튼은 TAXI 박스와 동일하게 80% 가운데 정렬(양쪽 10% 여백) → 박스 오른쪽 끝선과 한 줄.
     with st.container(key="csv_inset"):
-        st.download_button(
-            t("csv_btn"),
-            data="﻿" + csv_buffer.getvalue(),
-            file_name=t("csv_file", date=datetime.date.today().strftime('%Y%m%d')),
-            mime="text/csv",
-            use_container_width=True,
-            key="download_csv_btn"
-        )
+        if st.button(t("csv_btn"), use_container_width=True, key="open_export_btn"):
+            st.session_state.export_open = True
+            st.rerun()
+
+# 예약 이력 버튼이 눌렸으면 엑셀 내보내기 팝업(모달)을 띄운다. 닫으면 on_dismiss로 플래그 해제.
+if st.session_state.get("export_open"):
+    excel_export_dialog()
 
 if st.session_state.bookings:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)

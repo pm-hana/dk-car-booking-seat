@@ -25,6 +25,7 @@ VER_DIR = os.path.join(BASE_DIR, "VER")
 
 LOG_HEADERS = ["버전", "일시", "완료 내용 (Claude Code)"]
 CONTENT_COL_WIDTH = 150   # 완료 내용 열너비(엑셀 문자 폭 단위)
+LINE_PT = 16              # 완료 내용 한 줄당 행높이(pt) — 행높이 = 줄수 * LINE_PT
 
 
 def load_counter():
@@ -97,12 +98,15 @@ def _append_xlsx(path, ver_label, row):
             c.alignment = Alignment(vertical="center", horizontal="center")
 
     ws.append(row)
-    r = ws.max_row
-    ws.cell(r, 1).alignment = Alignment(vertical="top", horizontal="center")
-    ws.cell(r, 2).alignment = Alignment(vertical="top", horizontal="center")
-    ws.cell(r, 3).alignment = Alignment(vertical="top", wrap_text=True)
-    lines = str(row[2]).count("\n") + 1
-    ws.row_dimensions[r].height = max(16, lines * 16)
+    # 모든 데이터 행(2행~)의 정렬 + 행높이를 '기록된 줄 수'에 맞춰 재계산한다.
+    #  → 이번에 추가한 행뿐 아니라 과거에 높이가 어긋난(줄 수와 안 맞는) 스테일 행까지
+    #    파일을 쓸 때마다 자동 보정되어, 로그 파일을 열면 항상 줄 수만큼 행높이가 맞는다.
+    for rr in range(2, ws.max_row + 1):
+        ws.cell(rr, 1).alignment = Alignment(vertical="top", horizontal="center")
+        ws.cell(rr, 2).alignment = Alignment(vertical="top", horizontal="center")
+        ws.cell(rr, 3).alignment = Alignment(vertical="top", wrap_text=True)
+        lines = str(ws.cell(rr, 3).value or "").count("\n") + 1
+        ws.row_dimensions[rr].height = max(LINE_PT, lines * LINE_PT)
 
     ws.column_dimensions["A"].width = 10
     ws.column_dimensions["B"].width = 14
