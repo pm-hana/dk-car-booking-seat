@@ -1558,8 +1558,6 @@ if st.session_state.bookings:
     #  · 앱(모바일 ?m=1): 박스 안에서 정보(좌) + 버튼 3단 세로(우) 가로 배치
     #  · PC(웹): 좁은 차량 컬럼(1/N) → 정보 1단 세로 + 버튼(수정·취소 한 줄 + 도착완료 전체폭)
     def _render_booking_card(bc_name, bseat, binfo):
-        date_line = f"<strong>{t('c_date')}</strong> {binfo['date']}<br>" if binfo.get("date") else ""
-        arrive_line = f"<br><strong>{t('c_arrive')}</strong> {binfo['arrive']}" if binfo.get("arrive") else ""
         header_html = (
             # 타이틀 행: 차량명(왼쪽, 한 줄 유지 → 길면 … 줄임) + 좌석 배지(오른쪽 고정). 이미지처럼 정렬.
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
@@ -1567,11 +1565,14 @@ if st.session_state.bookings:
             f'<span style="flex: 0 0 auto; background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             '<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">'
-            '<div style="font-size: 11px; color: #e0e0e0; line-height: 1.5;">'
-            f"<strong>{t('c_applicant')}</strong> {binfo.get('name', '')}<br>"
-            f"<strong>{t('c_departure')}</strong> {binfo.get('departure', '')}<br>"
-            f"<strong>{t('c_destination')}</strong> {binfo.get('destination', '')}<br>"
-            f"{date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}{arrive_line}"
+            # 정보 2단(3줄): 좌(신청자·출발지·목적지) / 우(출발날짜·출발시간·도착시간) → 박스 높이 절반으로 축소
+            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 11px; color: #e0e0e0; line-height: 1.5;">'
+            f"<div><strong>{t('c_applicant')}</strong> {binfo.get('name', '')}</div>"
+            f"<div><strong>{t('c_date')}</strong> {binfo.get('date', '')}</div>"
+            f"<div><strong>{t('c_departure')}</strong> {binfo.get('departure', '')}</div>"
+            f"<div><strong>{t('c_time')}</strong> {binfo.get('time', '')}</div>"
+            f"<div><strong>{t('c_destination')}</strong> {binfo.get('destination', '')}</div>"
+            f"<div><strong>{t('c_arrive')}</strong> {binfo.get('arrive', '')}</div>"
             '</div>'
         )
 
