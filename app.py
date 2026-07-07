@@ -206,6 +206,17 @@ st.markdown("""
         text-overflow: ellipsis;
         max-width: 100%;
     }
+    /* 차량명 사각 프레임: 배경색은 각 차량 외관색(이노바=화이트/세도나=블랙/VF5=레드/택시=옐로우) 기준 */
+    .car-name-frame {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 7px 12px;
+        border-radius: 9px;
+        box-shadow: 0 2px 7px rgba(0, 0, 0, 0.4);
+    }
     
     /* 라디오 버튼(현재는 언어 토글 한국어/ENG) 컨테이너 기본 플렉스 정렬 */
     div[data-testid="stRadio"] {
@@ -1293,6 +1304,22 @@ def brand_logo(name):
                 '<rect x="5.6" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="12.8" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="20" y="6.3" width="3.6" height="3.3" fill="#111"/></svg>')
     return '🚙 '
 
+# 차량명 프레임 색: 각 차량 외관색 기준(배경 그라디언트 + 대비 텍스트 + 테두리)
+CAR_FRAME_STYLE = {
+    "innova": ("linear-gradient(180deg,#f6f7f9,#dde0e5)", "#14171c", "#c6cad1"),  # 화이트/실버
+    "sedona": ("linear-gradient(180deg,#4c505a,#292c32)", "#f2f4f7", "#565b64"),  # 블랙
+    "vf5":    ("linear-gradient(180deg,#e2493f,#bf261d)", "#ffffff", "#9e1c14"),  # 레드
+    "taxi4":  ("linear-gradient(180deg,#ffd646,#f2b705)", "#191b1f", "#d19a00"),  # 옐로우
+    "taxi7":  ("linear-gradient(180deg,#ffd646,#f2b705)", "#191b1f", "#d19a00"),
+}
+
+def car_title_frame(mk, inner_html):
+    """차량명(로고+이름)을 외관색 배경의 사각 프레임으로 감싼 HTML을 반환."""
+    bg, fg, bd = CAR_FRAME_STYLE.get(mk, CAR_FRAME_STYLE["innova"])
+    return (f'<div class="car-name-frame" style="background:{bg}; border:1px solid {bd};">'
+            f'<span class="car-title-text" style="color:{fg};">{inner_html}</span>'
+            f'</div>')
+
 # 5·6. 차량별 컬럼: 제목 + 인승 + 좌석 배치도를 한 컬럼에 묶어 렌더링한다.
 #       (모바일에서 컬럼이 세로로 쌓여도 각 차량의 이름·인승이 자기 배치도 바로 위에 오도록 병합)
 
@@ -1329,15 +1356,15 @@ for i, car in enumerate(cars_data):
             # TAXI: 인승 선택(4/7 토글) 삭제 → 6인승(2-3-2) 고정. 제목은 다른 차량과 동일하게 중앙 정렬.
             #  택시 1대(n_taxi=1)뿐이라 번호 없이 'TAXI'만 표시. (다대수 확장 시 'TAXI {ti}')
             taxi_title = "TAXI" if ti == 1 else f"TAXI {ti}"
-            st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo("TAXI")}{taxi_title}</p></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="car-header-center">{car_title_frame("taxi7", brand_logo("TAXI") + taxi_title)}</div>', unsafe_allow_html=True)
             # 첫 TAXI는 기존 예약 호환을 위해 접미 번호 없이 'TAXI (N SEAT)' 유지
             prefix = "TAXI" if ti == 1 else f"TAXI {ti}"
             layout_type = car["layout"]      # "2-3-2"
             seats_count = car["seats"]       # 6
             display_name = f"{prefix} ({seats_count} SEAT)"
         else:
-            # 택시 외 차량: 제목만 표시(인승 배지 없음)
-            st.markdown(f'<div class="car-header-center"><p class="car-title-text" style="margin: 0;">{brand_logo(car["name"])}{car["name"]}</p></div>', unsafe_allow_html=True)
+            # 택시 외 차량: 제목만 표시(인승 배지 없음). 차량명 프레임 배경 = 외관색.
+            st.markdown(f'<div class="car-header-center">{car_title_frame(_model_key(car["name"]), brand_logo(car["name"]) + car["name"])}</div>', unsafe_allow_html=True)
             layout_type = car["layout"]
             seats_count = car["seats"]
             display_name = f"{car['name']} ({seats_count} SEAT)"
