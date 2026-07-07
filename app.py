@@ -1310,9 +1310,10 @@ def on_seat_click(car_name, seat):
         st.session_state[f"dropdown_trigger_spec_{car_name}"] = seat_label
         st.session_state.active_booking_car = car_name
         st.session_state.editing_booking = None  # 새 예약(수정 아님)
-        # 출발 시간 = 팝업 여는 순간의 실시간(베트남 UTC+7 = 상단 시계와 동일), 도착 시간 = 00:00
-        _vn_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
-        st.session_state.input_user_departure_time_tick = datetime.time(_vn_now.hour, _vn_now.minute)
+        # 출발 시간 = 실시간(베트남 UTC+7) 기준 '가장 빨리 오는 5분 슬롯'으로 올림(step=5분과 정렬). 예: 19:02 → 19:05.
+        _vn_now = now_vn()
+        _slot = ((((_vn_now.hour * 60 + _vn_now.minute) + 4) // 5) * 5) % (24 * 60)
+        st.session_state.input_user_departure_time_tick = datetime.time(_slot // 60, _slot % 60)
         st.session_state.input_user_arrival_time_tick = datetime.time(0, 0)
     st.session_state.duplicate_error_msg = None
 
