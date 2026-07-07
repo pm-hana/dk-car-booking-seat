@@ -432,6 +432,13 @@ if IS_MOBILE:
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
     /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
+    /* 앱 예약 카드(bkcard): 박스 안에서 정보(좌) + 버튼 3단 세로(우)를 가로로 유지(모바일 컬럼 세로 접힘 방지) */
+    [class*="st-key-bkcard_"] { background: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 6px; }
+    [class*="st-key-bkcard_"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
+    [class*="st-key-bkcard_"] [data-testid="stColumn"] { min-width: 0 !important; width: auto !important; margin: 0 !important; padding: 0 !important; }
+    [class*="st-key-bkcard_"] [data-testid="stColumn"] [data-testid="stVerticalBlock"] { gap: 4px !important; }
+    [class*="st-key-bkcard_"] [data-testid="stElementContainer"] { margin: 0 !important; }
+    [class*="st-key-bkcard_"] .stButton button { min-height: 30px !important; padding: 2px 6px !important; font-size: 12px !important; white-space: nowrap !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1549,44 +1556,66 @@ if st.session_state.bookings:
         st.session_state.active_booking_car = bc_name
         st.session_state.duplicate_error_msg = None
 
-    # 예약 카드 1장 렌더 (차량 컬럼 폭 1/N에 맞춘 컴팩트 카드).
-    #  좁은 컬럼 폭에 맞춰 정보는 1단 세로로 쌓고, 버튼은 수정·취소 한 줄 + 도착완료 전체폭 한 줄.
+    # 예약 카드 1장 렌더.
+    #  · 앱(모바일 ?m=1): 박스 안에서 정보(좌) + 버튼 3단 세로(우) 가로 배치
+    #  · PC(웹): 좁은 차량 컬럼(1/N) → 정보 1단 세로 + 버튼(수정·취소 한 줄 + 도착완료 전체폭)
     def _render_booking_card(bc_name, bseat, binfo):
         date_line = f"<strong>{t('c_date')}</strong> {binfo['date']}<br>" if binfo.get("date") else ""
         arrive_line = f"<br><strong>{t('c_arrive')}</strong> {binfo['arrive']}" if binfo.get("arrive") else ""
-        st.markdown(f"""
-        <div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">
-            <div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">
-                <span style="color: #38bdf8; font-weight: bold;">🚙 {bc_name}</span>
-                <span style="background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>
-            </div>
-            <hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">
-            <div style="font-size: 11px; color: #e0e0e0; line-height: 1.5;">
-                <strong>{t('c_applicant')}</strong> {binfo.get('name', '')}<br>
-                <strong>{t('c_departure')}</strong> {binfo.get('departure', '')}<br>
-                <strong>{t('c_destination')}</strong> {binfo.get('destination', '')}<br>
-                {date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}{arrive_line}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        e_col, c_col = st.columns(2)
-        with e_col:
+        header_html = (
+            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
+            f'<span style="color: #38bdf8; font-weight: bold;">🚙 {bc_name}</span>'
+            f'<span style="background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            '</div>'
+            '<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">'
+            '<div style="font-size: 11px; color: #e0e0e0; line-height: 1.5;">'
+            f"<strong>{t('c_applicant')}</strong> {binfo.get('name', '')}<br>"
+            f"<strong>{t('c_departure')}</strong> {binfo.get('departure', '')}<br>"
+            f"<strong>{t('c_destination')}</strong> {binfo.get('destination', '')}<br>"
+            f"{date_line}<strong>{t('c_time')}</strong> {binfo.get('time', '')}{arrive_line}"
+            '</div>'
+        )
+
+        def _btn_edit():
             if st.button(t("btn_edit_bk"), key=f"edit_btn_{bc_name}_{bseat}", use_container_width=True):
                 _start_edit(bc_name, bseat)
                 st.rerun()
-        with c_col:
+        def _btn_cancel():
             if st.button(t("btn_cancel_bk"), key=f"cancel_btn_{bc_name}_{bseat}", use_container_width=True):
                 del st.session_state.bookings[(bc_name, bseat)]
                 save_bookings(st.session_state.bookings)
                 st.rerun()
-        # 도착 완료: 좁은 컬럼에서 글자 깨짐 방지 위해 아래 전체폭 한 줄로 단독 배치.
-        #  탑승 이력 아카이브에 적재(월/일별 통계·엑셀 근거) 후 현황판에서 제거 → 좌석 해제
-        if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
-            archive_booking(bc_name, bseat, binfo, status="완료")
-            del st.session_state.bookings[(bc_name, bseat)]
-            save_bookings(st.session_state.bookings)
-            st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
-            st.rerun()
+        def _btn_done():
+            # 도착 완료: 탑승 이력 아카이브에 적재(월/일별 통계·엑셀 근거) 후 현황판에서 제거 → 좌석 해제
+            if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
+                archive_booking(bc_name, bseat, binfo, status="완료")
+                del st.session_state.bookings[(bc_name, bseat)]
+                save_bookings(st.session_state.bookings)
+                st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
+                st.rerun()
+
+        if IS_MOBILE:
+            # 앱: 예약 박스 안 오른쪽에 버튼 3단 세로 배치(정보는 왼쪽). 박스 스타일은 bkcard CSS.
+            with st.container(key=f"bkcard_{bc_name}_{bseat}"):
+                info_col, btn_col = st.columns([1.55, 1], vertical_alignment="center")
+                with info_col:
+                    st.markdown(header_html, unsafe_allow_html=True)
+                with btn_col:
+                    _btn_edit()
+                    _btn_cancel()
+                    _btn_done()
+        else:
+            # PC: 정보 박스(전체폭) + 버튼 수정·취소 한 줄 + 도착완료 전체폭 한 줄
+            st.markdown(
+                f'<div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">{header_html}</div>',
+                unsafe_allow_html=True,
+            )
+            e_col, c_col = st.columns(2)
+            with e_col:
+                _btn_edit()
+            with c_col:
+                _btn_cancel()
+            _btn_done()
 
     # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열.
     #  카드 프레임 폭은 위 좌석 차량 박스(.car-layout-container)와 같은 폭으로 맞춘다(booking_board 인셋 CSS).
