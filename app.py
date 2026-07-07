@@ -357,9 +357,11 @@ st.markdown("""
         /* 헤더를 세로 가운데 스택으로: 브랜드(위) → 타이틀+버전 → 시계 → 토글 */
         .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
         .brand-lockup { order: 0 !important; width: 100% !important; justify-content: center !important; }
-        .title-group { order: 1 !important; width: 100% !important; justify-content: center !important; align-items: baseline !important; }
-        .main-title { font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
-        .header-clock { text-align: center !important; font-size: 12px !important; }
+        .title-group { order: 1 !important; width: 100% !important; justify-content: center !important; align-items: baseline !important; flex-wrap: wrap !important; }
+        /* 타이틀: 화면 폭에 맞춰 자동 축소(넘치면 줄바꿈) → 폰에서 양옆 잘림 방지 */
+        .main-title { font-size: clamp(22px, 7.5vw, 40px) !important; text-align: center !important; letter-spacing: 0.2px !important; white-space: normal !important; max-width: 100% !important; }
+        /* 시계 가운데: base의 #live-digital-clock(우측정렬 ID규칙)을 눌러야 하므로 ID로 지정 */
+        .header-clock, #live-digital-clock { text-align: center !important; font-size: 12px !important; }
         /* 시계+토글 묶음: PC용 우측정렬·10% 인셋 해제 → 가운데 정렬 */
         .st-key-hdr_right { align-items: center !important; padding-right: 0 !important; }
         .brand-logo-img { height: 28px !important; }
@@ -409,9 +411,11 @@ if IS_MOBILE:
     /* 헤더를 세로 가운데 스택으로: 브랜드(위) → 타이틀+버전 → 시계 → 토글 */
     .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
     .brand-lockup { order: 0 !important; width: 100% !important; justify-content: center !important; }
-    .title-group { order: 1 !important; width: 100% !important; justify-content: center !important; align-items: baseline !important; }
-    .main-title { font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
-    .header-clock { text-align: center !important; font-size: 13px !important; }
+    .title-group { order: 1 !important; width: 100% !important; justify-content: center !important; align-items: baseline !important; flex-wrap: wrap !important; }
+    /* 타이틀: 화면 폭에 맞춰 자동 축소(넘치면 줄바꿈) → 폰에서 양옆 잘림 방지 */
+    .main-title { font-size: clamp(22px, 7.5vw, 40px) !important; text-align: center !important; letter-spacing: 0.2px !important; white-space: normal !important; max-width: 100% !important; }
+    /* 시계 가운데: base의 #live-digital-clock(우측정렬 ID규칙)을 눌러야 하므로 ID로 지정 */
+    .header-clock, #live-digital-clock { text-align: center !important; font-size: 13px !important; }
     /* 시계+토글 묶음: PC용 우측정렬·10% 인셋 해제 → 가운데 정렬 */
     .st-key-hdr_right { align-items: center !important; padding-right: 0 !important; }
     .brand-logo-img { height: 30px !important; }
