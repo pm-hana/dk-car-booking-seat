@@ -453,11 +453,11 @@ if IS_MOBILE:
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
     /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
-    /* 단, 카드 안쪽 버튼 3열(중첩 컬럼)은 위 폭 규칙 제외 → 동일 flex로 1/3씩 균등 병렬 */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
-    /* 앱에서 버튼 3개가 세로로 접히지 않고 가로 병렬 유지(적층형 → 병렬 3개형) */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
-    .st-key-booking_board .stButton button { padding: 3px 2px !important; font-size: 11px !important; white-space: nowrap !important; min-height: 32px !important; }
+    /* 앱(모바일 최적화): 카드 버튼 3개(예약수정/취소/도착완료)를 세로로 나란히(각 전체폭) 배치.
+       좁은 화면에선 가로 3분할보다 세로 전체폭이 탭하기 편하다 → 중첩 버튼 컬럼을 100%폭으로 강제해 세로 스택. */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 6px !important; }
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 100% !important; width: 100% !important; min-width: 100% !important; margin: 0 !important; }
+    .st-key-booking_board .stButton button { min-height: 38px !important; font-size: 13px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1324,14 +1324,14 @@ CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8
     "taxi7":  ("linear-gradient(180deg,#ccab38,#c29204)", "#191b1f", "#a77b00"),
 }
 
-# 예약 현황 카드 배경색: 차량 로고 바탕색(=car_title_frame 배경)보다 다시 20% 어둡게(프레임색 ×0.8).
+# 예약 현황 카드 배경색: 차량 로고 바탕색(=car_title_frame 배경)보다 20% 밝게(프레임색 ×1.2).
 #  (배경 top/bottom, 본문 텍스트색, 테두리)
 CAR_CARD_STYLE = {
-    "innova": ("linear-gradient(180deg,#9e9e9f,#8e8f92)", "#14171c", "#7e8186"),  # 화이트/실버
-    "sedona": ("linear-gradient(180deg,#31333a,#1a1c20)", "#eef1f5", "#3a3d43"),  # 블랙
-    "vf5":    ("linear-gradient(180deg,#912e28,#7a1812)", "#ffffff", "#651310"),  # 레드
-    "taxi4":  ("linear-gradient(180deg,#a3892d,#9b7503)", "#191b1f", "#856102"),  # 옐로우
-    "taxi7":  ("linear-gradient(180deg,#a3892d,#9b7503)", "#191b1f", "#856102"),
+    "innova": ("linear-gradient(180deg,#eceeef,#d4d7dc)", "#14171c", "#b6bac1"),  # 화이트/실버
+    "sedona": ("linear-gradient(180deg,#494d56,#282a30)", "#f2f4f7", "#5a5f68"),  # 블랙
+    "vf5":    ("linear-gradient(180deg,#d9463c,#b8241c)", "#ffffff", "#8f1a13"),  # 레드
+    "taxi4":  ("linear-gradient(180deg,#f5cd43,#e9af05)", "#191b1f", "#c99400"),  # 옐로우
+    "taxi7":  ("linear-gradient(180deg,#f5cd43,#e9af05)", "#191b1f", "#c99400"),
 }
 
 def car_title_frame(mk, inner_html):
@@ -1782,8 +1782,8 @@ if st.session_state.bookings:
                 save_bookings(st.session_state.bookings)
                 st.rerun()
         def _btn_done():
-            # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제).
-            if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
+            # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제). 바탕색 없는 일반 버튼.
+            if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", use_container_width=True):
                 st.session_state.arrive_target = (bc_name, bseat)
                 # 도착 시간 기본값 = 출발 시각과 동일. 예: 출발 08:10 → 도착 기본 08:10
                 try:
