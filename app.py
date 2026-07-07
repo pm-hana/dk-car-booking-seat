@@ -129,6 +129,9 @@ st.markdown("""
     .st-key-csv_inset { padding: 0 10% !important; }
     /* 예약 현황 카드: 좁은 차량 컬럼(1/N) 폭을 최대한 살리도록 인셋 없이 컬럼 전체폭 사용(글자 깨짐 방지) */
     .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; }
+    /* 예약 수정·취소·도착완료 3버튼(1/3씩 병렬): 좁은 폭에서도 한 줄 유지되도록 폰트·패딩 압축 */
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 4px !important; }
+    .st-key-booking_board .stButton button { padding: 3px 2px !important; font-size: 11px !important; white-space: nowrap !important; min-height: 32px !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -432,6 +435,8 @@ if IS_MOBILE:
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
     /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
+    /* 단, 카드 안쪽 버튼 3열(중첩 컬럼)은 위 폭 규칙 제외 → 동일 flex로 1/3씩 균등 병렬 */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1588,17 +1593,18 @@ if st.session_state.bookings:
                 st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
                 st.rerun()
 
-        # PC·앱 공통: 정보 박스(전체폭) + 버튼 수정·취소 한 줄 + 도착완료 전체폭 한 줄
+        # PC·앱 공통: 정보 박스(전체폭) + 예약수정·예약취소·도착완료 버튼을 한 줄에 1/3씩 병렬 배치
         st.markdown(
             f'<div style="background-color: #15161a; border: 1px solid #2d2f34; border-radius: 8px; padding: 10px; margin-bottom: 4px;">{header_html}</div>',
             unsafe_allow_html=True,
         )
-        e_col, c_col = st.columns(2)
+        e_col, c_col, d_col = st.columns(3)
         with e_col:
             _btn_edit()
         with c_col:
             _btn_cancel()
-        _btn_done()
+        with d_col:
+            _btn_done()
 
     # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열.
     #  카드 프레임 폭은 위 좌석 차량 박스(.car-layout-container)와 같은 폭으로 맞춘다(booking_board 인셋 CSS).
