@@ -131,7 +131,7 @@ st.markdown("""
     .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; }
     /* 예약 수정·취소·도착완료 3버튼(1/3씩 병렬): 좁은 폭에서도 한 줄 유지되도록 폰트·패딩 압축 */
     .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 4px !important; }
-    .st-key-booking_board .stButton button { padding: 3px 2px !important; font-size: 11px !important; white-space: nowrap !important; min-height: 32px !important; }
+    .st-key-booking_board .stButton button { padding: 3px 2px !important; font-size: 12px !important; white-space: nowrap !important; min-height: 32px !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -1561,12 +1561,12 @@ if st.session_state.bookings:
         header_html = (
             # 타이틀 행: 차량명(왼쪽, 한 줄 유지 → 길면 … 줄임) + 좌석 배지(오른쪽 고정). 이미지처럼 정렬.
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
-            f'<span style="color: #38bdf8; font-weight: bold; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
-            f'<span style="flex: 0 0 auto; background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            f'<span style="color: #38bdf8; font-weight: bold; font-size: 20px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
+            f'<span style="flex: 0 0 auto; background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             '<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 8px 0;">'
             # 정보 2단(3줄): 좌(신청자·출발지·목적지) / 우(출발날짜·출발시간·도착시간) → 박스 높이 절반으로 축소
-            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 11px; color: #e0e0e0; line-height: 1.5;">'
+            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 12px; color: #e0e0e0; line-height: 1.5;">'
             f"<div><strong>{t('c_applicant')}</strong> {binfo.get('name', '')}</div>"
             f"<div><strong>{t('c_date')}</strong> {binfo.get('date', '')}</div>"
             f"<div><strong>{t('c_departure')}</strong> {binfo.get('departure', '')}</div>"
