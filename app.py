@@ -1623,7 +1623,7 @@ def excel_export_dialog():
         st.info(t("export_empty"))
     with st.container(key="export_dl"):
         st.download_button(
-            f'{t("export_btn")}  ·  {len(rows)}',
+            t("export_btn"),
             data=data, file_name=fname, mime=mime,
             use_container_width=True, key="export_download_btn",
         )
@@ -1770,10 +1770,12 @@ if st.session_state.bookings:
             # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제).
             if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
                 st.session_state.arrive_target = (bc_name, bseat)
-                # 도착 시간 기본값 = 도착 완료 클릭 시각(베트남)을 5분 슬롯으로 올림
-                _vn = now_vn()
-                _slot = ((((_vn.hour * 60 + _vn.minute) + 4) // 5) * 5) % (24 * 60)
-                st.session_state.arrive_input_tick = datetime.time(_slot // 60, _slot % 60)
+                # 도착 시간 기본값 = 출발 시각의 0분 슬롯(출발시간의 '시'에 분은 00). 예: 출발 08:10 → 도착 기본 08:00
+                try:
+                    _dh = int(str(binfo.get("time", "")).split(":")[0]) % 24
+                except Exception:
+                    _dh = 0
+                st.session_state.arrive_input_tick = datetime.time(_dh, 0)
                 st.rerun()
 
         # PC·앱 공통: 정보 박스(전체폭) + 예약수정·예약취소·도착완료 버튼을 한 줄에 1/3씩 병렬 배치
