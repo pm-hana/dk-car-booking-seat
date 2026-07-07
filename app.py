@@ -354,11 +354,14 @@ st.markdown("""
         .block-container { padding: 0.3rem 0.6rem 2.5rem !important; max-width: 100% !important; }
         html, body, .stApp { overflow-x: hidden !important; }
 
-        /* 헤더: 로고 → 타이틀 → 시계를 세로로 접어 가운데 정렬, 타이틀 축소 */
+        /* 헤더를 세로 가운데 스택으로: 브랜드(위) → 타이틀+버전 → 시계 → 토글 */
         .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
-        .brand-lockup { order: 1; width: 100% !important; justify-content: center !important; }
-        .main-title { order: 2; flex: 1 1 100% !important; font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
-        .header-clock { order: 3; flex: 1 1 100% !important; text-align: center !important; font-size: 12px !important; }
+        .brand-lockup { order: 0 !important; width: 100% !important; justify-content: center !important; }
+        .title-group { order: 1 !important; width: 100% !important; justify-content: center !important; align-items: baseline !important; }
+        .main-title { font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
+        .header-clock { text-align: center !important; font-size: 12px !important; }
+        /* 시계+토글 묶음: PC용 우측정렬·10% 인셋 해제 → 가운데 정렬 */
+        .st-key-hdr_right { align-items: center !important; padding-right: 0 !important; }
         .brand-logo-img { height: 28px !important; }
         .brand-name { font-size: 12px !important; }
         .brand-version { font-size: 12px !important; margin-left: 6px !important; }
@@ -380,7 +383,9 @@ st.markdown("""
         .car-layout-container { width: 88% !important; height: auto !important; aspect-ratio: 160 / 250 !important; max-height: 62vh; margin: 2px auto 6px !important; padding: 6px !important; }
         .car-title-text { font-size: 16px !important; }
         .car-header-center { min-height: 26px !important; }
-        .board-title { font-size: 14px !important; }
+        /* 모바일에선 PC용 좌/우 인셋(제목 5%·버튼 10%) 해제 → 전체폭 기준 */
+        .board-title { font-size: 14px !important; padding-left: 0 !important; }
+        .st-key-csv_inset { padding: 0 !important; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -401,11 +406,14 @@ if IS_MOBILE:
     .block-container { padding: 0.3rem 0.6rem 2.5rem !important; max-width: 100% !important; }
     html, body, .stApp { overflow-x: hidden !important; }
 
-    /* 헤더: 로고 → 타이틀 → 시계를 세로로 접어 가운데 정렬, 타이틀 축소 */
+    /* 헤더를 세로 가운데 스택으로: 브랜드(위) → 타이틀+버전 → 시계 → 토글 */
     .top-header-container { flex-wrap: wrap !important; justify-content: center !important; gap: 4px !important; }
-    .brand-lockup { order: 1; width: 100% !important; justify-content: center !important; }
-    .main-title { order: 2; flex: 1 1 100% !important; font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
-    .header-clock { order: 3; flex: 1 1 100% !important; text-align: center !important; font-size: 13px !important; }
+    .brand-lockup { order: 0 !important; width: 100% !important; justify-content: center !important; }
+    .title-group { order: 1 !important; width: 100% !important; justify-content: center !important; align-items: baseline !important; }
+    .main-title { font-size: 40px !important; text-align: center !important; letter-spacing: 0.3px !important; white-space: normal !important; }
+    .header-clock { text-align: center !important; font-size: 13px !important; }
+    /* 시계+토글 묶음: PC용 우측정렬·10% 인셋 해제 → 가운데 정렬 */
+    .st-key-hdr_right { align-items: center !important; padding-right: 0 !important; }
     .brand-logo-img { height: 30px !important; }
     .brand-name { font-size: 13px !important; }
     .brand-version { font-size: 13px !important; margin-left: 6px !important; }
@@ -419,8 +427,9 @@ if IS_MOBILE:
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
-    /* 예약 현황판 제목·카드 폰트 소폭 축소 */
-    .board-title { font-size: 14px !important; }
+    /* 예약 현황판 제목·카드 폰트 소폭 축소 + PC용 좌/우 인셋 해제 */
+    .board-title { font-size: 14px !important; padding-left: 0 !important; }
+    .st-key-csv_inset { padding: 0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
