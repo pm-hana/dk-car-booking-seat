@@ -711,6 +711,8 @@ TR = {
         "export_all": "전체", "export_btn": "⬇️ 엑셀 다운로드",
         "export_caption": "선택한 연도·월·일의 탑승 이력을 파이어베이스에서 조회하여 엑셀(XLSX) 파일로 내보냅니다.",
         "export_file": "탑승 이력_{ym}.xlsx", "export_empty": "선택한 기간에 해당하는 탑승 이력이 없습니다.",
+        "arrive_title": "🏁 도착 완료 처리", "arrive_done": "완료",
+        "arrive_desc": "[{car}] 좌석 {seat} · {name}\n도착 시간을 입력하고 완료를 누르면 탑승 이력에 기록됩니다.",
         "no_result": "🔍 [{q}] 검색 결과가 없습니다.",
         "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "목적지:",
         "c_date": "출발날짜:", "c_time": "출발시간:", "c_arrive": "도착시간:", "edit_tip": "예약 수정하기",
@@ -751,6 +753,8 @@ TR = {
         "export_all": "All", "export_btn": "⬇️ Download Excel",
         "export_caption": "Queries the ride history from Firebase for the selected year/month/day and exports an Excel (XLSX) file.",
         "export_file": "Ride History_{ym}.xlsx", "export_empty": "No ride history for the selected period.",
+        "arrive_title": "🏁 Mark Arrival", "arrive_done": "Done",
+        "arrive_desc": "[{car}] Seat {seat} · {name}\nEnter the arrival time and press Done to save it to the ride history.",
         "no_result": "🔍 No results for [{q}].",
         "c_applicant": "Applicant:", "c_departure": "Departure:", "c_destination": "Destination:",
         "c_date": "Date:", "c_time": "Time:", "c_arrive": "Arrival:", "edit_tip": "Edit booking",
@@ -1626,6 +1630,34 @@ def excel_export_dialog():
     st.caption(t("export_caption"))
 
 
+def _close_arrival():
+    st.session_state.arrive_target = None
+
+
+@st.dialog(t("arrive_title"), on_dismiss=_close_arrival)
+def arrival_dialog(car, seat):
+    """도착 완료 시 '도착 시간만' 설정하는 팝업. 완료 누르면 그 시간으로 탑승 이력에 기록 + 좌석 해제."""
+    info = st.session_state.bookings.get((car, seat))
+    if not info:
+        _close_arrival()
+        return
+    st.markdown(
+        f'<div style="font-size:13px; color:#c7ccd6; line-height:1.6; margin-bottom:8px; white-space:pre-line;">'
+        f'{t("arrive_desc", car=car, seat=seat, name=info.get("name", ""))}</div>',
+        unsafe_allow_html=True,
+    )
+    # 6. 도착 시간 (기본값은 도착 완료 클릭 시각의 5분 슬롯; 위젯 상태로 유지)
+    a_time = st.time_input(t("f_arrive"), step=300, key="arrive_input_tick")
+    if st.button(t("arrive_done"), type="primary", use_container_width=True, key="arrive_done_btn"):
+        arrive_str = a_time.strftime("%H:%M") if a_time else "00:00"
+        archive_booking(car, seat, {**info, "arrive": arrive_str}, status="완료")
+        del st.session_state.bookings[(car, seat)]
+        save_bookings(st.session_state.bookings)
+        st.session_state.arrive_target = None
+        st.toast(t("toast_done", name=info.get("name", ""), seat=seat))
+        st.rerun()
+
+
 # 8. 실시간 배차 예약 현황판 명단 출력 (하단 단독 배치)
 num_bookings = len(st.session_state.bookings)
 st.write("")
@@ -1656,6 +1688,11 @@ with h_csv:
 # 예약 이력 버튼이 눌렸으면 엑셀 내보내기 팝업(모달)을 띄운다. 닫으면 on_dismiss로 플래그 해제.
 if st.session_state.get("export_open"):
     excel_export_dialog()
+
+# 도착 완료 버튼이 눌렸으면 '도착 시간' 입력 팝업을 띄운다. 완료 시 이력 기록 + 좌석 해제.
+if st.session_state.get("arrive_target"):
+    _at_car, _at_seat = st.session_state.arrive_target
+    arrival_dialog(_at_car, _at_seat)
 
 if st.session_state.bookings:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)
@@ -1730,12 +1767,13 @@ if st.session_state.bookings:
                 save_bookings(st.session_state.bookings)
                 st.rerun()
         def _btn_done():
-            # 도착 완료: 탑승 이력 아카이브에 적재(월/일별 통계·엑셀 근거) 후 현황판에서 제거 → 좌석 해제
+            # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제).
             if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", type="primary", use_container_width=True):
-                archive_booking(bc_name, bseat, binfo, status="완료")
-                del st.session_state.bookings[(bc_name, bseat)]
-                save_bookings(st.session_state.bookings)
-                st.toast(t("toast_done", name=binfo.get("name", ""), seat=bseat))
+                st.session_state.arrive_target = (bc_name, bseat)
+                # 도착 시간 기본값 = 도착 완료 클릭 시각(베트남)을 5분 슬롯으로 올림
+                _vn = now_vn()
+                _slot = ((((_vn.hour * 60 + _vn.minute) + 4) // 5) * 5) % (24 * 60)
+                st.session_state.arrive_input_tick = datetime.time(_slot // 60, _slot % 60)
                 st.rerun()
 
         # PC·앱 공통: 정보 박스(전체폭) + 예약수정·예약취소·도착완료 버튼을 한 줄에 1/3씩 병렬 배치
