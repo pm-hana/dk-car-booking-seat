@@ -1473,10 +1473,10 @@ def _booking_form(car_target, seat_target):
     # 이 차량의 메인 네이밍 바 색(배경 그라디언트/대비 텍스트/테두리)을 그대로 가져와 팝업에도 적용
     _mk = next((c["mk"] for c in resolved_cars if c["display_name"] == car_target), "innova")
     _fbg, _ffg, _fbd = CAR_FRAME_STYLE.get(_mk, CAR_FRAME_STYLE["innova"])
-    # 좌석 타이틀 폰트색 = 메인 차량 네이밍 배경색(그라디언트를 글자에 그대로 채움)
+    # 좌석 타이틀 = 메인 차량 네이밍 바처럼 '배지형'(배경=차량색 / 글자=대비색 / 테두리=차량색) → 4종 모두 가독성 확보
     st.markdown(f"""
     <div style="margin-bottom: 12px;">
-        <h4 style="margin: 0; font-size: 15px; display: inline-block; background: {_fbg}; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">{form_title}</h4>
+        <span style="display: inline-block; background: {_fbg}; color: {_ffg}; border: 1px solid {_fbd}; font-size: 14px; font-weight: 700; padding: 5px 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);">{form_title}</span>
     </div>
     """, unsafe_allow_html=True)
     # 신청 완료 버튼 배경 = 메인 차량 네이밍 배경색(대비 텍스트/테두리 동일 적용)
