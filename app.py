@@ -343,10 +343,12 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
-    /* 앱: 클릭 가능한 차량 이름 바(로고+이름 프레임 전체가 버튼처럼) */
-    .car-nav-click { cursor: pointer !important; }
+    /* 앱: 클릭 가능한 차량 이름 바(로고+이름 프레임 전체가 버튼처럼). 바 사이 세로 간격 확보(앱·웹 동일). */
+    .car-nav-click { cursor: pointer !important; margin: 6px 0 !important; }
     .car-nav-click .car-name-frame { width: 100% !important; transition: transform 0.08s ease, box-shadow 0.08s ease; }
     .car-nav-click:hover .car-name-frame { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    /* 이름 바 바로 아래 숨김 CARNAV 버튼 컨테이너가 차지하던 빈 세로 공간 제거(간격 이중 발생 방지) */
+    div[class*="st-key-carnavclick_"] { height: 0 !important; }
     
     /* 드래그 대상 마우스 커서 grab/grabbing 형태 지정 */
     [draggable="true"] {
@@ -1432,6 +1434,10 @@ def _render_car_body(car_rc, show_name=True):
 def _close_seatmap():
     st.session_state.seatmap_car = None
 
+def _open_seatmap(display_name):
+    # on_click 콜백 → 위젯 생성 전에 상태 세팅 → 단일 rerun에서 바로 팝업 오픈(이중 rerun 제거로 반응 속도 개선)
+    st.session_state.seatmap_car = display_name
+
 @st.dialog(t("seatmap_title"), on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
     """앱: 차량 이름 클릭 시 뜨는 좌석 배치도 팝업. 빈 좌석 클릭 → 좌석맵 닫고 신청 팝업으로 전환."""
@@ -1464,9 +1470,8 @@ if IS_MOBILE:
             f'<div class="car-nav-click" data-navidx="{i}">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>',
             unsafe_allow_html=True,
         )
-        if st.button(f"CARNAV::{i}", key=f"carnavclick_{i}"):
-            st.session_state.seatmap_car = car_rc["display_name"]
-            st.rerun()
+        # on_click 콜백으로 즉시 상태 세팅 → 단일 rerun에 바로 팝업 오픈(클릭 후 바로 열림)
+        st.button(f"CARNAV::{i}", key=f"carnavclick_{i}", on_click=_open_seatmap, args=(car_rc["display_name"],))
     # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
     if st.session_state.get("seatmap_car"):
         _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
