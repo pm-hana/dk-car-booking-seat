@@ -4,6 +4,11 @@ import datetime
 # 1. 페이지 기본 설정 및 다크 테마 고정
 st.set_page_config(page_title="DK CAR BOOKING", page_icon="🚗", layout="wide")
 
+# [관리자 PIN] INNOVA·SEDONA '운전석'을 클릭하면 뜨는 관리자 로그인 팝업에서 입력하는 4자리 숫자(0~9) PIN.
+#   인증에 성공하면 '전체 예약 초기화' 등 관리자 기능이 잠금 해제된다(공용 PIN 1개, 저장 없이 매번 입력).
+#   주의: 이 값은 소스에 그대로 있어 배포 저장소에 노출되는 내부용 간이 게이트다. 필요 시 여기만 바꾸면 된다.
+ADMIN_PIN = "0000"
+
 # 2. 시스템 버전 및 새로고침 업데이트 카운터 연산 (00h 기준 초기화 및 mmdd ver.N 포맷, app.py 수정 저장 시 자동 감지 갱신)
 import json
 import os
@@ -365,9 +370,15 @@ st.markdown("""
     .seat-clickable {
         cursor: pointer !important;
     }
+    /* INNOVA·SEDONA 운전석: 관리자 로그인용 클릭 가능 표시 */
+    .admin-login-seat {
+        cursor: pointer !important;
+    }
+    .admin-login-seat:hover { filter: brightness(1.25); }
 
     /* 좌석 클릭을 부드러운 rerun으로 처리하기 위한 숨김 버튼 (화면 밖 배치, JS가 대신 클릭) */
     div[class*="st-key-seatsel_"],
+    div[class*="st-key-adminlogin_"],
     div[class*="st-key-carnavclick_"] {
         position: fixed !important;
         left: -9999px !important;
@@ -767,6 +778,10 @@ TR = {
         "btn_reset_all": "🗑️ 전체 예약 초기화",
         "reset_warn": "⚠️ 정말 모든 예약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
         "btn_reset_yes": "네, 전체 삭제", "toast_reset": "🧹 모든 예약이 초기화되었습니다.",
+        "admin_title": "🔑 관리자 로그인", "admin_pw_label": "PASSWORD (숫자 4자리)", "admin_pw_ph": "0000",
+        "admin_hint": "0~9 숫자 4자리를 입력하세요.", "admin_ok": "확인",
+        "admin_err": "PIN이 올바르지 않습니다.", "admin_unlocked_toast": "🔓 관리자 잠금이 해제되었습니다.",
+        "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 잠금 상태로 돌아갔습니다.",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
     },
@@ -810,6 +825,10 @@ TR = {
         "btn_reset_all": "🗑️ Reset all bookings",
         "reset_warn": "⚠️ Delete ALL bookings? This cannot be undone.",
         "btn_reset_yes": "Yes, delete all", "toast_reset": "🧹 All bookings have been reset.",
+        "admin_title": "🔑 Admin Login", "admin_pw_label": "PASSWORD (4 digits)", "admin_pw_ph": "0000",
+        "admin_hint": "Enter a 4-digit number (0-9).", "admin_ok": "OK",
+        "admin_err": "Incorrect PIN.", "admin_unlocked_toast": "🔓 Admin unlocked.",
+        "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Admin locked again.",
         "no_bookings": "No dispatch requests yet.",
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
     },
@@ -881,7 +900,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ⚡ [OPT1 트리거 지원] 좌석 배치도 내부 프리미엄 가죽 시트 렌더러 (클릭 이벤트 주입)
-def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip="", sub_label=""):
+def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip="", sub_label="", admin_login=False):
     if is_driver:
         stroke_color = "#e03131"
         main_fill = "#2c1a1a"
@@ -909,7 +928,11 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
     
     # 드래그 앤 드롭용 클래스 및 데이터 속성 주입 (운전석 제외 전체 차량의 좌석 적용)
     drag_drop_attrs = ""
-    if not is_driver:
+    if is_driver:
+        if admin_login:
+            # INNOVA·SEDONA 운전석: 클릭하면 관리자 로그인 팝업(JS가 숨김 ADMINLOGIN 버튼 대신 클릭)
+            drag_drop_attrs = f' class="admin-login-seat" data-car="{car_display_name}"'
+    else:
         if is_booked:
             # 이미 예약된 좌석: 드래그하여 이동시킬 출발지(Source)
             drag_drop_attrs = f' class="seat-draggable" data-car="{car_display_name}" data-seat="{seat_id}" draggable="true"'
@@ -1208,7 +1231,9 @@ def render_car_layout(car_name, layout_type, bookings):
             elif "VF5" in car_name or "VINFAST" in car_name:
                 driver_name = "Vuong"
         # 운전석: 이름이 있으면 'Driver' 아래 줄로 함께 박스 세로 중앙 정렬(이름은 골드 #fab005)
-        svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, sub_label=driver_name))
+        #   INNOVA·SEDONA 운전석은 클릭 시 관리자 로그인 팝업이 뜨도록 admin_login=True
+        _admin_car = ("INNOVA" in car_name) or ("SEDONA" in car_name)
+        svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, sub_label=driver_name, admin_login=_admin_car))
         if layout_type == "2-3":
             svg.append('  <line x1="33" y1="150" x2="129" y2="150" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
         for sid, sx, sy in seat_map[layout_type]:
@@ -1568,11 +1593,48 @@ def _close_seatmap():
         st.session_state[f"dropdown_trigger_spec_{car}"] = "-- 선택 --"
     st.session_state.editing_booking = None
     st.session_state.duplicate_error_msg = None
+    st.session_state.admin_login_open = False   # 관리자 로그인 폼도 함께 닫힘
+    st.session_state.admin_pin_error = False
     st.session_state.seatmap_car = None
 
 def _open_seatmap(display_name):
     # on_click 콜백 → 위젯 생성 전에 상태 세팅 → 단일 rerun에서 바로 팝업 오픈(이중 rerun 제거로 반응 속도 개선)
     st.session_state.seatmap_car = display_name
+
+def _open_admin_login():
+    # INNOVA·SEDONA 운전석 클릭 콜백 → 좌석맵 팝업 안에 관리자 로그인 폼을 띄운다(2중 dialog 회피)
+    st.session_state.admin_login_open = True
+    st.session_state.admin_pin_error = False
+
+def _admin_login_form():
+    """관리자 로그인 폼 — 좌석맵 팝업 안에서 표시. 4자리 숫자 PIN이 ADMIN_PIN과 일치하면 관리자 잠금 해제.
+    저장 없이 매번 입력(공용 PIN 1개)."""
+    st.markdown(f'<div class="dlg-step-title">{t("admin_title")}</div>', unsafe_allow_html=True)
+    st.caption(t("admin_hint"))
+    pin = st.text_input(t("admin_pw_label"), placeholder=t("admin_pw_ph"), type="password",
+                        max_chars=4, key="admin_pin_input")
+    if st.session_state.get("admin_pin_error"):
+        st.error(t("admin_err"))
+    ac1, ac2 = st.columns(2)
+    with ac1:
+        if st.button(t("admin_ok"), type="primary", key="admin_pin_ok_btn", use_container_width=True):
+            # 0~9 4자리 조합 검증(공용 PIN 일치)
+            if pin and pin.isdigit() and len(pin) == 4 and pin == ADMIN_PIN:
+                st.session_state.admin_unlocked = True
+                st.session_state.admin_login_open = False
+                st.session_state.admin_pin_error = False
+                st.session_state.seatmap_car = None
+                st.toast(t("admin_unlocked_toast"))
+                st.rerun()
+            else:
+                st.session_state.admin_pin_error = True
+                st.rerun()
+    with ac2:
+        if st.button(t("btn_cancel"), key="admin_pin_cancel_btn", use_container_width=True):
+            st.session_state.admin_login_open = False
+            st.session_state.admin_pin_error = False
+            st.session_state.seatmap_car = None
+            st.rerun()
 
 @st.dialog(" ", on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
@@ -1580,6 +1642,10 @@ def seatmap_dialog(car_rc):
     '📝 신청 정보 입력' 폼으로 전환된다. @st.dialog 크롬 title은 열린 중 못 바꾸므로 공백(' ')으로 두고
     단계별 제목을 본문 최상단(.dlg-step-title)에 직접 그려 단계별로 구분한다."""
     car = car_rc["display_name"]
+    # 운전석 클릭으로 관리자 로그인 요청 상태면 → 좌석맵 대신 관리자 로그인 폼 표시(같은 팝업 안, 자체 제목 렌더)
+    if st.session_state.get("admin_login_open"):
+        _admin_login_form()
+        return
     booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car]
     sel = st.session_state.selected_seat_state.get(car, "-- 선택 --")
     seat_num = None
@@ -1611,6 +1677,9 @@ def seatmap_dialog(car_rc):
                 on_click=on_seat_click,
                 args=(car, seat),
             )
+    # INNOVA·SEDONA: 운전석 클릭 시 JS가 대신 누를 숨김 ADMINLOGIN 버튼(→ 관리자 로그인 폼)
+    if ("INNOVA" in car) or ("SEDONA" in car):
+        st.button(f"ADMINLOGIN::{car}", key=f"adminlogin_{car}", on_click=_open_admin_login)
 
 # 차량 이름 바(로고+이름) 4개를 세로로 배치 — 웹(루트)·앱(?m=1) 완전 동일 레이아웃(메모: UI 양쪽 동일).
 #  메인 화면엔 차량 네이밍 바만 노출하고, 바를 클릭하면 해당 차량 좌석 배치도가 팝업(seatmap_dialog)으로 뜬다.
@@ -1953,26 +2022,36 @@ if st.session_state.bookings:
         if (bc_name, bseat) not in shown:
             _render_booking_card(bc_name, bseat, binfo)
 
-    # ⚡ [관리자] 전체 예약 초기화 (2단계 확인으로 실수 방지)
-    st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
-    if not st.session_state.get("confirm_reset_all"):
-        if st.button(t("btn_reset_all"), key="reset_all_btn"):
-            st.session_state.confirm_reset_all = True
-            st.rerun()
-    else:
-        st.warning(t("reset_warn"))
-        rc1, rc2 = st.columns(2)
-        with rc1:
-            if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
-                st.session_state.bookings = {}
-                save_bookings(st.session_state.bookings)
-                st.session_state.confirm_reset_all = False
-                st.toast(t("toast_reset"))
-                st.rerun()
-        with rc2:
-            if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
-                st.session_state.confirm_reset_all = False
-                st.rerun()
+    # ⚡ [관리자] 전체 예약 초기화 — INNOVA·SEDONA 운전석 관리자 로그인(admin_unlocked) 후에만 노출/동작
+    if st.session_state.get("admin_unlocked"):
+        st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
+        if not st.session_state.get("confirm_reset_all"):
+            rlc1, rlc2 = st.columns(2)
+            with rlc1:
+                if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True):
+                    st.session_state.confirm_reset_all = True
+                    st.rerun()
+            with rlc2:
+                # 관리자 재잠금(로그아웃)
+                if st.button(t("admin_lock"), key="admin_lock_btn", use_container_width=True):
+                    st.session_state.admin_unlocked = False
+                    st.session_state.confirm_reset_all = False
+                    st.toast(t("admin_locked_toast"))
+                    st.rerun()
+        else:
+            st.warning(t("reset_warn"))
+            rc1, rc2 = st.columns(2)
+            with rc1:
+                if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
+                    st.session_state.bookings = {}
+                    save_bookings(st.session_state.bookings)
+                    st.session_state.confirm_reset_all = False
+                    st.toast(t("toast_reset"))
+                    st.rerun()
+            with rc2:
+                if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
+                    st.session_state.confirm_reset_all = False
+                    st.rerun()
 else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
@@ -1987,12 +2066,27 @@ const initDragDrop = () => {
     const droptargets = parentDoc.querySelectorAll('.seat-droptarget');
     const clickables = parentDoc.querySelectorAll('.seat-clickable');
     const carnavs = parentDoc.querySelectorAll('.car-nav-click');
+    const adminseats = parentDoc.querySelectorAll('.admin-login-seat');
 
     // 요소가 렌더링되지 않았을 경우 대기
-    if (draggables.length === 0 && droptargets.length === 0 && clickables.length === 0 && carnavs.length === 0) {
+    if (draggables.length === 0 && droptargets.length === 0 && clickables.length === 0 && carnavs.length === 0 && adminseats.length === 0) {
         setTimeout(initDragDrop, 100);
         return;
     }
+
+    // ⚡ INNOVA·SEDONA 운전석 클릭 → 대응하는 숨김 ADMINLOGIN 버튼을 대신 눌러 관리자 로그인 폼 오픈
+    adminseats.forEach(el => {
+        if (el.getAttribute('data-admin-bound') === 'true') return;
+        el.setAttribute('data-admin-bound', 'true');
+        el.addEventListener('click', () => {
+            const car = el.getAttribute('data-car');
+            const token = 'ADMINLOGIN::' + car;
+            const btns = parentDoc.querySelectorAll('button');
+            for (const b of btns) {
+                if ((b.innerText || b.textContent || '').trim() === token) { b.click(); return; }
+            }
+        });
+    });
 
     // ⚡ 앱: 차량 이름 바 클릭 → 대응하는 숨김 CARNAV 버튼을 대신 눌러 좌석맵 팝업 오픈
     carnavs.forEach(el => {
