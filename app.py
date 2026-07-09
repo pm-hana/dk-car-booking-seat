@@ -1421,12 +1421,18 @@ def _render_car_body(car_rc, show_name=True):
                 args=(car_rc["display_name"], seat),
             )
 
-# 웹·앱 공통(동일 UI): 차량 이름 박스를 2×2(한 줄 2개)로 배치 → 클릭한 차량의 배치도만 아래 표시.
-#  네이밍 박스 크기: 높이 150px, 폭은 현재(컬럼 전체폭) 대비 50% 축소(컬럼 안 50% 가운데).
+# 웹·앱 공통(동일 UI): 차량 이름 4개를 '한 줄 가로'로 배치 → 클릭한 차량의 배치도만 그 아래에 표시.
+#  st.columns는 창이 좁으면 세로로 접히므로, carnav_row 컨테이너에 flex-wrap:nowrap를 강제해 4개가 항상 가로 유지.
 if "active_car_idx" not in st.session_state or st.session_state.active_car_idx >= total_cars:
     st.session_state.active_car_idx = 0
-# 탭 버튼 색을 차량 외관색(프레임색)으로 + 활성 강조(테두리 두껍게·불투명). 동적 CSS 주입.
-_nav_css = ['<style>[class*="st-key-carnav_"] button { height: 150px !important; width: 50% !important; margin: 0 auto !important; font-size: 15px !important; font-weight: 700 !important; border-radius: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important; white-space: normal !important; }']
+# 탭 줄 가로 강제 + 버튼 색을 차량 외관색(프레임색)으로 + 활성 강조. 동적 CSS 주입.
+_nav_css = [
+    '<style>'
+    '.st-key-carnav_row [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }'
+    '.st-key-carnav_row [data-testid="stColumn"] { min-width: 0 !important; flex: 1 1 0 !important; }'
+    '[class*="st-key-carnav_"] button { min-height: 46px !important; font-size: 14px !important; font-weight: 700 !important; '
+    'border-radius: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important; white-space: normal !important; line-height: 1.15 !important; padding: 4px 4px !important; }'
+]
 for i, car_rc in enumerate(resolved_cars):
     _bg, _fg, _bd = CAR_FRAME_STYLE.get(car_rc["mk"], CAR_FRAME_STYLE["innova"])
     _act = (i == st.session_state.active_car_idx)
@@ -1436,20 +1442,16 @@ for i, car_rc in enumerate(resolved_cars):
     )
 _nav_css.append("</style>")
 st.markdown("".join(_nav_css), unsafe_allow_html=True)
-# 2개씩 2단(2×2) 배치
-for _r in range(0, total_cars, 2):
-    _row = st.columns(2)
-    for _j in range(2):
-        _idx = _r + _j
-        if _idx >= total_cars:
-            continue
-        with _row[_j]:
-            if st.button(resolved_cars[_idx]["nav_label"], key=f"carnav_{_idx}", use_container_width=True):
-                st.session_state.active_car_idx = _idx
+with st.container(key="carnav_row"):
+    nav_cols = st.columns(total_cars)
+    for i, car_rc in enumerate(resolved_cars):
+        with nav_cols[i]:
+            if st.button(car_rc["nav_label"], key=f"carnav_{i}", use_container_width=True):
+                st.session_state.active_car_idx = i
                 st.rerun()
-# 클릭(활성)한 차량의 배치도를 2×2 그리드 아래 가운데에 표시(이름은 탭이 대신하므로 프레임 생략)
-_dcol = st.columns([1, 1, 1])
-with _dcol[1]:
+# 클릭(활성)한 차량의 배치도를 그 이름 아래 같은 열에 표시(이름은 탭이 대신하므로 프레임 생략)
+body_cols = st.columns(total_cars)
+with body_cols[st.session_state.active_car_idx]:
     _render_car_body(resolved_cars[st.session_state.active_car_idx], show_name=False)
 
 # 7. 좌석 선택 시 뜨는 외근 신청 정보 입력 팝업(모달 다이얼로그)
