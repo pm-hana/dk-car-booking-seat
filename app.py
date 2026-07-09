@@ -1365,74 +1365,93 @@ def on_seat_click(car_name, seat):
         st.session_state.input_user_arrival_time_tick = datetime.time(0, 0)
     st.session_state.duplicate_error_msg = None
 
-cols_cars = st.columns(total_cars)
+# ── 전 차량 상태(표시명·인승·모델키·로고) 계산 (배치도 렌더와 분리) ──
+#  resolved_cars는 아래 예약 현황판 컬럼에서도 쓰이므로 앱/웹 모드와 무관하게 항상 전 차량을 채운다.
 resolved_cars = []
+for car in cars_data:
+    if car["name"] == "TAXI":
+        ti = car["taxi_index"]
+        nav_label = "TAXI" if ti == 1 else f"TAXI {ti}"
+        prefix = nav_label
+        seats_count = car["seats"]
+        display_name = f"{prefix} ({seats_count} SEAT)"
+        mk, logo_html = "taxi7", brand_logo("TAXI")
+    else:
+        nav_label = car["name"]
+        seats_count = car["seats"]
+        display_name = f"{car['name']} ({seats_count} SEAT)"
+        mk, logo_html = _model_key(car["name"]), brand_logo(car["name"])
+    st.session_state.selected_seat_state.setdefault(display_name, "-- 선택 --")
+    resolved_cars.append({
+        "display_name": display_name, "layout": car["layout"], "seats": seats_count,
+        "is_taxi": car["name"] == "TAXI", "taxi_index": car.get("taxi_index"),
+        "nav_label": nav_label, "mk": mk, "logo_html": logo_html,
+    })
+
 selected_seat_trigger = None
 
-for i, car in enumerate(cars_data):
-    with cols_cars[i]:
-        # ── (1) 차량명 + (2) 인승 선택 ────────────────────────────────
-        if car["name"] == "TAXI":
-            ti = car["taxi_index"]
-            # TAXI: 인승 선택(4/7 토글) 삭제 → 6인승(2-3-2) 고정. 제목은 다른 차량과 동일하게 중앙 정렬.
-            #  택시 1대(n_taxi=1)뿐이라 번호 없이 'TAXI'만 표시. (다대수 확장 시 'TAXI {ti}')
-            taxi_title = "TAXI" if ti == 1 else f"TAXI {ti}"
-            st.markdown(f'<div class="car-header-center">{car_title_frame("taxi7", brand_logo("TAXI") + taxi_title)}</div>', unsafe_allow_html=True)
-            # 첫 TAXI는 기존 예약 호환을 위해 접미 번호 없이 'TAXI (N SEAT)' 유지
-            prefix = "TAXI" if ti == 1 else f"TAXI {ti}"
-            layout_type = car["layout"]      # "2-3-2"
-            seats_count = car["seats"]       # 6
-            display_name = f"{prefix} ({seats_count} SEAT)"
-        else:
-            # 택시 외 차량: 제목만 표시(인승 배지 없음). 차량명 프레임 배경 = 외관색.
-            st.markdown(f'<div class="car-header-center">{car_title_frame(_model_key(car["name"]), brand_logo(car["name"]) + car["name"])}</div>', unsafe_allow_html=True)
-            layout_type = car["layout"]
-            seats_count = car["seats"]
-            display_name = f"{car['name']} ({seats_count} SEAT)"
+def _render_car_body(car_rc, show_name=True):
+    """차량 1대: (선택) 이름 프레임 + 배치도 + 선택 트리거 + SEATSEL 숨김버튼.
+    선택된 빈자리가 있으면 전역 selected_seat_trigger를 세팅한다."""
+    global selected_seat_trigger
+    if show_name:
+        st.markdown(f'<div class="car-header-center">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
+    # 좌석 배치도 본체
+    st.markdown(f'<div class="car-layout-container">{render_car_layout(car_rc["display_name"], car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
+    booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
+    available_seats = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked_seats]
+    # 좌석 선택은 배치도(SVG) 클릭만 사용. 클릭으로 세팅된 selected_seat_state를 읽어 팝업 트리거 구성.
+    if available_seats:
+        current_sel = st.session_state.selected_seat_state.get(car_rc["display_name"], "-- 선택 --")
+        if current_sel != "-- 선택 --" and current_sel not in available_seats:
+            current_sel = "-- 선택 --"
+            st.session_state.selected_seat_state[car_rc["display_name"]] = "-- 선택 --"
+        if current_sel != "-- 선택 --":
+            seat_num = int(current_sel.split(" ")[1])
+            selected_seat_trigger = (car_rc["display_name"], seat_num)
+    else:
+        st.error(t("full"))
+    # ⚡ SVG 빈 좌석 클릭 시 JS가 대신 눌러줄 숨김 버튼(soft rerun)
+    for seat in range(1, car_rc["seats"] + 1):
+        if f"좌석 {seat}" in available_seats:
+            st.button(
+                f"SEATSEL::{car_rc['display_name']}::{seat}",
+                key=f"seatsel_{car_rc['display_name']}_{seat}",
+                on_click=on_seat_click,
+                args=(car_rc["display_name"], seat),
+            )
 
-        # 동적으로 늘어난 TAXI 등 신규 차량도 선택 상태 레지스트리에 안전하게 초기화
-        st.session_state.selected_seat_state.setdefault(display_name, "-- 선택 --")
-        car_rc = {
-            "display_name": display_name,
-            "layout": layout_type,
-            "seats": seats_count,
-            "is_taxi": car["name"] == "TAXI",
-            "taxi_index": car.get("taxi_index"),
-        }
-        resolved_cars.append(car_rc)
-
-        # ── (3) 좌석 배치도 본체 + 선택 연동 (바로 위가 이 차량의 제목·인승) ──
-        st.markdown(f'<div class="car-layout-container">{render_car_layout(car_rc["display_name"], car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
-
-        # 실시간 빈 좌석 리스트 동적 추출
-        booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
-        available_seats = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked_seats]
-
-        # 좌석 선택은 배치도(SVG) 클릭만 사용 — '-- 선택 --' 드롭다운 토글은 제거(요청).
-        # 클릭으로 세팅된 selected_seat_state를 읽어 신청 팝업 트리거를 구성한다.
-        if available_seats:
-            current_sel = st.session_state.selected_seat_state.get(car_rc["display_name"], "-- 선택 --")
-            # 선택 상태가 현재 빈 좌석 목록에 없으면(방금 예약돼 사라진 좌석 등) 안전하게 리셋
-            if current_sel != "-- 선택 --" and current_sel not in available_seats:
-                current_sel = "-- 선택 --"
-                st.session_state.selected_seat_state[car_rc["display_name"]] = "-- 선택 --"
-            if current_sel != "-- 선택 --":
-                seat_num = int(current_sel.split(" ")[1])
-                selected_seat_trigger = (car_rc["display_name"], seat_num)
-        else:
-            st.error(t("full"))
-
-        # ⚡ [부드러운 클릭 선택] SVG 빈 좌석 클릭 시 JS가 대신 눌러줄 숨김 버튼 세트.
-        # 전체 페이지 새로고침(href) 대신 웹소켓 기반 soft rerun으로 처리해 깜빡임을 제거한다.
-        # on_click 콜백은 위젯 생성 전에 실행되어 selectbox 상태를 안전하게 세팅할 수 있다.
-        for seat in range(1, car_rc["seats"] + 1):
-            if f"좌석 {seat}" in available_seats:
-                st.button(
-                    f"SEATSEL::{car_rc['display_name']}::{seat}",
-                    key=f"seatsel_{car_rc['display_name']}_{seat}",
-                    on_click=on_seat_click,
-                    args=(car_rc["display_name"], seat)
-                )
+if IS_MOBILE:
+    # 앱 기준(?m=1): 기존대로 각 차량을 컬럼에 나란히(이름 프레임 + 배치도)
+    cols_cars = st.columns(total_cars)
+    for i, car_rc in enumerate(resolved_cars):
+        with cols_cars[i]:
+            _render_car_body(car_rc, show_name=True)
+else:
+    # 웹 기준(루트): 차량 이름 4개를 가로 탭으로 배치 → 클릭한 차량의 배치도만 그 아래에 표시
+    if "active_car_idx" not in st.session_state or st.session_state.active_car_idx >= total_cars:
+        st.session_state.active_car_idx = 0
+    # 탭 버튼 색을 차량 외관색(프레임색)으로 + 활성 강조(테두리 두껍게·불투명). 동적 CSS 주입.
+    _nav_css = ['<style>[class*="st-key-carnav_"] button { min-height: 46px !important; font-size: 15px !important; font-weight: 700 !important; border-radius: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important; }']
+    for i, car_rc in enumerate(resolved_cars):
+        _bg, _fg, _bd = CAR_FRAME_STYLE.get(car_rc["mk"], CAR_FRAME_STYLE["innova"])
+        _act = (i == st.session_state.active_car_idx)
+        _nav_css.append(
+            f'.st-key-carnav_{i} button {{ background: {_bg} !important; color: {_fg} !important; '
+            f'border: {"3px" if _act else "1px"} solid {_bd} !important; opacity: {"1" if _act else "0.55"} !important; }}'
+        )
+    _nav_css.append("</style>")
+    st.markdown("".join(_nav_css), unsafe_allow_html=True)
+    nav_cols = st.columns(total_cars)
+    for i, car_rc in enumerate(resolved_cars):
+        with nav_cols[i]:
+            if st.button(car_rc["nav_label"], key=f"carnav_{i}", use_container_width=True):
+                st.session_state.active_car_idx = i
+                st.rerun()
+    # 클릭(활성)한 차량의 배치도를 그 이름 아래 같은 열에 표시(이름은 탭이 대신하므로 프레임 생략)
+    body_cols = st.columns(total_cars)
+    with body_cols[st.session_state.active_car_idx]:
+        _render_car_body(resolved_cars[st.session_state.active_car_idx], show_name=False)
 
 # 7. 좌석 선택 시 뜨는 외근 신청 정보 입력 팝업(모달 다이얼로그)
 def _reset_booking_selection():
