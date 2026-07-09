@@ -7,7 +7,7 @@ st.set_page_config(page_title="DK CAR BOOKING", page_icon="🚗", layout="wide")
 # [관리자 PIN] INNOVA·SEDONA '운전석'을 클릭하면 뜨는 관리자 로그인 팝업에서 입력하는 4자리 숫자(0~9) PIN.
 #   인증에 성공하면 '전체 예약 초기화' 등 관리자 기능이 잠금 해제된다(공용 PIN 1개, 저장 없이 매번 입력).
 #   주의: 이 값은 소스에 그대로 있어 배포 저장소에 노출되는 내부용 간이 게이트다. 필요 시 여기만 바꾸면 된다.
-ADMIN_PIN = "0000"
+ADMIN_PIN = "1234"
 
 # 2. 시스템 버전 및 새로고침 업데이트 카운터 연산 (00h 기준 초기화 및 mmdd ver.N 포맷, app.py 수정 저장 시 자동 감지 갱신)
 import json
