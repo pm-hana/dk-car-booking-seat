@@ -67,6 +67,24 @@ st.markdown("""
         visibility: hidden !important;
     }
 
+    /* ===== 팝업(다이얼로그) 공통: 좁은 화면(폰)에서도 웹과 동일한 구성 유지 ===== */
+    /* 날짜/시간 3칸·버튼 2칸 등 폼 컬럼이 폰에서 세로로 쌓이지 않고 한 줄 가로 유지되게
+       (Streamlit 모바일 반응형이 컬럼에 min-width:100%를 걸어 wrap 되는 것을 해제) */
+    [role="dialog"] [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+    }
+    [role="dialog"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important;
+        width: auto !important;
+        flex: 1 1 0% !important;
+    }
+    /* 팝업 닫기(X) 아이콘을 다이얼로그 제목(24px)과 동일 크기로 확대 */
+    [role="dialog"] button[aria-label="Close"] svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
     [data-testid="stAppViewBlockContainer"],
