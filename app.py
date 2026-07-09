@@ -1367,7 +1367,7 @@ def on_seat_click(car_name, seat):
         st.session_state[f"dropdown_trigger_spec_{car_name}"] = seat_label
         st.session_state.active_booking_car = car_name
         st.session_state.editing_booking = None  # 새 예약(수정 아님)
-        st.session_state.seatmap_car = None      # 앱: 좌석맵 팝업 닫고 → 신청 팝업으로 전환
+        # 앱: 좌석맵 팝업은 그대로 두고(seatmap_car 유지) → 같은 팝업이 신청 폼으로 전환된다
         # 출발 시간 = 실시간(베트남 UTC+7) 기준 '가장 빨리 오는 5분 슬롯'으로 올림(step=5분과 정렬). 예: 19:02 → 19:05.
         _vn_now = now_vn()
         _slot = ((((_vn_now.hour * 60 + _vn_now.minute) + 4) // 5) * 5) % (24 * 60)
@@ -1431,6 +1431,90 @@ def _render_car_body(car_rc, show_name=True):
                 args=(car_rc["display_name"], seat),
             )
 
+def _booking_form(car_target, seat_target):
+    """차량 신청/수정 입력 폼 본체 — 웹 신청 팝업(booking_dialog)과 앱 좌석맵 팝업에서 공용.
+    완료/취소 시 앱 좌석맵 팝업(seatmap_car)도 함께 닫는다."""
+    form_title = t("form_edit", car=car_target, seat=seat_target) if st.session_state.editing_booking else t("form_new", car=car_target, seat=seat_target)
+    st.markdown(f"""
+    <div style="margin-bottom: 12px;">
+        <h4 style="color: #38bdf8; margin: 0; font-size: 15px;">{form_title}</h4>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.session_state.duplicate_error_msg:
+        st.markdown(f"""
+        <div class="custom-error-box">
+            <span class="custom-error-text">{st.session_state.duplicate_error_msg}</span>
+        </div>
+        <div style="margin-bottom: 10px;"></div>
+        """, unsafe_allow_html=True)
+
+    u_name = st.text_input(t("f_name"), placeholder=t("f_name_ph"), key="input_user_real_name")
+    u_dep = st.text_input(t("f_dep"), placeholder=t("f_dep_ph"), key="input_user_departure_loc")
+    u_dest = st.text_input(t("f_dest"), placeholder=t("f_dest_ph"), key="input_user_destination_loc")
+    fc1, fc2, fc3 = st.columns(3)
+    with fc1:
+        u_date = st.date_input(t("f_date"), key="input_user_departure_date")
+    with fc2:
+        u_time = st.time_input(t("f_time"), step=300, key="input_user_departure_time_tick")
+    with fc3:
+        u_arrive = st.time_input(t("f_arrive"), step=300, key="input_user_arrival_time_tick")
+
+    act_col1, act_col2 = st.columns(2)
+    with act_col1:
+        btn_label = t("btn_update") if st.session_state.editing_booking else t("btn_submit")
+        if st.button(btn_label, type="primary", key="submit_booking_form_btn", use_container_width=True):
+            if u_name and u_name.strip() and u_dest and u_dest.strip():
+                is_duplicate = False
+                for booked_car_seat, booked_info in st.session_state.bookings.items():
+                    if st.session_state.editing_booking:
+                        if booked_car_seat == st.session_state.editing_booking:
+                            continue
+                    if booked_info["name"].strip() == u_name.strip():
+                        is_duplicate = True
+                        break
+                if is_duplicate:
+                    st.session_state.duplicate_error_msg = t("dup_error", name=u_name)
+                    st.rerun()
+                else:
+                    time_str = u_time.strftime("%H:%M")
+                    arrive_str = u_arrive.strftime("%H:%M") if u_arrive else ""
+                    date_str = u_date.strftime("%Y-%m-%d") if u_date else datetime.date.today().strftime("%Y-%m-%d")
+                    created_at = now_vn().strftime("%Y-%m-%d %H:%M:%S")
+                    if st.session_state.editing_booking:
+                        old_key = st.session_state.editing_booking
+                        if old_key in st.session_state.bookings:
+                            prev = st.session_state.bookings[old_key]
+                            if prev.get("created_at"):
+                                created_at = prev["created_at"]
+                            del st.session_state.bookings[old_key]
+                        st.session_state.editing_booking = None
+                    st.session_state.bookings[(car_target, seat_target)] = {
+                        "name": u_name.strip(),
+                        "departure": u_dep.strip() if u_dep else "",
+                        "destination": u_dest.strip(),
+                        "date": date_str,
+                        "time": time_str,
+                        "arrive": arrive_str,
+                        "created_at": created_at
+                    }
+                    st.session_state.duplicate_error_msg = None
+                    save_bookings(st.session_state.bookings)
+                    st.session_state.selected_seat_state[car_target] = "-- 선택 --"
+                    st.session_state.seatmap_car = None   # 앱 좌석맵 팝업도 함께 닫힘
+                    st.toast(t("toast_booked", name=u_name, seat=seat_target))
+                    st.rerun()
+            else:
+                st.error(t("err_name_dest"))
+    with act_col2:
+        if st.button(t("btn_cancel"), key="cancel_booking_dialog_btn", use_container_width=True):
+            st.session_state.selected_seat_state[car_target] = "-- 선택 --"
+            st.session_state[f"dropdown_trigger_spec_{car_target}"] = "-- 선택 --"
+            st.session_state.editing_booking = None
+            st.session_state.duplicate_error_msg = None
+            st.session_state.seatmap_car = None   # 앱 좌석맵 팝업도 함께 닫힘
+            st.rerun()
+
 def _close_seatmap():
     st.session_state.seatmap_car = None
 
@@ -1440,23 +1524,34 @@ def _open_seatmap(display_name):
 
 @st.dialog(t("seatmap_title"), on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
-    """앱: 차량 이름 클릭 시 뜨는 좌석 배치도 팝업. 빈 좌석 클릭 → 좌석맵 닫고 신청 팝업으로 전환."""
+    """앱: 차량 이름 클릭 시 뜨는 팝업. 좌석 미선택이면 좌석 배치도, 좌석 클릭 시 같은 팝업이 신청 폼으로 전환."""
+    car = car_rc["display_name"]
+    booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car]
+    sel = st.session_state.selected_seat_state.get(car, "-- 선택 --")
+    # 좌석이 선택된 상태면 별도 팝업 전환 없이 '같은 팝업 안'에서 신청 폼을 보여준다(2개 dialog 전환 제약 회피).
+    if sel != "-- 선택 --":
+        try:
+            seat_num = int(sel.split(" ")[1])
+        except Exception:
+            seat_num = None
+        if seat_num and seat_num not in booked:
+            _booking_form(car, seat_num)
+            return
+    # 아직 미선택 → 좌석 배치도 + 빈좌석 SEATSEL 숨김버튼(클릭 시 on_seat_click이 좌석 선택 → 폼으로 전환)
     st.markdown(f'<div class="car-header-center" style="margin-top:0!important;">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="car-layout-container" style="width:100%!important;">{render_car_layout(car_rc["display_name"], car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
-    booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
+    st.markdown(f'<div class="car-layout-container" style="width:100%!important;">{render_car_layout(car, car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
     available = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked]
     if not available:
         st.error(t("full"))
     else:
         st.caption(t("seatmap_hint"))
-    # SVG 빈 좌석 클릭을 대신 눌러줄 숨김 버튼(JS 브릿지). 클릭 시 on_seat_click이 좌석맵을 닫고 신청 트리거 세팅.
     for seat in range(1, car_rc["seats"] + 1):
         if f"좌석 {seat}" in available:
             st.button(
-                f"SEATSEL::{car_rc['display_name']}::{seat}",
-                key=f"seatsel_{car_rc['display_name']}_{seat}",
+                f"SEATSEL::{car}::{seat}",
+                key=f"seatsel_{car}_{seat}",
                 on_click=on_seat_click,
-                args=(car_rc["display_name"], seat),
+                args=(car, seat),
             )
 
 if IS_MOBILE:
@@ -1517,96 +1612,8 @@ def _reset_booking_selection():
 
 @st.dialog(t("dialog_title"), on_dismiss=_reset_booking_selection)
 def booking_dialog(car_target, seat_target):
-    form_title = t("form_edit", car=car_target, seat=seat_target) if st.session_state.editing_booking else t("form_new", car=car_target, seat=seat_target)
-    st.markdown(f"""
-    <div style="margin-bottom: 12px;">
-        <h4 style="color: #38bdf8; margin: 0; font-size: 15px;">{form_title}</h4>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if st.session_state.duplicate_error_msg:
-        st.markdown(f"""
-        <div class="custom-error-box">
-            <span class="custom-error-text">{st.session_state.duplicate_error_msg}</span>
-        </div>
-        <div style="margin-bottom: 10px;"></div>
-        """, unsafe_allow_html=True)
-
-    u_name = st.text_input(t("f_name"), placeholder=t("f_name_ph"), key="input_user_real_name")
-    u_dep = st.text_input(t("f_dep"), placeholder=t("f_dep_ph"), key="input_user_departure_loc")
-    u_dest = st.text_input(t("f_dest"), placeholder=t("f_dest_ph"), key="input_user_destination_loc")
-    # 4·5·6번 필드를 동일 폭 3등분으로 병렬 배치
-    fc1, fc2, fc3 = st.columns(3)
-    with fc1:
-        u_date = st.date_input(t("f_date"), key="input_user_departure_date")
-    with fc2:
-        u_time = st.time_input(t("f_time"), step=300, key="input_user_departure_time_tick")
-    with fc3:
-        u_arrive = st.time_input(t("f_arrive"), step=300, key="input_user_arrival_time_tick")
-
-    act_col1, act_col2 = st.columns(2)
-    with act_col1:
-        btn_label = t("btn_update") if st.session_state.editing_booking else t("btn_submit")
-        if st.button(btn_label, type="primary", key="submit_booking_form_btn", use_container_width=True):
-            # 공백만 입력된 경우도 미입력으로 간주하여 방어
-            if u_name and u_name.strip() and u_dest and u_dest.strip():
-                is_duplicate = False
-                for booked_car_seat, booked_info in st.session_state.bookings.items():
-                    # 수정 중일 경우 자기 자신의 원래 정보명은 중복 검사에서 제외
-                    if st.session_state.editing_booking:
-                        if booked_car_seat == st.session_state.editing_booking:
-                            continue
-                    if booked_info["name"].strip() == u_name.strip():
-                        is_duplicate = True
-                        break
-
-                if is_duplicate:
-                    st.session_state.duplicate_error_msg = t("dup_error", name=u_name)
-                    st.rerun()
-                else:
-                    time_str = u_time.strftime("%H:%M")
-                    arrive_str = u_arrive.strftime("%H:%M") if u_arrive else ""
-                    date_str = u_date.strftime("%Y-%m-%d") if u_date else datetime.date.today().strftime("%Y-%m-%d")
-
-                    # 신청일시: 신규 신청은 신청완료 클릭 순간의 실시간(베트남 UTC+7)으로 자동 기록.
-                    #  수정 모드면 기존 신청일시를 보존(수정은 최초 신청 시각을 바꾸지 않음).
-                    created_at = now_vn().strftime("%Y-%m-%d %H:%M:%S")
-
-                    # 예약 수정 모드였을 시 기존 예약을 삭제 후 이동 등록
-                    if st.session_state.editing_booking:
-                        old_key = st.session_state.editing_booking
-                        if old_key in st.session_state.bookings:
-                            prev = st.session_state.bookings[old_key]
-                            if prev.get("created_at"):
-                                created_at = prev["created_at"]  # 최초 신청일시 유지
-                            del st.session_state.bookings[old_key]
-                        st.session_state.editing_booking = None
-
-                    st.session_state.bookings[(car_target, seat_target)] = {
-                        "name": u_name.strip(),
-                        "departure": u_dep.strip() if u_dep else "",
-                        "destination": u_dest.strip(),
-                        "date": date_str,
-                        "time": time_str,
-                        "arrive": arrive_str,
-                        "created_at": created_at
-                    }
-                    st.session_state.duplicate_error_msg = None  # 성공 시 기존 경고 제거
-                    save_bookings(st.session_state.bookings)
-                    # 예약 완료 → 선택값 리셋 → 전체 rerun 시 팝업 자동 닫힘
-                    st.session_state.selected_seat_state[car_target] = "-- 선택 --"
-                    st.toast(t("toast_booked", name=u_name, seat=seat_target))
-                    st.rerun()
-            else:
-                st.error(t("err_name_dest"))
-    with act_col2:
-        # 취소 → 선택했던 빈자리 리셋 후 팝업 닫힘
-        if st.button(t("btn_cancel"), key="cancel_booking_dialog_btn", use_container_width=True):
-            st.session_state.selected_seat_state[car_target] = "-- 선택 --"
-            st.session_state[f"dropdown_trigger_spec_{car_target}"] = "-- 선택 --"
-            st.session_state.editing_booking = None
-            st.session_state.duplicate_error_msg = None
-            st.rerun()
+    # 웹 신청/수정 팝업 — 공용 폼(_booking_form)을 그대로 사용
+    _booking_form(car_target, seat_target)
 
 # 앱 좌석맵 팝업 등에서 좌석이 선택되면 selected_seat_state에서 신청 트리거를 도출(웹은 위 _render_car_body에서 세팅됨).
 if not selected_seat_trigger:
@@ -1626,11 +1633,13 @@ if not selected_seat_trigger:
 if st.session_state.editing_booking and not selected_seat_trigger:
     selected_seat_trigger = st.session_state.editing_booking
 
-# 선택된 빈자리(또는 수정 대상)가 있으면 신청/수정 팝업을 띄운다
+# 선택된 빈자리(또는 수정 대상)가 있으면 신청/수정 팝업을 띄운다.
+#  단, 앱에서 좌석맵 팝업이 열려 있으면 신청 폼은 그 팝업 안에서 처리하므로 top-level 팝업은 건너뛴다(2중 dialog 방지).
 if selected_seat_trigger:
     car_target, seat_target = selected_seat_trigger
     st.session_state.active_booking_car = car_target
-    booking_dialog(car_target, seat_target)
+    if not (IS_MOBILE and st.session_state.get("seatmap_car")):
+        booking_dialog(car_target, seat_target)
 
 # ── 엑셀 데이터 내보내기(탑승 이력) 팝업 ─────────────────────────────
 def _build_history_xlsx(rows):
