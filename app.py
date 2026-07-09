@@ -726,8 +726,8 @@ TR = {
         "badge_seats": "{n}인승", "taxi_4": "4인승", "taxi_7": "7인승", "taxi_count": "TAXI 대수",
         "seats_left": "{n}자리 있음",
         "select_ph": "-- 선택 --", "seat_select": "{car} 좌석 선택", "full": "❌ 만차 (잔여 좌석 없음)",
-        "seatmap_title": "🚗 좌석 선택", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
-        "dialog_title": "📝 차량 신청 정보 입력",
+        "seatmap_title": "📝 신청 정보 입력", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
+        "dialog_title": "📝 차량 신청 정보 입력", "form_step_title": "📝 신청 정보 입력",
         "form_edit": "[{car}] 좌석 {seat} · 차량 예약 수정", "form_new": "[{car}] 좌석 {seat} · 차량 신청",
         "dup_error": "⚠️ 중복 신청 거부: [{name}]님은 이미 다른 차량에 배차되어 있습니다!",
         "f_name": "1. 신청자 이름", "f_name_ph": "예: 홍길동 PM",
@@ -769,8 +769,8 @@ TR = {
         "badge_seats": "{n}-seater", "taxi_4": "4-Seat", "taxi_7": "7-Seat", "taxi_count": "TAXI count",
         "seats_left": "{n} SEAT LEFT",
         "select_ph": "-- Select --", "seat_select": "{car} seat select", "full": "❌ Full (no seats left)",
-        "seatmap_title": "🚗 Select Seat", "seatmap_hint": "Click an empty seat to open the request form.",
-        "dialog_title": "📝 Vehicle Request",
+        "seatmap_title": "📝 Request Info", "seatmap_hint": "Click an empty seat to open the request form.",
+        "dialog_title": "📝 Vehicle Request", "form_step_title": "📝 Request Info",
         "form_edit": "[{car}] Seat {seat} · Edit Request", "form_new": "[{car}] Seat {seat} · New Request",
         "dup_error": "⚠️ Duplicate rejected: [{name}] is already assigned to another vehicle!",
         "f_name": "1. Applicant name", "f_name_ph": "e.g. John Doe (PM)",
@@ -1392,7 +1392,7 @@ def on_seat_click(car_name, seat):
         st.session_state[f"dropdown_trigger_spec_{car_name}"] = seat_label
         st.session_state.active_booking_car = car_name
         st.session_state.editing_booking = None  # 새 예약(수정 아님)
-        # 앱: 좌석맵 팝업은 그대로 두고(seatmap_car 유지) → 같은 팝업이 신청 폼으로 전환된다
+        # 좌석맵 팝업(seatmap_car)은 그대로 두고 → 같은 팝업 안에서 신청 폼으로 전환된다(2개 dialog 전환 제약 회피)
         # 출발 시간 = 실시간(베트남 UTC+7) 기준 '가장 빨리 오는 5분 슬롯'으로 올림(step=5분과 정렬). 예: 19:02 → 19:05.
         _vn_now = now_vn()
         _slot = ((((_vn_now.hour * 60 + _vn_now.minute) + 4) // 5) * 5) % (24 * 60)
@@ -1541,6 +1541,14 @@ def _booking_form(car_target, seat_target):
             st.rerun()
 
 def _close_seatmap():
+    # X·바깥클릭·ESC로 닫을 때: seatmap_car만 지우면 선택 좌석이 남아 top-level에서 booking_dialog가
+    # 다시 열려 '안 닫힘'처럼 보인다 → 선택 좌석·수정상태·에러까지 함께 리셋해 완전히 닫는다.
+    car = st.session_state.get("seatmap_car")
+    if car and car in st.session_state.get("selected_seat_state", {}):
+        st.session_state.selected_seat_state[car] = "-- 선택 --"
+        st.session_state[f"dropdown_trigger_spec_{car}"] = "-- 선택 --"
+    st.session_state.editing_booking = None
+    st.session_state.duplicate_error_msg = None
     st.session_state.seatmap_car = None
 
 def _open_seatmap(display_name):
@@ -1549,11 +1557,12 @@ def _open_seatmap(display_name):
 
 @st.dialog(t("seatmap_title"), on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
-    """앱: 차량 이름 클릭 시 뜨는 팝업. 좌석 미선택이면 좌석 배치도, 좌석 클릭 시 같은 팝업이 신청 폼으로 전환."""
+    """차량 이름 클릭 시 뜨는 '📝 신청 정보 입력' 팝업. 좌석 미선택이면 좌석 배치도, 좌석 클릭 시
+    같은 팝업 안에서 신청 폼으로 전환된다(Streamlit 다이얼로그 title은 열려 있는 동안 못 바꿔 두 단계 동일 제목)."""
     car = car_rc["display_name"]
     booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car]
     sel = st.session_state.selected_seat_state.get(car, "-- 선택 --")
-    # 좌석이 선택된 상태면 별도 팝업 전환 없이 '같은 팝업 안'에서 신청 폼을 보여준다(2개 dialog 전환 제약 회피).
+    # 좌석이 선택된 상태면 같은 팝업 안에서 신청 폼을 보여준다.
     if sel != "-- 선택 --":
         try:
             seat_num = int(sel.split(" ")[1])
@@ -1609,9 +1618,9 @@ def _reset_booking_selection():
     st.session_state.editing_booking = None
     st.session_state.duplicate_error_msg = None
 
-@st.dialog(t("dialog_title"), on_dismiss=_reset_booking_selection)
+@st.dialog(t("form_step_title"), on_dismiss=_reset_booking_selection)
 def booking_dialog(car_target, seat_target):
-    # 웹 신청/수정 팝업 — 공용 폼(_booking_form)을 그대로 사용
+    # 신청/수정 팝업('📝 신청 정보 입력') — 공용 폼(_booking_form)을 그대로 사용
     _booking_form(car_target, seat_target)
 
 # 앱 좌석맵 팝업 등에서 좌석이 선택되면 selected_seat_state에서 신청 트리거를 도출(웹은 위 _render_car_body에서 세팅됨).
