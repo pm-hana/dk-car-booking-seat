@@ -45,7 +45,8 @@ st.markdown("""
         background-color: #0f1014 !important;
     }
 
-    /* 우측 상단 Streamlit 기본 UI(Fork 배지·GitHub·⋮ 메뉴·상단 데코바·푸터) 전부 숨김 */
+    /* 우측 상단 Streamlit 기본 UI(Fork 배지·GitHub·⋮ 메뉴·상단 데코바·푸터) 전부 숨김
+       + 우하단 'Hosted with Streamlit' 배지(Community Cloud)까지 신·구 셀렉터 모두 차단 */
     #MainMenu,
     header[data-testid="stHeader"],
     [data-testid="stToolbar"],
@@ -53,6 +54,12 @@ st.markdown("""
     [data-testid="stDecoration"],
     [data-testid="stStatusWidget"],
     [data-testid="stAppViewerBadge"],
+    [class*="viewerBadge"],
+    [class*="_viewerBadge"],
+    [class*="_profileContainer"],
+    [class*="stAppHostedMenu"],
+    a[href*="streamlit.io"],
+    a[href*="share.streamlit.app"],
     .viewerBadge_container__1QSob,
     .stAppDeployButton,
     footer {
@@ -1554,51 +1561,25 @@ def seatmap_dialog(car_rc):
                 args=(car, seat),
             )
 
-if IS_MOBILE:
-    # 앱 기준(?m=1): 차량 이름 4개를 세로 4줄(각 가로 바, 로고+이름 유지)로 배치.
-    #  이름 바를 클릭하면 해당 차량 좌석 배치도가 팝업(seatmap_dialog)으로 뜬다.
-    if "seatmap_car" not in st.session_state:
+# 차량 이름 바(로고+이름) 4개를 세로로 배치 — 웹(루트)·앱(?m=1) 완전 동일 레이아웃(메모: UI 양쪽 동일).
+#  메인 화면엔 차량 네이밍 바만 노출하고, 바를 클릭하면 해당 차량 좌석 배치도가 팝업(seatmap_dialog)으로 뜬다.
+if "seatmap_car" not in st.session_state:
+    st.session_state.seatmap_car = None
+for i, car_rc in enumerate(resolved_cars):
+    # 로고+이름 프레임 전체를 클릭 가능하게(car-nav-click) 렌더 + JS가 대신 눌러줄 숨김 버튼
+    st.markdown(
+        f'<div class="car-nav-click" data-navidx="{i}">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>',
+        unsafe_allow_html=True,
+    )
+    # on_click 콜백으로 즉시 상태 세팅 → 단일 rerun에 바로 팝업 오픈(클릭 후 바로 열림)
+    st.button(f"CARNAV::{i}", key=f"carnavclick_{i}", on_click=_open_seatmap, args=(car_rc["display_name"],))
+# 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
+if st.session_state.get("seatmap_car"):
+    _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
+    if _tgt:
+        seatmap_dialog(_tgt)
+    else:
         st.session_state.seatmap_car = None
-    for i, car_rc in enumerate(resolved_cars):
-        # 로고+이름 프레임 전체를 클릭 가능하게(car-nav-click) 렌더 + JS가 대신 눌러줄 숨김 버튼
-        st.markdown(
-            f'<div class="car-nav-click" data-navidx="{i}">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>',
-            unsafe_allow_html=True,
-        )
-        # on_click 콜백으로 즉시 상태 세팅 → 단일 rerun에 바로 팝업 오픈(클릭 후 바로 열림)
-        st.button(f"CARNAV::{i}", key=f"carnavclick_{i}", on_click=_open_seatmap, args=(car_rc["display_name"],))
-    # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
-    if st.session_state.get("seatmap_car"):
-        _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
-        if _tgt:
-            seatmap_dialog(_tgt)
-        else:
-            st.session_state.seatmap_car = None
-else:
-    # 웹 기준(루트): 차량 이름 4개를 가로 탭으로 배치 → 클릭한 차량의 배치도만 그 아래에 표시
-    if "active_car_idx" not in st.session_state or st.session_state.active_car_idx >= total_cars:
-        st.session_state.active_car_idx = 0
-    # 탭 버튼 색을 차량 외관색(프레임색)으로 + 활성 강조(테두리 두껍게·불투명). 동적 CSS 주입.
-    _nav_css = ['<style>[class*="st-key-carnav_"] button { min-height: 46px !important; font-size: 15px !important; font-weight: 700 !important; border-radius: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important; }']
-    for i, car_rc in enumerate(resolved_cars):
-        _bg, _fg, _bd = CAR_FRAME_STYLE.get(car_rc["mk"], CAR_FRAME_STYLE["innova"])
-        _act = (i == st.session_state.active_car_idx)
-        _nav_css.append(
-            f'.st-key-carnav_{i} button {{ background: {_bg} !important; color: {_fg} !important; '
-            f'border: {"3px" if _act else "1px"} solid {_bd} !important; opacity: {"1" if _act else "0.55"} !important; }}'
-        )
-    _nav_css.append("</style>")
-    st.markdown("".join(_nav_css), unsafe_allow_html=True)
-    nav_cols = st.columns(total_cars)
-    for i, car_rc in enumerate(resolved_cars):
-        with nav_cols[i]:
-            if st.button(car_rc["nav_label"], key=f"carnav_{i}", use_container_width=True):
-                st.session_state.active_car_idx = i
-                st.rerun()
-    # 클릭(활성)한 차량의 배치도를 그 이름 아래 같은 열에 표시(이름은 탭이 대신하므로 프레임 생략)
-    body_cols = st.columns(total_cars)
-    with body_cols[st.session_state.active_car_idx]:
-        _render_car_body(resolved_cars[st.session_state.active_car_idx], show_name=False)
 
 # 7. 좌석 선택 시 뜨는 외근 신청 정보 입력 팝업(모달 다이얼로그)
 def _reset_booking_selection():
@@ -1638,7 +1619,8 @@ if st.session_state.editing_booking and not selected_seat_trigger:
 if selected_seat_trigger:
     car_target, seat_target = selected_seat_trigger
     st.session_state.active_booking_car = car_target
-    if not (IS_MOBILE and st.session_state.get("seatmap_car")):
+    # 좌석맵 팝업이 열려 있으면 신청 폼은 그 팝업 안에서 처리(웹·앱 동일) → top-level 팝업 건너뜀(2중 dialog 방지)
+    if not st.session_state.get("seatmap_car"):
         booking_dialog(car_target, seat_target)
 
 # ── 엑셀 데이터 내보내기(탑승 이력) 팝업 ─────────────────────────────
