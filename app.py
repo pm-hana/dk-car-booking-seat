@@ -84,6 +84,16 @@ st.markdown("""
         width: 24px !important;
         height: 24px !important;
     }
+    /* 좌석 선택/신청 폼 팝업: 크롬 title은 공백(' ')이라 본문 최상단에 단계별 제목을 직접 그린다.
+       크롬 제목 자리(빈 공백)가 차지하는 여백을 줄여, 커스텀 제목이 X와 같은 줄 높이에 오게 한다. */
+    [role="dialog"] .dlg-step-title {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
+        line-height: 1.2 !important;
+        margin: -44px 0 12px 0 !important;   /* 빈 크롬 헤더 높이만큼 끌어올려 X와 같은 줄에 정렬 */
+        padding-right: 40px !important;       /* 우측 X 버튼과 겹치지 않도록 여백 */
+    }
 
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
@@ -726,7 +736,7 @@ TR = {
         "badge_seats": "{n}인승", "taxi_4": "4인승", "taxi_7": "7인승", "taxi_count": "TAXI 대수",
         "seats_left": "{n}자리 있음",
         "select_ph": "-- 선택 --", "seat_select": "{car} 좌석 선택", "full": "❌ 만차 (잔여 좌석 없음)",
-        "seatmap_title": "📝 신청 정보 입력", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
+        "seatmap_title": "🚗 좌석 선택", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
         "dialog_title": "📝 차량 신청 정보 입력", "form_step_title": "📝 신청 정보 입력",
         "form_edit": "[{car}] 좌석 {seat} · 차량 예약 수정", "form_new": "[{car}] 좌석 {seat} · 차량 신청",
         "dup_error": "⚠️ 중복 신청 거부: [{name}]님은 이미 다른 차량에 배차되어 있습니다!",
@@ -769,7 +779,7 @@ TR = {
         "badge_seats": "{n}-seater", "taxi_4": "4-Seat", "taxi_7": "7-Seat", "taxi_count": "TAXI count",
         "seats_left": "{n} SEAT LEFT",
         "select_ph": "-- Select --", "seat_select": "{car} seat select", "full": "❌ Full (no seats left)",
-        "seatmap_title": "📝 Request Info", "seatmap_hint": "Click an empty seat to open the request form.",
+        "seatmap_title": "🚗 Select Seat", "seatmap_hint": "Click an empty seat to open the request form.",
         "dialog_title": "📝 Vehicle Request", "form_step_title": "📝 Request Info",
         "form_edit": "[{car}] Seat {seat} · Edit Request", "form_new": "[{car}] Seat {seat} · New Request",
         "dup_error": "⚠️ Duplicate rejected: [{name}] is already assigned to another vehicle!",
@@ -1555,22 +1565,27 @@ def _open_seatmap(display_name):
     # on_click 콜백 → 위젯 생성 전에 상태 세팅 → 단일 rerun에서 바로 팝업 오픈(이중 rerun 제거로 반응 속도 개선)
     st.session_state.seatmap_car = display_name
 
-@st.dialog(t("seatmap_title"), on_dismiss=_close_seatmap)
+@st.dialog(" ", on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
-    """차량 이름 클릭 시 뜨는 '📝 신청 정보 입력' 팝업. 좌석 미선택이면 좌석 배치도, 좌석 클릭 시
-    같은 팝업 안에서 신청 폼으로 전환된다(Streamlit 다이얼로그 title은 열려 있는 동안 못 바꿔 두 단계 동일 제목)."""
+    """차량 이름 클릭 시 뜨는 팝업. 좌석 미선택이면 '🚗 좌석 선택'(배치도), 좌석 클릭 시 같은 팝업 안에서
+    '📝 신청 정보 입력' 폼으로 전환된다. @st.dialog 크롬 title은 열린 중 못 바꾸므로 공백(' ')으로 두고
+    단계별 제목을 본문 최상단(.dlg-step-title)에 직접 그려 단계별로 구분한다."""
     car = car_rc["display_name"]
     booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car]
     sel = st.session_state.selected_seat_state.get(car, "-- 선택 --")
-    # 좌석이 선택된 상태면 같은 팝업 안에서 신청 폼을 보여준다.
+    seat_num = None
     if sel != "-- 선택 --":
         try:
             seat_num = int(sel.split(" ")[1])
         except Exception:
             seat_num = None
-        if seat_num and seat_num not in booked:
-            _booking_form(car, seat_num)
-            return
+    is_form = seat_num is not None and seat_num not in booked
+    # 단계별 커스텀 제목: 배치도=🚗 좌석 선택 / 신청 폼=📝 신청 정보 입력
+    st.markdown(f'<div class="dlg-step-title">{t("form_step_title") if is_form else t("seatmap_title")}</div>', unsafe_allow_html=True)
+    # 좌석이 선택된 상태면 같은 팝업 안에서 신청 폼을 보여준다.
+    if is_form:
+        _booking_form(car, seat_num)
+        return
     # 아직 미선택 → 좌석 배치도 + 빈좌석 SEATSEL 숨김버튼(클릭 시 on_seat_click이 좌석 선택 → 폼으로 전환)
     st.markdown(f'<div class="car-header-center" style="margin-top:0!important;">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="car-layout-container" style="width:100%!important;">{render_car_layout(car, car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
