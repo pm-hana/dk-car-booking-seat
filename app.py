@@ -1421,37 +1421,31 @@ def _render_car_body(car_rc, show_name=True):
                 args=(car_rc["display_name"], seat),
             )
 
-if IS_MOBILE:
-    # 앱 기준(?m=1): 기존대로 각 차량을 컬럼에 나란히(이름 프레임 + 배치도)
-    cols_cars = st.columns(total_cars)
-    for i, car_rc in enumerate(resolved_cars):
-        with cols_cars[i]:
-            _render_car_body(car_rc, show_name=True)
-else:
-    # 웹 기준(루트): 차량 이름 4개를 가로 탭으로 배치 → 클릭한 차량의 배치도만 그 아래에 표시
-    if "active_car_idx" not in st.session_state or st.session_state.active_car_idx >= total_cars:
-        st.session_state.active_car_idx = 0
-    # 탭 버튼 색을 차량 외관색(프레임색)으로 + 활성 강조(테두리 두껍게·불투명). 동적 CSS 주입.
-    _nav_css = ['<style>[class*="st-key-carnav_"] button { min-height: 46px !important; font-size: 15px !important; font-weight: 700 !important; border-radius: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important; }']
-    for i, car_rc in enumerate(resolved_cars):
-        _bg, _fg, _bd = CAR_FRAME_STYLE.get(car_rc["mk"], CAR_FRAME_STYLE["innova"])
-        _act = (i == st.session_state.active_car_idx)
-        _nav_css.append(
-            f'.st-key-carnav_{i} button {{ background: {_bg} !important; color: {_fg} !important; '
-            f'border: {"3px" if _act else "1px"} solid {_bd} !important; opacity: {"1" if _act else "0.55"} !important; }}'
-        )
-    _nav_css.append("</style>")
-    st.markdown("".join(_nav_css), unsafe_allow_html=True)
-    nav_cols = st.columns(total_cars)
-    for i, car_rc in enumerate(resolved_cars):
-        with nav_cols[i]:
-            if st.button(car_rc["nav_label"], key=f"carnav_{i}", use_container_width=True):
-                st.session_state.active_car_idx = i
-                st.rerun()
-    # 클릭(활성)한 차량의 배치도를 그 이름 아래 같은 열에 표시(이름은 탭이 대신하므로 프레임 생략)
-    body_cols = st.columns(total_cars)
-    with body_cols[st.session_state.active_car_idx]:
-        _render_car_body(resolved_cars[st.session_state.active_car_idx], show_name=False)
+# 웹·앱 공통(동일 UI): 차량 이름 4개를 가로 탭으로 배치 → 클릭한 차량의 배치도만 그 아래에 표시.
+#  (모바일에선 st.columns가 세로로 스택되어 탭이 세로로 쌓이고 배치도가 그 아래 표시됨)
+if "active_car_idx" not in st.session_state or st.session_state.active_car_idx >= total_cars:
+    st.session_state.active_car_idx = 0
+# 탭 버튼 색을 차량 외관색(프레임색)으로 + 활성 강조(테두리 두껍게·불투명). 동적 CSS 주입.
+_nav_css = ['<style>[class*="st-key-carnav_"] button { min-height: 46px !important; font-size: 15px !important; font-weight: 700 !important; border-radius: 9px !important; box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important; }']
+for i, car_rc in enumerate(resolved_cars):
+    _bg, _fg, _bd = CAR_FRAME_STYLE.get(car_rc["mk"], CAR_FRAME_STYLE["innova"])
+    _act = (i == st.session_state.active_car_idx)
+    _nav_css.append(
+        f'.st-key-carnav_{i} button {{ background: {_bg} !important; color: {_fg} !important; '
+        f'border: {"3px" if _act else "1px"} solid {_bd} !important; opacity: {"1" if _act else "0.55"} !important; }}'
+    )
+_nav_css.append("</style>")
+st.markdown("".join(_nav_css), unsafe_allow_html=True)
+nav_cols = st.columns(total_cars)
+for i, car_rc in enumerate(resolved_cars):
+    with nav_cols[i]:
+        if st.button(car_rc["nav_label"], key=f"carnav_{i}", use_container_width=True):
+            st.session_state.active_car_idx = i
+            st.rerun()
+# 클릭(활성)한 차량의 배치도를 그 이름 아래 같은 열에 표시(이름은 탭이 대신하므로 프레임 생략)
+body_cols = st.columns(total_cars)
+with body_cols[st.session_state.active_car_idx]:
+    _render_car_body(resolved_cars[st.session_state.active_car_idx], show_name=False)
 
 # 7. 좌석 선택 시 뜨는 외근 신청 정보 입력 팝업(모달 다이얼로그)
 def _reset_booking_selection():
