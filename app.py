@@ -332,7 +332,8 @@ st.markdown("""
     }
 
     /* 좌석 클릭을 부드러운 rerun으로 처리하기 위한 숨김 버튼 (화면 밖 배치, JS가 대신 클릭) */
-    div[class*="st-key-seatsel_"] {
+    div[class*="st-key-seatsel_"],
+    div[class*="st-key-carnavclick_"] {
         position: fixed !important;
         left: -9999px !important;
         top: -9999px !important;
@@ -342,6 +343,10 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
+    /* 앱: 클릭 가능한 차량 이름 바(로고+이름 프레임 전체가 버튼처럼) */
+    .car-nav-click { cursor: pointer !important; }
+    .car-nav-click .car-name-frame { width: 100% !important; transition: transform 0.08s ease, box-shadow 0.08s ease; }
+    .car-nav-click:hover .car-name-frame { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     
     /* 드래그 대상 마우스 커서 grab/grabbing 형태 지정 */
     [draggable="true"] {
@@ -694,6 +699,7 @@ TR = {
         "badge_seats": "{n}인승", "taxi_4": "4인승", "taxi_7": "7인승", "taxi_count": "TAXI 대수",
         "seats_left": "{n}자리 있음",
         "select_ph": "-- 선택 --", "seat_select": "{car} 좌석 선택", "full": "❌ 만차 (잔여 좌석 없음)",
+        "seatmap_title": "🚗 좌석 선택", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
         "dialog_title": "📝 차량 신청 정보 입력",
         "form_edit": "[{car}] 좌석 {seat} · 차량 예약 수정", "form_new": "[{car}] 좌석 {seat} · 차량 신청",
         "dup_error": "⚠️ 중복 신청 거부: [{name}]님은 이미 다른 차량에 배차되어 있습니다!",
@@ -736,6 +742,7 @@ TR = {
         "badge_seats": "{n}-seater", "taxi_4": "4-Seat", "taxi_7": "7-Seat", "taxi_count": "TAXI count",
         "seats_left": "{n} SEAT LEFT",
         "select_ph": "-- Select --", "seat_select": "{car} seat select", "full": "❌ Full (no seats left)",
+        "seatmap_title": "🚗 Select Seat", "seatmap_hint": "Click an empty seat to open the request form.",
         "dialog_title": "📝 Vehicle Request",
         "form_edit": "[{car}] Seat {seat} · Edit Request", "form_new": "[{car}] Seat {seat} · New Request",
         "dup_error": "⚠️ Duplicate rejected: [{name}] is already assigned to another vehicle!",
@@ -1358,6 +1365,7 @@ def on_seat_click(car_name, seat):
         st.session_state[f"dropdown_trigger_spec_{car_name}"] = seat_label
         st.session_state.active_booking_car = car_name
         st.session_state.editing_booking = None  # 새 예약(수정 아님)
+        st.session_state.seatmap_car = None      # 앱: 좌석맵 팝업 닫고 → 신청 팝업으로 전환
         # 출발 시간 = 실시간(베트남 UTC+7) 기준 '가장 빨리 오는 5분 슬롯'으로 올림(step=5분과 정렬). 예: 19:02 → 19:05.
         _vn_now = now_vn()
         _slot = ((((_vn_now.hour * 60 + _vn_now.minute) + 4) // 5) * 5) % (24 * 60)
@@ -1421,12 +1429,51 @@ def _render_car_body(car_rc, show_name=True):
                 args=(car_rc["display_name"], seat),
             )
 
+def _close_seatmap():
+    st.session_state.seatmap_car = None
+
+@st.dialog(t("seatmap_title"), on_dismiss=_close_seatmap)
+def seatmap_dialog(car_rc):
+    """앱: 차량 이름 클릭 시 뜨는 좌석 배치도 팝업. 빈 좌석 클릭 → 좌석맵 닫고 신청 팝업으로 전환."""
+    st.markdown(f'<div class="car-header-center" style="margin-top:0!important;">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="car-layout-container" style="width:100%!important;">{render_car_layout(car_rc["display_name"], car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
+    booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
+    available = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked]
+    if not available:
+        st.error(t("full"))
+    else:
+        st.caption(t("seatmap_hint"))
+    # SVG 빈 좌석 클릭을 대신 눌러줄 숨김 버튼(JS 브릿지). 클릭 시 on_seat_click이 좌석맵을 닫고 신청 트리거 세팅.
+    for seat in range(1, car_rc["seats"] + 1):
+        if f"좌석 {seat}" in available:
+            st.button(
+                f"SEATSEL::{car_rc['display_name']}::{seat}",
+                key=f"seatsel_{car_rc['display_name']}_{seat}",
+                on_click=on_seat_click,
+                args=(car_rc["display_name"], seat),
+            )
+
 if IS_MOBILE:
-    # 앱 기준(?m=1): 기존대로 각 차량을 컬럼에 나란히(이름 프레임 + 배치도)
-    cols_cars = st.columns(total_cars)
+    # 앱 기준(?m=1): 차량 이름 4개를 세로 4줄(각 가로 바, 로고+이름 유지)로 배치.
+    #  이름 바를 클릭하면 해당 차량 좌석 배치도가 팝업(seatmap_dialog)으로 뜬다.
+    if "seatmap_car" not in st.session_state:
+        st.session_state.seatmap_car = None
     for i, car_rc in enumerate(resolved_cars):
-        with cols_cars[i]:
-            _render_car_body(car_rc, show_name=True)
+        # 로고+이름 프레임 전체를 클릭 가능하게(car-nav-click) 렌더 + JS가 대신 눌러줄 숨김 버튼
+        st.markdown(
+            f'<div class="car-nav-click" data-navidx="{i}">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(f"CARNAV::{i}", key=f"carnavclick_{i}"):
+            st.session_state.seatmap_car = car_rc["display_name"]
+            st.rerun()
+    # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
+    if st.session_state.get("seatmap_car"):
+        _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
+        if _tgt:
+            seatmap_dialog(_tgt)
+        else:
+            st.session_state.seatmap_car = None
 else:
     # 웹 기준(루트): 차량 이름 4개를 가로 탭으로 배치 → 클릭한 차량의 배치도만 그 아래에 표시
     if "active_car_idx" not in st.session_state or st.session_state.active_car_idx >= total_cars:
@@ -1555,6 +1602,20 @@ def booking_dialog(car_target, seat_target):
             st.session_state.editing_booking = None
             st.session_state.duplicate_error_msg = None
             st.rerun()
+
+# 앱 좌석맵 팝업 등에서 좌석이 선택되면 selected_seat_state에서 신청 트리거를 도출(웹은 위 _render_car_body에서 세팅됨).
+if not selected_seat_trigger:
+    for _rc in resolved_cars:
+        _sel = st.session_state.selected_seat_state.get(_rc["display_name"], "-- 선택 --")
+        if _sel and _sel != "-- 선택 --":
+            try:
+                _sn = int(_sel.split(" ")[1])
+            except Exception:
+                continue
+            _bk = [s for (c, s) in st.session_state.bookings.keys() if c == _rc["display_name"]]
+            if _sn not in _bk:
+                selected_seat_trigger = (_rc["display_name"], _sn)
+                break
 
 # 예약 수정 중이면(예약된 좌석은 selectbox에 없으므로) 해당 예약으로 팝업을 연다
 if st.session_state.editing_booking and not selected_seat_trigger:
@@ -1878,12 +1939,27 @@ const initDragDrop = () => {
     const draggables = parentDoc.querySelectorAll('.seat-draggable');
     const droptargets = parentDoc.querySelectorAll('.seat-droptarget');
     const clickables = parentDoc.querySelectorAll('.seat-clickable');
+    const carnavs = parentDoc.querySelectorAll('.car-nav-click');
 
     // 요소가 렌더링되지 않았을 경우 대기
-    if (draggables.length === 0 && droptargets.length === 0 && clickables.length === 0) {
+    if (draggables.length === 0 && droptargets.length === 0 && clickables.length === 0 && carnavs.length === 0) {
         setTimeout(initDragDrop, 100);
         return;
     }
+
+    // ⚡ 앱: 차량 이름 바 클릭 → 대응하는 숨김 CARNAV 버튼을 대신 눌러 좌석맵 팝업 오픈
+    carnavs.forEach(el => {
+        if (el.getAttribute('data-nav-bound') === 'true') return;
+        el.setAttribute('data-nav-bound', 'true');
+        el.addEventListener('click', () => {
+            const idx = el.getAttribute('data-navidx');
+            const token = 'CARNAV::' + idx;
+            const btns = parentDoc.querySelectorAll('button');
+            for (const b of btns) {
+                if ((b.innerText || b.textContent || '').trim() === token) { b.click(); return; }
+            }
+        });
+    });
 
     // ⚡ 빈 좌석 클릭 → 대응하는 숨김 Streamlit 버튼을 대신 눌러 soft rerun 유도(전체 새로고침 없음)
     clickables.forEach(el => {
