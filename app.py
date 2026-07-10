@@ -2115,10 +2115,11 @@ if st.session_state.bookings:
                     st.session_state.confirm_reset_all = True
                     st.rerun()
             with rlc2:
-                # 관리자 재잠금(로그아웃) — 세션·유지 플래그 해제(localStorage는 JS가 버튼 클릭 시 비움)
+                # 관리자 재잠금(로그아웃) — 세션·유지 플래그 해제 + localStorage 1회성 클리어 예약
                 if st.button(t("admin_lock"), key="admin_lock_btn", use_container_width=True):
                     st.session_state.admin_unlocked = False
                     st.session_state.admin_keep = False
+                    st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
                     st.session_state.confirm_reset_all = False
                     st.toast(t("admin_locked_toast"))
                     st.rerun()
@@ -2147,11 +2148,33 @@ st.button("RESTORE_ADMIN", key="restore_admin", on_click=_restore_admin)
 if st.session_state.get("admin_unlocked"):
     _keep = "1" if st.session_state.get("admin_keep") else "0"
     st.markdown(f'<span id="dk-admin-active" data-keep="{_keep}" style="display:none;"></span>', unsafe_allow_html=True)
+# 로그아웃 1회성: localStorage 즉시 삭제. 새로 로드되는 살아있는 iframe에서 실행되므로
+#   기존 리스너 생존 여부와 무관하게 확실히 지워진다(재접속 시 자동 재복원 방지).
+if st.session_state.get("admin_clear_ls"):
+    st.session_state.admin_clear_ls = False
+    _pwa_components.html(
+        "<script>try{window.parent.localStorage.removeItem('dk_admin');}catch(e){}</script>",
+        height=0,
+    )
 
 # 9. 드래그 앤 드롭 이벤트를 부모 DOM에 강제로 바인딩하는 투명 JS 브릿지 컴포넌트 및 실시간 시계 가동
 import streamlit.components.v1 as components
 components.html("""
 <script>
+// ⚠️ 리런으로 이 컴포넌트 iframe이 새로 로드되면, 이전 iframe이 부모 요소에 걸어둔 클릭/드래그 리스너는
+//    죽은 컨텍스트가 되어 눌러도 동작하지 않는다(예: 관리자 로그인 후 차량바 클릭 먹통).
+//    남아있는 data-*-bound 표식을 iframe 로드 시 1회 초기화해, 현재 살아있는 iframe이 핸들러를 다시 소유하게 한다.
+//    (초기화는 스크립트 로드당 1회뿐 → initDragDrop의 setTimeout 루프에선 재초기화 안 되므로 중복 바인딩 없음)
+try {
+    window.parent.document
+        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound]')
+        .forEach(el => {
+            el.removeAttribute('data-nav-bound'); el.removeAttribute('data-admin-bound');
+            el.removeAttribute('data-click-bound'); el.removeAttribute('data-drag-bound');
+            el.removeAttribute('data-drop-bound'); el.removeAttribute('data-logout-bound');
+        });
+} catch (e) {}
+
 const initDragDrop = () => {
     const parentDoc = window.parent.document;
     const draggables = parentDoc.querySelectorAll('.seat-draggable');
@@ -2184,28 +2207,34 @@ const initDragDrop = () => {
     try {
         const store = window.localStorage;
         const active = parentDoc.getElementById('dk-admin-active');
+        // (1) 매 틱: 로그인 상태면 '유지' 여부를 localStorage에 반영(체크=저장 / 미체크=삭제)
         if (active) {
-            // 로그인 상태: '로그인 유지' 체크면 저장, 아니면 삭제(다음 재접속 시 비번 재입력)
             if (active.getAttribute('data-keep') === '1') {
                 if (store.getItem('dk_admin') !== '1') store.setItem('dk_admin', '1');
             } else {
                 store.removeItem('dk_admin');
             }
-        } else if (store.getItem('dk_admin') === '1' && !window.parent.__dkAdminRestoreTried) {
-            // localStorage에 유지 흔적 + 세션은 잠김(재접속) → 숨김 RESTORE_ADMIN 클릭으로 복원.
-            // 가드는 리런에도 살아남는 부모 창에 저장 → '실제 페이지 로드당 1회'만 복원(리런 루프 방지).
-            window.parent.__dkAdminRestoreTried = true;
-            const btns = parentDoc.querySelectorAll('button');
-            for (const b of btns) {
-                if ((b.innerText || b.textContent || '').trim() === 'RESTORE_ADMIN') { b.click(); break; }
+        }
+        // (2) 재접속 복원 판단은 '실제 페이지 로드당 1회'만 — 세션 중 마커 렌더 타이밍 흔들림에
+        //     복원이 오발동해 불필요한 rerun(모달 잔류·차량바 먹통)을 일으키지 않도록 확정 플래그로 봉인.
+        const pwin = window.parent;
+        if (!pwin.__dkAdminRestoreDecided) {
+            if (!active && store.getItem('dk_admin') === '1') {
+                // 로그아웃 상태 + 유지 흔적 → 숨김 RESTORE_ADMIN을 실제로 찾았을 때만 눌러 복원 확정
+                const btns = parentDoc.querySelectorAll('button');
+                for (const b of btns) {
+                    if ((b.innerText || b.textContent || '').trim() === 'RESTORE_ADMIN') {
+                        b.click();
+                        pwin.__dkAdminRestoreDecided = true;
+                        break;
+                    }
+                }
+            } else {
+                // 이미 로그인 상태이거나 유지 흔적 없음 → 이 페이지 로드에선 복원 판단 종료(재평가 금지)
+                pwin.__dkAdminRestoreDecided = true;
             }
         }
-        // 로그아웃(관리자 잠금) 버튼 클릭 시 localStorage도 즉시 비워 재복원을 막는다
-        const lockBtn = parentDoc.querySelector('.st-key-admin_lock_btn button');
-        if (lockBtn && lockBtn.getAttribute('data-logout-bound') !== 'true') {
-            lockBtn.setAttribute('data-logout-bound', 'true');
-            lockBtn.addEventListener('click', () => { store.removeItem('dk_admin'); });
-        }
+        // (3) 로그아웃 시 localStorage 삭제는 Python이 1회성 컴포넌트(admin_clear_ls)로 처리 → 리스너 불필요
     } catch (e) {}
 
     // ⚡ 앱: 차량 이름 바 클릭 → 대응하는 숨김 CARNAV 버튼을 대신 눌러 좌석맵 팝업 오픈
