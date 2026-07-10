@@ -399,6 +399,7 @@ st.markdown("""
     /* 좌석 클릭을 부드러운 rerun으로 처리하기 위한 숨김 버튼 (화면 밖 배치, JS가 대신 클릭) */
     div[class*="st-key-seatsel_"],
     div[class*="st-key-adminlogin_"],
+    div[class*="st-key-restore_admin"],
     div[class*="st-key-carnavclick_"] {
         position: fixed !important;
         left: -9999px !important;
@@ -1635,6 +1636,10 @@ def _open_admin_login():
     st.session_state.admin_login_open = True
     st.session_state.admin_pin_error = False
 
+def _restore_admin():
+    # 새로고침·재접속 후 localStorage에 로그인 흔적이 있으면 JS가 대신 눌러 관리자 잠금을 복원(로그인 상태 유지)
+    st.session_state.admin_unlocked = True
+
 def _admin_login_form():
     """관리자 로그인 폼 — 좌석맵 팝업 안에서 표시. 4자리 숫자 PIN이 ADMIN_PIN과 일치하면 관리자 잠금 해제.
     저장 없이 매번 입력(공용 PIN 1개)."""
@@ -2127,6 +2132,13 @@ else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
 
+# 8-b. 관리자 로그인 상태 영속화 브릿지 — 새로고침/재접속해도 로그인이 유지되도록 localStorage와 동기화.
+#   · 숨김 RESTORE_ADMIN 버튼: localStorage에 로그인 흔적이 있으면 JS가 대신 눌러 세션 잠금 해제(복원)
+#   · #dk-admin-active 마커: 현재 세션이 관리자 상태임을 JS에 알려 localStorage에 저장하도록 함
+st.button("RESTORE_ADMIN", key="restore_admin", on_click=_restore_admin)
+if st.session_state.get("admin_unlocked"):
+    st.markdown('<span id="dk-admin-active" style="display:none;"></span>', unsafe_allow_html=True)
+
 # 9. 드래그 앤 드롭 이벤트를 부모 DOM에 강제로 바인딩하는 투명 JS 브릿지 컴포넌트 및 실시간 시계 가동
 import streamlit.components.v1 as components
 components.html("""
@@ -2158,6 +2170,32 @@ const initDragDrop = () => {
             }
         });
     });
+
+    // ⚡ 관리자 로그인 상태 영속화 — 새로고침/재접속해도 로그인 유지(localStorage ↔ 세션 동기화)
+    try {
+        const store = window.localStorage;
+        const active = parentDoc.getElementById('dk-admin-active');
+        if (active) {
+            // 세션이 관리자 상태 → localStorage에 기록(로그인 직후/유지)
+            if (store.getItem('dk_admin') !== '1') store.setItem('dk_admin', '1');
+        } else if (store.getItem('dk_admin') === '1' && !window.__dkAdminRestoring) {
+            // localStorage엔 로그인인데 세션은 잠김(새로고침/재접속) → 숨김 RESTORE_ADMIN 클릭으로 복원(1회)
+            window.__dkAdminRestoring = true;
+            const btns = parentDoc.querySelectorAll('button');
+            for (const b of btns) {
+                if ((b.innerText || b.textContent || '').trim() === 'RESTORE_ADMIN') { b.click(); break; }
+            }
+        }
+        // 로그아웃(관리자 잠금) 버튼 클릭 시 localStorage도 즉시 비워 재복원을 막는다
+        const lockBtn = parentDoc.querySelector('.st-key-admin_lock_btn button');
+        if (lockBtn && lockBtn.getAttribute('data-logout-bound') !== 'true') {
+            lockBtn.setAttribute('data-logout-bound', 'true');
+            lockBtn.addEventListener('click', () => {
+                store.removeItem('dk_admin');
+                window.__dkAdminRestoring = false;
+            });
+        }
+    } catch (e) {}
 
     // ⚡ 앱: 차량 이름 바 클릭 → 대응하는 숨김 CARNAV 버튼을 대신 눌러 좌석맵 팝업 오픈
     carnavs.forEach(el => {
