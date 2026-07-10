@@ -13,6 +13,7 @@ ADMIN_PIN = "1234"
 import json
 import os
 import re
+import html
 
 COUNTER_FILE = "version_counter.json"
 
@@ -99,6 +100,25 @@ st.markdown("""
         margin: -44px 0 12px 0 !important;   /* 빈 크롬 헤더 높이만큼 끌어올려 X와 같은 줄에 정렬 */
         padding-right: 40px !important;       /* 우측 X 버튼과 겹치지 않도록 여백 */
     }
+
+    /* 관리자 '좌석 신청 현황' 표 — 운전석 제외 전체 좌석(빈 좌석 포함) 신청 현황 */
+    .seat-status-wrap { width: 100%; overflow-x: auto; margin: 4px 0 14px 0; }
+    .seat-status-table {
+        width: 100%; border-collapse: collapse; font-size: 13px; color: #e9ecef;
+    }
+    .seat-status-table th, .seat-status-table td {
+        padding: 8px 10px; text-align: left; border-bottom: 1px solid #2b2f38;
+        white-space: nowrap;
+    }
+    .seat-status-table thead th {
+        background: #1b1f27; color: #fab005; font-weight: 700;
+        border-bottom: 2px solid #3a3f4a; position: sticky; top: 0;
+    }
+    .seat-status-table td.ss-seat { font-weight: 700; color: #ffffff; text-align: center; width: 60px; }
+    .seat-status-table td.ss-time { font-variant-numeric: tabular-nums; color: #adb5bd; font-size: 12px; }
+    .seat-status-table tbody tr:hover { background: rgba(250,176,5,0.06); }
+    .seat-status-table tbody tr.seat-status-empty td { color: #6c757d; }
+    .seat-status-table tbody tr.seat-status-empty td.ss-seat { color: #868e96; }
 
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
@@ -784,6 +804,10 @@ TR = {
         "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 잠금 상태로 돌아갔습니다.",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
+        "admin_status_title": "📋 좌석 신청 현황",
+        "st_seat": "좌석 번호", "st_name": "신청자", "st_dep": "출발지",
+        "st_dest": "목적지", "st_reqtime": "신청 시간", "st_arrive": "도착 시간",
+        "st_empty": "미신청", "btn_close": "닫기",
     },
     "en": {
         "app_title": "DK CAR BOOKING SEAT",
@@ -831,6 +855,10 @@ TR = {
         "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Admin locked again.",
         "no_bookings": "No dispatch requests yet.",
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
+        "admin_status_title": "📋 Seat Request Status",
+        "st_seat": "Seat", "st_name": "Applicant", "st_dep": "From",
+        "st_dest": "To", "st_reqtime": "Requested", "st_arrive": "Arrival",
+        "st_empty": "—", "btn_close": "Close",
     },
 }
 
@@ -1595,6 +1623,7 @@ def _close_seatmap():
     st.session_state.duplicate_error_msg = None
     st.session_state.admin_login_open = False   # 관리자 로그인 폼도 함께 닫힘
     st.session_state.admin_pin_error = False
+    st.session_state.admin_seat_status_open = False  # 좌석 신청 현황 표도 함께 닫힘
     st.session_state.seatmap_car = None
 
 def _open_seatmap(display_name):
@@ -1623,7 +1652,8 @@ def _admin_login_form():
                 st.session_state.admin_unlocked = True
                 st.session_state.admin_login_open = False
                 st.session_state.admin_pin_error = False
-                st.session_state.seatmap_car = None
+                # 로그인 성공 → 같은 팝업 안에서 '좌석 신청 현황' 표로 전환(운전석 제외 전체 좌석)
+                st.session_state.admin_seat_status_open = True
                 st.toast(t("admin_unlocked_toast"))
                 st.rerun()
             else:
@@ -1636,12 +1666,53 @@ def _admin_login_form():
             st.session_state.seatmap_car = None
             st.rerun()
 
+def _admin_seat_status_view(car_rc):
+    """관리자 로그인 성공 후 같은 팝업 안에서 뜨는 '좌석 신청 현황' 표.
+    운전석(0번)을 제외한 해당 차량의 전체 좌석(신청 안 된 빈 좌석 포함)을 좌석 번호 순으로 나열.
+    컬럼: 좌석 번호 / 신청자 / 출발지 / 목적지 / 신청 시간 / 도착 시간."""
+    car = car_rc["display_name"]
+    st.markdown(f'<div class="dlg-step-title">{t("admin_status_title")}</div>', unsafe_allow_html=True)
+    st.caption(car)
+    empty = t("st_empty")
+    rows_html = []
+    for seat in range(1, car_rc["seats"] + 1):
+        info = st.session_state.bookings.get((car, seat))
+        if info:
+            name = html.escape(str(info.get("name", "")).strip() or empty)
+            dep = html.escape(str(info.get("departure", "")).strip() or empty)
+            dest = html.escape(str(info.get("destination", "")).strip() or empty)
+            reqt = html.escape(str(info.get("created_at", "")).strip() or empty)
+            arr = html.escape(str(info.get("arrive", "")).strip() or empty)
+            cls = ""
+        else:
+            name = dep = dest = reqt = arr = empty
+            cls = ' class="seat-status-empty"'
+        rows_html.append(
+            f'<tr{cls}><td class="ss-seat">{seat}</td><td>{name}</td><td>{dep}</td>'
+            f'<td>{dest}</td><td class="ss-time">{reqt}</td><td class="ss-time">{arr}</td></tr>'
+        )
+    table_html = (
+        '<div class="seat-status-wrap"><table class="seat-status-table"><thead><tr>'
+        f'<th>{t("st_seat")}</th><th>{t("st_name")}</th><th>{t("st_dep")}</th>'
+        f'<th>{t("st_dest")}</th><th>{t("st_reqtime")}</th><th>{t("st_arrive")}</th>'
+        f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
+    )
+    st.markdown(table_html, unsafe_allow_html=True)
+    if st.button(t("btn_close"), type="primary", key="admin_status_close_btn", use_container_width=True):
+        st.session_state.admin_seat_status_open = False
+        st.session_state.seatmap_car = None
+        st.rerun()
+
 @st.dialog(" ", on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
     """차량 이름 클릭 시 뜨는 팝업. 좌석 미선택이면 '🚗 좌석 선택'(배치도), 좌석 클릭 시 같은 팝업 안에서
     '📝 신청 정보 입력' 폼으로 전환된다. @st.dialog 크롬 title은 열린 중 못 바꾸므로 공백(' ')으로 두고
     단계별 제목을 본문 최상단(.dlg-step-title)에 직접 그려 단계별로 구분한다."""
     car = car_rc["display_name"]
+    # 관리자 로그인 성공 상태면 → 좌석맵 대신 '좌석 신청 현황' 표 표시(같은 팝업 안)
+    if st.session_state.get("admin_seat_status_open"):
+        _admin_seat_status_view(car_rc)
+        return
     # 운전석 클릭으로 관리자 로그인 요청 상태면 → 좌석맵 대신 관리자 로그인 폼 표시(같은 팝업 안, 자체 제목 렌더)
     if st.session_state.get("admin_login_open"):
         _admin_login_form()
