@@ -2178,9 +2178,10 @@ const initDragDrop = () => {
         if (active) {
             // 세션이 관리자 상태 → localStorage에 기록(로그인 직후/유지)
             if (store.getItem('dk_admin') !== '1') store.setItem('dk_admin', '1');
-        } else if (store.getItem('dk_admin') === '1' && !window.__dkAdminRestoring) {
-            // localStorage엔 로그인인데 세션은 잠김(새로고침/재접속) → 숨김 RESTORE_ADMIN 클릭으로 복원(1회)
-            window.__dkAdminRestoring = true;
+        } else if (store.getItem('dk_admin') === '1' && !window.parent.__dkAdminRestoreTried) {
+            // localStorage엔 로그인인데 세션은 잠김(새로고침/재접속) → 숨김 RESTORE_ADMIN 클릭으로 복원.
+            // 가드는 리런에도 살아남는 부모 창에 저장 → '실제 페이지 로드당 1회'만 복원(리런 루프 방지).
+            window.parent.__dkAdminRestoreTried = true;
             const btns = parentDoc.querySelectorAll('button');
             for (const b of btns) {
                 if ((b.innerText || b.textContent || '').trim() === 'RESTORE_ADMIN') { b.click(); break; }
@@ -2192,7 +2193,6 @@ const initDragDrop = () => {
             lockBtn.setAttribute('data-logout-bound', 'true');
             lockBtn.addEventListener('click', () => {
                 store.removeItem('dk_admin');
-                window.__dkAdminRestoring = false;
             });
         }
     } catch (e) {}
