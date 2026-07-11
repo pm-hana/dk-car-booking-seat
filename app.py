@@ -1654,7 +1654,9 @@ def _open_admin_login():
 def _restore_admin():
     # '로그인 유지' 체크 후 재접속 시 → localStorage 흔적을 보고 JS가 대신 눌러 비밀번호 없이 관리자 복원
     st.session_state.admin_unlocked = True
-    st.session_state.admin_keep = True   # 복원 후에도 유지 상태 지속(마커 data-keep=1)
+    st.session_state.admin_keep = True   # 복원 후에도 유지 상태 지속
+    st.session_state.admin_clear_ls = False   # 복원 = 로그인 상태이므로 삭제 상태 해제
+    # 복원은 localStorage가 이미 '1'일 때만 발동하므로 별도 저장(admin_save_ls) 불필요
 
 def _admin_login_form():
     """관리자 로그인 폼 — 좌석맵 팝업 안에서 표시. 4자리 숫자 PIN이 ADMIN_PIN과 일치하면 관리자 잠금 해제.
@@ -1675,8 +1677,15 @@ def _admin_login_form():
                 st.session_state.admin_unlocked = True
                 st.session_state.admin_login_open = False
                 st.session_state.admin_pin_error = False
-                # '로그인 유지' 체크 여부 저장 → 마커 data-keep로 내보내 JS가 localStorage에 반영
+                # '로그인 유지' 체크 여부 저장
                 st.session_state.admin_keep = bool(keep_login)
+                # localStorage 저장/삭제는 '전환 시 1회성 컴포넌트'로만 수행(브릿지는 저장 안 함 → 재설정 사고 원천 차단).
+                if keep_login:
+                    st.session_state.admin_save_ls = True     # 유지 체크 → localStorage='1' 1회 저장 예약
+                    st.session_state.admin_clear_ls = False
+                else:
+                    st.session_state.admin_clear_ls = True    # 미체크 → localStorage 삭제(유지 상태 아님)
+                    st.session_state.admin_save_ls = False
                 # 로그인 성공 → 같은 팝업 안에서 '좌석 신청 현황' 표로 전환(운전석 제외 전체 좌석)
                 st.session_state.admin_seat_status_open = True
                 st.toast(t("admin_unlocked_toast"))
@@ -2171,19 +2180,27 @@ else:
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
 
 # 8-b. 관리자 '로그인 유지' 영속화 브릿지 — 체크 시 재접속해도 비밀번호 없이 자동 로그인.
-#   · 숨김 RESTORE_ADMIN 버튼: 미로그인 상태에서 localStorage에 유지 흔적이 있으면 JS가 대신 눌러 복원
-#   · #dk-admin-state 마커(data-cmd): 브릿지가 localStorage를 '한 곳에서' 일관 제어하도록 명령을 내보낸다.
-#       save = 유지 저장 / clear = 삭제(로그아웃·미체크) / idle = 미로그인(유지 흔적 있으면 복원 대상)
-#     ⚠️ 로그아웃 삭제와 복원 재시도를 같은 브릿지에서 순차 처리 → 별도 iframe 경쟁(로그아웃 직후 재복원) 제거.
+#   ⚠️ 핵심 원칙: localStorage 저장(setItem)은 '로그인 시 1회성 컴포넌트'에서만 한다.
+#      브릿지(매 틱 실행)는 절대 저장하지 않는다 → 로그아웃 후 예전 마커를 읽어 '1'을 되살리는
+#      사고(클라우드 리런 지연 시 새로고침 자동 재로그인)를 원천 차단.
+#   · #dk-admin-state 마커(data-cmd): hold=로그인+유지(건드리지 않음) / clear=삭제(로그아웃·미체크) / idle=미로그인(복원 대상)
+#   · 숨김 RESTORE_ADMIN 버튼: idle+유지흔적('1')이면 JS가 대신 눌러 복원(성공까지 재시도).
 st.button("RESTORE_ADMIN", key="restore_admin", on_click=_restore_admin)
 if st.session_state.get("admin_unlocked"):
-    _cmd = "save" if st.session_state.get("admin_keep") else "clear"
+    _cmd = "hold" if st.session_state.get("admin_keep") else "clear"
     st.markdown('<span id="dk-admin-active" style="display:none;"></span>', unsafe_allow_html=True)
 elif st.session_state.get("admin_clear_ls"):
-    _cmd = "clear"   # 이 세션에서 명시적 로그아웃함 → 재접속 자동복원 차단
+    _cmd = "clear"   # 로그아웃/미체크 상태 → 재접속 자동복원 차단
 else:
     _cmd = "idle"    # 미로그인 (localStorage 유지 흔적이 있으면 복원)
 st.markdown(f'<span id="dk-admin-state" data-cmd="{_cmd}" style="display:none;"></span>', unsafe_allow_html=True)
+# 로그인-유지 저장 1회성: 브릿지는 저장하지 않으므로, 유지 로그인 순간 여기서 딱 한 번 localStorage에 기록.
+if st.session_state.get("admin_save_ls"):
+    st.session_state.admin_save_ls = False
+    _pwa_components.html(
+        "<script>try{window.parent.localStorage.setItem('dk_admin','1');}catch(e){}</script>",
+        height=0,
+    )
 
 # 9. 드래그 앤 드롭 이벤트를 부모 DOM에 강제로 바인딩하는 투명 JS 브릿지 컴포넌트 및 실시간 시계 가동
 import streamlit.components.v1 as components
@@ -2258,20 +2275,14 @@ const initDragDrop = () => {
         const active = parentDoc.getElementById('dk-admin-active');   // 현재 로그인 상태면 존재
         const stEl = parentDoc.getElementById('dk-admin-state');
         const cmd = stEl ? stEl.getAttribute('data-cmd') : 'idle';
-        // 로그인 상태가 되면 로그아웃 플래그 해제(재로그인 시 정상적으로 저장·복원 재개)
+        // 로그인 상태가 되면 로그아웃 플래그 해제(재로그인 시 정상 동작 재개)
         if (active) pwin.__dkLoggedOut = false;
-        if (pwin.__dkLoggedOut) {
-            // 이 페이지 수명 동안 로그아웃이 절대 우선 — 리런 지연으로 예전 'save' 마커를 읽어
-            //   localStorage를 되살리는 사고(→ 새로고침 시 자동 재로그인)를 원천 차단. 계속 삭제만.
+        // ⚠️ 브릿지는 절대 setItem 하지 않는다(저장은 로그인 1회성 컴포넌트 전담). 여기선 삭제/복원만.
+        if (pwin.__dkLoggedOut || cmd === 'clear') {
+            // 로그아웃/미체크 → 유지 흔적 삭제. 저장을 안 하므로 한 번 지우면 절대 되살아나지 않는다.
             store.removeItem('dk_admin');
-        } else if (cmd === 'save') {
-            // 로그인 + '유지' 체크 → 유지 흔적 저장
-            if (store.getItem('dk_admin') !== '1') store.setItem('dk_admin', '1');
-        } else if (cmd === 'clear') {
-            // 로그인+미체크 또는 명시적 로그아웃 → 유지 흔적 삭제(재접속 자동복원 차단)
-            store.removeItem('dk_admin');
-        } else {
-            // 'idle' = 미로그인. localStorage에 유지 흔적이 있으면 관리자 상태가 뜰 때까지 RESTORE_ADMIN 재시도 클릭.
+        } else if (cmd === 'idle') {
+            // 미로그인 + 유지 흔적('1') → 관리자 상태가 뜰 때까지 RESTORE_ADMIN 재시도 클릭.
             //   클라우드 콜드스타트에선 첫 클릭이 세션 준비 전이라 유실될 수 있어 '1회'로는 실패 → 성공까지 반복.
             if (store.getItem('dk_admin') === '1') {
                 if (!pwin.__dkRestoreTries) pwin.__dkRestoreTries = 0;
@@ -2286,6 +2297,7 @@ const initDragDrop = () => {
                 }
             }
         }
+        // cmd === 'hold' (로그인+유지): localStorage는 로그인 시 1회성 컴포넌트가 이미 '1'로 설정 → 브릿지는 관여 안 함.
     } catch (e) {}
 
     // ⚡ 앱: 차량 이름 바 클릭 → 대응하는 숨김 CARNAV 버튼을 대신 눌러 좌석맵 팝업 오픈
