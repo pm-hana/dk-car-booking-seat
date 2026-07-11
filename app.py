@@ -1634,9 +1634,16 @@ def _open_seatmap(display_name):
     st.session_state.seatmap_car = display_name
 
 def _open_admin_login():
-    # INNOVA·SEDONA 운전석 클릭 콜백 → 좌석맵 팝업 안에 관리자 로그인 폼을 띄운다(2중 dialog 회피)
-    st.session_state.admin_login_open = True
-    st.session_state.admin_pin_error = False
+    # INNOVA·SEDONA 운전석 클릭 콜백.
+    #   · 이미 관리자 로그인 상태(로그인 유지 복원 포함)면 → 로그인 폼을 건너뛰고 '좌석 신청 현황'을 바로 연다.
+    #     (재로그인 무한 요구 방지: 로그인돼 있으면 비밀번호를 다시 묻지 않는다)
+    #   · 아직 로그인 전이면 → 관리자 로그인 폼을 띄운다.
+    if st.session_state.get("admin_unlocked"):
+        st.session_state.admin_seat_status_open = True
+        st.session_state.admin_login_open = False
+    else:
+        st.session_state.admin_login_open = True
+        st.session_state.admin_pin_error = False
 
 def _restore_admin():
     # '로그인 유지' 체크 후 재접속 시 → localStorage 흔적을 보고 JS가 대신 눌러 비밀번호 없이 관리자 복원
