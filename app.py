@@ -2231,6 +2231,17 @@ const initDragDrop = () => {
         });
     });
 
+    // ⚡ 로그아웃 버튼(좌석현황 팝업 / 관리자 초기화 영역) 클릭 순간 localStorage를 '동기적으로 즉시' 삭제.
+    //   마커 cmd='clear'(리런 후 브릿지 처리)만으로는, 사용자가 로그아웃 직후 곧바로 새로고침하면
+    //   삭제 전에 새 세션이 유지 흔적을 보고 복원해버릴 수 있다 → 클릭 시점에 바로 지워 타이밍 경쟁 제거.
+    ['.st-key-admin_status_logout_btn button', '.st-key-admin_lock_btn button'].forEach(sel => {
+        const lb = parentDoc.querySelector(sel);
+        if (lb && lb.getAttribute('data-logout-bound') !== 'true') {
+            lb.setAttribute('data-logout-bound', 'true');
+            lb.addEventListener('click', () => { try { window.parent.localStorage.removeItem('dk_admin'); } catch (e) {} });
+        }
+    });
+
     // ⚡ 관리자 '로그인 유지' — localStorage를 이 브릿지 '한 곳'에서 명령(data-cmd)에 따라 순차 제어.
     //   ⚠️ 저장/삭제/복원을 한 블록에서 순서대로 처리 → 로그아웃 삭제와 복원 재시도가 경쟁하지 않는다
     //      (예전엔 로그아웃 삭제를 별도 iframe에서 해서, 복원 재시도가 먼저 실행돼 로그아웃이 즉시 취소됐음).
