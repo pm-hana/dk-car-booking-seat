@@ -119,6 +119,12 @@ st.markdown("""
     .seat-status-table tbody tr:hover { background: rgba(250,176,5,0.06); }
     .seat-status-table tbody tr.seat-status-empty td { color: #6c757d; }
     .seat-status-table tbody tr.seat-status-empty td.ss-seat { color: #868e96; }
+    /* 좌석 현황 하단 버튼: 닫기(75%)·로그아웃(25%) — 다이얼로그 컬럼 1:1 강제 CSS를 스코프로 덮어써 3:1 유지 */
+    .st-key-admin_status_btns [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
+    .st-key-admin_status_btns [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
+    /* 로그아웃 버튼: 눈에 띄되 과하지 않게(붉은 톤) */
+    .st-key-admin_status_logout_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; }
+    .st-key-admin_status_logout_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
 
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
@@ -808,7 +814,7 @@ TR = {
         "admin_status_title": "📋 좌석 신청 현황",
         "st_seat": "좌석 번호", "st_name": "신청자", "st_dep": "출발지",
         "st_dest": "목적지", "st_reqtime": "신청 시간", "st_arrive": "도착 시간",
-        "st_empty": "미신청", "btn_close": "닫기",
+        "st_empty": "미신청", "btn_close": "닫기", "btn_logout": "로그아웃",
         "admin_keep_login": "로그인 유지 (재접속 시 비밀번호 없이 자동 로그인)",
     },
     "en": {
@@ -860,7 +866,7 @@ TR = {
         "admin_status_title": "📋 Seat Request Status",
         "st_seat": "Seat", "st_name": "Applicant", "st_dep": "From",
         "st_dest": "To", "st_reqtime": "Requested", "st_arrive": "Arrival",
-        "st_empty": "—", "btn_close": "Close",
+        "st_empty": "—", "btn_close": "Close", "btn_logout": "Logout",
         "admin_keep_login": "Keep me logged in (auto-login without password on return)",
     },
 }
@@ -1717,10 +1723,26 @@ def _admin_seat_status_view(car_rc):
         f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
     )
     st.markdown(table_html, unsafe_allow_html=True)
-    if st.button(t("btn_close"), type="primary", key="admin_status_close_btn", use_container_width=True):
-        st.session_state.admin_seat_status_open = False
-        st.session_state.seatmap_car = None
-        st.rerun()
+    # 하단 버튼: 닫기(75%) + 로그아웃(25%) 가로 병렬. 다이얼로그 컬럼을 1:1로 강제하는 전역 CSS를
+    #   이기기 위해 st-key-admin_status_btns 스코프로 3:1 flex를 덮어쓴다(스타일 블록 참고).
+    with st.container(key="admin_status_btns"):
+        cbtn, lbtn = st.columns([3, 1])
+        with cbtn:
+            if st.button(t("btn_close"), type="primary", key="admin_status_close_btn", use_container_width=True):
+                st.session_state.admin_seat_status_open = False
+                st.session_state.seatmap_car = None
+                st.rerun()
+        with lbtn:
+            # 로그아웃 → 관리자 잠금 + '로그인 유지' 해제 + localStorage 1회성 클리어(재접속 자동복원 방지)
+            if st.button(t("btn_logout"), key="admin_status_logout_btn", use_container_width=True):
+                st.session_state.admin_unlocked = False
+                st.session_state.admin_keep = False
+                st.session_state.admin_clear_ls = True
+                st.session_state.confirm_reset_all = False
+                st.session_state.admin_seat_status_open = False
+                st.session_state.seatmap_car = None
+                st.toast(t("admin_locked_toast"))
+                st.rerun()
 
 @st.dialog(" ", on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
