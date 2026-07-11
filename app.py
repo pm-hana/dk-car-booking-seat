@@ -2204,8 +2204,10 @@ const initDragDrop = () => {
     });
 
     // ⚡ 관리자 '로그인 유지' 영속화 — 체크 시 재접속해도 비밀번호 없이 자동 로그인(localStorage ↔ 세션 동기화)
+    //   ⚠️ 반드시 부모(메인 앱) localStorage를 사용. 컴포넌트 iframe 자신의 window.localStorage는
+    //      Streamlit Cloud에서 부모와 다른(또는 재접속 시 유지 안 되는) 저장소일 수 있어 복원이 실패한다.
     try {
-        const store = window.localStorage;
+        const store = window.parent.localStorage;
         const active = parentDoc.getElementById('dk-admin-active');
         // (1) 매 틱: 로그인 상태면 '유지' 여부를 localStorage에 반영(체크=저장 / 미체크=삭제)
         if (active) {
@@ -2215,23 +2217,22 @@ const initDragDrop = () => {
                 store.removeItem('dk_admin');
             }
         }
-        // (2) 재접속 복원 판단은 '실제 페이지 로드당 1회'만 — 세션 중 마커 렌더 타이밍 흔들림에
-        //     복원이 오발동해 불필요한 rerun(모달 잔류·차량바 먹통)을 일으키지 않도록 확정 플래그로 봉인.
+        // (2) 재접속 복원 — localStorage에 유지 흔적이 있고 아직 로그인 안 된 상태면, 관리자 상태 마커
+        //     (#dk-admin-active)가 실제로 뜰 때까지 숨김 RESTORE_ADMIN을 재시도 클릭한다.
+        //     ⚠️ 클라우드 콜드스타트에선 페이지 로드 직후 첫 클릭이 Streamlit 세션 준비 전이라 유실되어,
+        //        '1회만 클릭'하면 복원이 영영 실패(=로그인 창 다시 뜸)한다. 그래서 성공(마커 등장)까지 반복.
+        //     복원되면 위 (1)의 active 분기로 넘어가 이 블록은 자동 종료된다.
         const pwin = window.parent;
-        if (!pwin.__dkAdminRestoreDecided) {
-            if (!active && store.getItem('dk_admin') === '1') {
-                // 로그아웃 상태 + 유지 흔적 → 숨김 RESTORE_ADMIN을 실제로 찾았을 때만 눌러 복원 확정
+        if (!active && store.getItem('dk_admin') === '1') {
+            if (!pwin.__dkRestoreTries) pwin.__dkRestoreTries = 0;
+            const nowT = Date.now();
+            if (pwin.__dkRestoreTries < 30 && (!pwin.__dkRestoreLast || (nowT - pwin.__dkRestoreLast) > 1200)) {
+                pwin.__dkRestoreLast = nowT;
+                pwin.__dkRestoreTries++;
                 const btns = parentDoc.querySelectorAll('button');
                 for (const b of btns) {
-                    if ((b.innerText || b.textContent || '').trim() === 'RESTORE_ADMIN') {
-                        b.click();
-                        pwin.__dkAdminRestoreDecided = true;
-                        break;
-                    }
+                    if ((b.innerText || b.textContent || '').trim() === 'RESTORE_ADMIN') { b.click(); break; }
                 }
-            } else {
-                // 이미 로그인 상태이거나 유지 흔적 없음 → 이 페이지 로드에선 복원 판단 종료(재평가 금지)
-                pwin.__dkAdminRestoreDecided = true;
             }
         }
         // (3) 로그아웃 시 localStorage 삭제는 Python이 1회성 컴포넌트(admin_clear_ls)로 처리 → 리스너 불필요
