@@ -2238,7 +2238,13 @@ const initDragDrop = () => {
         const lb = parentDoc.querySelector(sel);
         if (lb && lb.getAttribute('data-logout-bound') !== 'true') {
             lb.setAttribute('data-logout-bound', 'true');
-            lb.addEventListener('click', () => { try { window.parent.localStorage.removeItem('dk_admin'); } catch (e) {} });
+            lb.addEventListener('click', () => {
+                try {
+                    // 로그아웃 플래그를 부모 창에 세워 이 페이지 수명 동안 재저장·재복원을 원천 차단 + 즉시 삭제
+                    window.parent.__dkLoggedOut = true;
+                    window.parent.localStorage.removeItem('dk_admin');
+                } catch (e) {}
+            });
         }
     });
 
@@ -2247,10 +2253,18 @@ const initDragDrop = () => {
     //      (예전엔 로그아웃 삭제를 별도 iframe에서 해서, 복원 재시도가 먼저 실행돼 로그아웃이 즉시 취소됐음).
     //   ⚠️ 반드시 부모(메인 앱) localStorage 사용 — 컴포넌트 iframe 자신의 저장소는 클라우드에서 다를 수 있음.
     try {
-        const store = window.parent.localStorage;
+        const pwin = window.parent;
+        const store = pwin.localStorage;
+        const active = parentDoc.getElementById('dk-admin-active');   // 현재 로그인 상태면 존재
         const stEl = parentDoc.getElementById('dk-admin-state');
         const cmd = stEl ? stEl.getAttribute('data-cmd') : 'idle';
-        if (cmd === 'save') {
+        // 로그인 상태가 되면 로그아웃 플래그 해제(재로그인 시 정상적으로 저장·복원 재개)
+        if (active) pwin.__dkLoggedOut = false;
+        if (pwin.__dkLoggedOut) {
+            // 이 페이지 수명 동안 로그아웃이 절대 우선 — 리런 지연으로 예전 'save' 마커를 읽어
+            //   localStorage를 되살리는 사고(→ 새로고침 시 자동 재로그인)를 원천 차단. 계속 삭제만.
+            store.removeItem('dk_admin');
+        } else if (cmd === 'save') {
             // 로그인 + '유지' 체크 → 유지 흔적 저장
             if (store.getItem('dk_admin') !== '1') store.setItem('dk_admin', '1');
         } else if (cmd === 'clear') {
@@ -2260,7 +2274,6 @@ const initDragDrop = () => {
             // 'idle' = 미로그인. localStorage에 유지 흔적이 있으면 관리자 상태가 뜰 때까지 RESTORE_ADMIN 재시도 클릭.
             //   클라우드 콜드스타트에선 첫 클릭이 세션 준비 전이라 유실될 수 있어 '1회'로는 실패 → 성공까지 반복.
             if (store.getItem('dk_admin') === '1') {
-                const pwin = window.parent;
                 if (!pwin.__dkRestoreTries) pwin.__dkRestoreTries = 0;
                 const nowT = Date.now();
                 if (pwin.__dkRestoreTries < 30 && (!pwin.__dkRestoreLast || (nowT - pwin.__dkRestoreLast) > 1200)) {
