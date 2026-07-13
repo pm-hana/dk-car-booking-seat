@@ -196,15 +196,16 @@ st.markdown("""
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
-    /* 예약 현황 카드: 한 줄에 '항상 2개'(가로 2열). nowrap로 모바일 세로 적층을 원천 차단하고
-       모든 컬럼을 균등 분배 → 바깥 2열은 50%씩, 안쪽 3열은 1/3씩. (홀수면 오른쪽 칸은 빈 채로 50% 유지) */
+    /* 예약 현황 카드: 한 줄에 '항상 2개'. 가로 스크롤을 원천 차단하고(overflow-x hidden) 컬럼을 하드 50%로 캡. */
+    .st-key-booking_board { overflow-x: hidden !important; max-width: 100% !important; }
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
-    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: 210px !important; padding: 0 2px !important; }
-    /* 안쪽 3열(정보2 + 버튼1)은 카드 안에서 균등 — 폭 캡 해제 */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { max-width: none !important; padding: 0 !important; }
-    /* 버튼 3개(수정·취소·도착완료): 정보 아래 '전체폭 세로'로 적층. 폭 여유가 있어 폰트 12px, 간격은 컴팩트하게. */
-    .st-key-booking_board .stButton { margin-bottom: 3px !important; }
-    .st-key-booking_board .stButton button { padding: 3px 6px !important; font-size: 12px !important; white-space: normal !important; line-height: 1.1 !important; min-height: 32px !important; width: 100% !important; }
+    /* 모든 booking_board 컬럼: 콘텐츠 최소폭에 밀리지 않게 min-width:0, 균등 분배, 최대 50%(단 PC는 230px)로 캡.
+       → 바깥 2열은 화면의 50%씩(2개가 화면에 딱, 가로 스크롤 없음), 안쪽 버튼 3열은 1/3씩. */
+    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: min(50%, 230px) !important; padding: 0 1px !important; }
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { padding: 0 !important; }
+    /* 가로 3분할 버튼(수정·취소·도착완료): 좁으니 폰트·패딩 압축, 글자 줄바꿈 허용, 카드 높이 최소화 */
+    .st-key-booking_board .stButton { margin-bottom: 0 !important; }
+    .st-key-booking_board .stButton button { padding: 2px 2px !important; font-size: 11px !important; white-space: normal !important; line-height: 1.05 !important; min-height: 30px !important; width: 100% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -535,14 +536,14 @@ if IS_MOBILE:
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
     /* 차량명 프레임: 모바일에선 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
-    /* 예약 현황 카드: 앱에서도 한 줄에 '항상 2개'. nowrap + 균등 분배로 세로 적층 방지 + 화면의 절반을 꽉 채워 가독성↑.
-       (고정 140px 대신 50%씩 → 폰별 화면폭에 맞춰 카드가 커져 글자·버튼이 잘 보임. 홀수면 오른쪽 칸 빈 채 유지.) */
+    /* 예약 현황 카드: 앱에서도 한 줄에 '항상 2개'. 가로 스크롤 차단 + 컬럼 하드 50% 캡 → 2개가 화면에 딱 들어감.
+       (홀수면 오른쪽 칸 빈 채 유지. 버튼은 정보 아래 가로 3분할로 카드 높이 최소화.) */
+    .st-key-booking_board { overflow-x: hidden !important; max-width: 100% !important; }
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
-    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: none !important; margin: 0 !important; padding: 0 2px !important; }
-    /* 안쪽 3열(정보2 + 버튼1)은 카드 안에서 균등 1/3 — 버튼 3개는 3열째 안에서 세로 3단으로 쌓인다. */
+    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: 50% !important; margin: 0 !important; padding: 0 1px !important; }
     .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { padding: 0 !important; }
-    .st-key-booking_board .stButton { margin-bottom: 3px !important; }
-    .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 12px !important; padding: 3px 6px !important; white-space: normal !important; line-height: 1.1 !important; }
+    .st-key-booking_board .stButton { margin-bottom: 0 !important; }
+    .st-key-booking_board .stButton button { min-height: 30px !important; font-size: 11px !important; padding: 2px 2px !important; white-space: normal !important; line-height: 1.05 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2096,15 +2097,15 @@ if st.session_state.bookings:
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 6px 0;">'
         )
 
-        # 카드가 화면 절반 폭(좁음)이라 정보를 'CSS 2열 그리드'로 배열(제목 윗줄 / 값 아랫줄).
-        #  중첩 Streamlit 컬럼을 쓰지 않아 열 겹침·가로 오버플로우가 없다.
+        # 카드가 화면 절반 폭(좁음)이라 정보를 'CSS 2열 그리드'로 배열(제목 + 값 한 줄, 길면 자동 줄바꿈).
+        #  중첩 Streamlit 컬럼을 쓰지 않아 열 겹침·가로 오버플로우가 없다. 높이 축소를 위해 인라인·압축 배치.
         #  왼쪽열=신청자·출발지·목적지 / 오른쪽열=출발날짜·출발시간·도착시간 → 행 순서대로 좌우 번갈아 채움.
         def _cell(label, value):
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
-                    f'<strong>{label}</strong><br>{value}</div>')
+                    f'<strong>{label}</strong> {value}</div>')
         info_grid = (
-            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px 8px; '
-            f'font-size:13px; color:{c_fg}; line-height:1.2; margin-bottom:8px;">'
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 8px; '
+            f'font-size:12px; color:{c_fg}; line-height:1.25; margin-bottom:6px;">'
             + _cell(t('c_applicant'), binfo.get('name', ''))
             + _cell(t('c_date'), binfo.get('date', ''))
             + _cell(t('c_departure'), binfo.get('departure', ''))
@@ -2139,16 +2140,20 @@ if st.session_state.bookings:
         # 카드 전체(정보 + 버튼)를 감싸는 컨테이너에 차량색 배경을 입힌다(키별 1회성 스타일 주입).
         st.markdown(
             f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
-            f"border-radius:8px !important; padding:10px !important; margin-bottom:8px !important;}}</style>",
+            f"border-radius:8px !important; padding:8px !important; margin-bottom:6px !important;}}</style>",
             unsafe_allow_html=True,
         )
         with st.container(key=cardkey):
             st.markdown(header_html, unsafe_allow_html=True)
             st.markdown(info_grid, unsafe_allow_html=True)          # 정보 2열 그리드(위)
-            # 버튼 3개(예약수정/취소/도착완료)는 정보 아래 '전체폭 세로'로 배치 → 반쪽 카드에도 안정적으로 들어감.
-            _btn_edit()
-            _btn_cancel()
-            _btn_done()
+            # 버튼 3개(예약수정/취소/도착완료)는 정보 아래 '가로 3분할'로 배치 → 카드 높이를 대폭 축소.
+            bcol1, bcol2, bcol3 = st.columns(3)
+            with bcol1:
+                _btn_edit()
+            with bcol2:
+                _btn_cancel()
+            with bcol3:
+                _btn_done()
 
     # 배차 예약 카드를 '한 줄에 2개(가로 2열)'로 배치 — 카드 폭 140px.
     #  차량·좌석번호 순으로 평탄화한 뒤 2개씩 끊어 렌더. 홀수(1자리 등)면 오른쪽 칸은 비워 둔다.
