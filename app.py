@@ -119,6 +119,8 @@ st.markdown("""
     .seat-status-table tbody tr:hover { background: rgba(250,176,5,0.06); }
     .seat-status-table tbody tr.seat-status-empty td { color: #6c757d; }
     .seat-status-table tbody tr.seat-status-empty td.ss-seat { color: #868e96; }
+    /* 오늘 완료된 탑승(누적 이력) 행: 초록 톤으로 현재 예약과 구분 */
+    .seat-status-table tbody tr.seat-status-done td { color: #63b365; }
     /* 좌석 현황 하단 버튼: 닫기(75%)·로그아웃(25%) — 다이얼로그 컬럼 1:1 강제 CSS를 스코프로 덮어써 3:1 유지 */
     .st-key-admin_status_btns [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
     .st-key-admin_status_btns [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
@@ -1735,23 +1737,61 @@ def _admin_seat_status_view(car_rc):
     st.markdown(f'<div class="dlg-step-title">{t("admin_status_title")}</div>', unsafe_allow_html=True)
     st.caption(car)
     empty = t("st_empty")
+
+    # 오늘(00:00~24:00, 베트남 기준) '완료'된 탑승 이력을 좌석별로 묶는다 → 완료 건도 표에 누적 표시(자정 지나면 자동 초기화).
+    today_str = now_vn().strftime("%Y-%m-%d")
+    done_by_seat = {}
+    try:
+        for rec in load_history():
+            if str(rec.get("status", "")).strip() != "완료":
+                continue
+            if str(rec.get("car", "")).strip() != car:
+                continue
+            if str(rec.get("date", "")).strip() != today_str:   # 출발 날짜 기준 '오늘'
+                continue
+            try:
+                s = int(rec.get("seat"))
+            except (TypeError, ValueError):
+                continue
+            done_by_seat.setdefault(s, []).append(rec)
+    except Exception:
+        done_by_seat = {}
+
+    def _cells(src):
+        return (
+            html.escape(str(src.get("name", "")).strip() or empty),
+            html.escape(str(src.get("departure", "")).strip() or empty),
+            html.escape(str(src.get("destination", "")).strip() or empty),
+            html.escape(str(src.get("time", "")).strip() or empty),      # 출발 시간
+            html.escape(str(src.get("arrive", "")).strip() or empty),    # 도착 시간
+        )
+
     rows_html = []
     for seat in range(1, car_rc["seats"] + 1):
-        info = st.session_state.bookings.get((car, seat))
-        if info:
-            name = html.escape(str(info.get("name", "")).strip() or empty)
-            dep = html.escape(str(info.get("departure", "")).strip() or empty)
-            dest = html.escape(str(info.get("destination", "")).strip() or empty)
-            dept = html.escape(str(info.get("time", "")).strip() or empty)   # 출발 시간(예약 폼의 출발시간)
-            arr = html.escape(str(info.get("arrive", "")).strip() or empty)
-            cls = ""
-        else:
-            name = dep = dest = dept = arr = empty
-            cls = ' class="seat-status-empty"'
-        rows_html.append(
-            f'<tr{cls}><td class="ss-seat">{seat}</td><td>{name}</td><td>{dep}</td>'
-            f'<td>{dest}</td><td class="ss-time">{dept}</td><td class="ss-time">{arr}</td></tr>'
-        )
+        # 이 좌석의 표시 행 = 오늘 완료 이력(완료시각순) + 현재 예약(있으면 맨 아래)
+        done_list = sorted(done_by_seat.get(seat, []), key=lambda r: str(r.get("completed_at", "")))
+        cur = st.session_state.bookings.get((car, seat))
+        seat_rows = [(rec, True) for rec in done_list]
+        if cur:
+            seat_rows.append((cur, False))
+
+        if not seat_rows:
+            rows_html.append(
+                f'<tr class="seat-status-empty"><td class="ss-seat">{seat}</td>'
+                f'<td>{empty}</td><td>{empty}</td><td>{empty}</td>'
+                f'<td class="ss-time">{empty}</td><td class="ss-time">{empty}</td></tr>'
+            )
+            continue
+
+        span = len(seat_rows)
+        for idx, (src, is_done) in enumerate(seat_rows):
+            name, dep, dest, dept, arr = _cells(src)
+            rcls = ' class="seat-status-done"' if is_done else ''
+            seat_td = f'<td class="ss-seat" rowspan="{span}">{seat}</td>' if idx == 0 else ''
+            rows_html.append(
+                f'<tr{rcls}>{seat_td}<td>{name}</td><td>{dep}</td>'
+                f'<td>{dest}</td><td class="ss-time">{dept}</td><td class="ss-time">{arr}</td></tr>'
+            )
     table_html = (
         '<div class="seat-status-wrap"><table class="seat-status-table"><thead><tr>'
         f'<th>{t("st_seat")}</th><th>{t("st_name")}</th><th>{t("st_dep")}</th>'
