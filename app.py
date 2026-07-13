@@ -196,14 +196,14 @@ st.markdown("""
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
-    /* 예약 현황 카드: 좁은 차량 컬럼(1/N) 폭을 최대한 살리도록 인셋 최소화 */
-    .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; }
+    /* 예약 현황 카드: 한 줄에 2개(가로 2열) — 각 카드 폭 140px(컬럼 144px = 카드140 + 좌우 padding 2px). */
+    .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; flex: 0 0 auto !important; width: 144px !important; }
     /* 카드 내부 3열(정보2 + 버튼1) 동일 폭 균등 분할 + 좁은 간격 */
-    .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 4px !important; }
     .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; padding: 0 !important; }
-    /* 우측 버튼 3단(수정·취소·도착완료) 세로 적층: 컴팩트 + 버튼 사이 간격 */
-    .st-key-booking_board .stButton { margin-bottom: 4px !important; }
-    .st-key-booking_board .stButton button { padding: 3px 4px !important; font-size: 11px !important; white-space: nowrap !important; min-height: 34px !important; width: 100% !important; }
+    /* 우측 버튼 3단(수정·취소·도착완료) 세로 적층: 컴팩트 + 버튼 사이 간격 최소화(카드 하단 라인 정렬) */
+    .st-key-booking_board .stButton { margin-bottom: 2px !important; }
+    .st-key-booking_board .stButton button { padding: 2px 2px !important; font-size: 11px !important; white-space: normal !important; line-height: 1.05 !important; min-height: 34px !important; width: 100% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -534,13 +534,14 @@ if IS_MOBILE:
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
     /* 차량명 프레임: 모바일에선 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
-    /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
-    .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
-    /* 앱(모바일): 카드 내부 3열(정보2 + 버튼1)을 301px 카드 안에서 nowrap + flex 1 1 0%로 균등 1/3 유지.
-       버튼 3개는 3열째 안에서 세로 3단(수정/취소/도착완료)으로 쌓인다. 좁은 폭 대응 위해 폰트·패딩 압축. */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
+    /* 예약 현황 카드: 앱에서도 한 줄에 2개(가로 2열) — 각 카드 폭 140px(컬럼 144px). 왼쪽부터 채우고 오른쪽 빈칸 유지. */
+    .st-key-booking_board [data-testid="stColumn"] { flex: 0 0 auto !important; width: 144px !important; max-width: 50% !important; margin: 0 !important; padding: 0 2px !important; }
+    /* 앱(모바일): 카드 내부 3열(정보2 + 버튼1)을 140px 카드 안에서 nowrap + flex 1 1 0%로 균등 1/3 유지.
+       버튼 3개는 3열째 안에서 세로 3단(수정/취소/도착완료)으로 쌓인다. 좁은 폭이라 버튼 글자는 줄바꿈 허용. */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
     .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
-    .st-key-booking_board .stButton button { min-height: 34px !important; font-size: 11px !important; padding: 3px 2px !important; white-space: nowrap !important; }
+    .st-key-booking_board .stButton { margin-bottom: 2px !important; }
+    .st-key-booking_board .stButton button { min-height: 34px !important; font-size: 11px !important; padding: 2px 2px !important; white-space: normal !important; line-height: 1.05 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2087,21 +2088,22 @@ if st.session_state.bookings:
 
         # 헤더: 차량명(왼쪽, 길면 … 줄임) + 좌석 배지(오른쪽 고정) + 구분선. 카드 상단 전체폭.
         header_html = (
-            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
-            f'<span style="color: {c_fg}; font-weight: bold; font-size: 20px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
-            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
+            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
-            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 8px 0;">'
+            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 6px 0;">'
         )
 
-        # 정보 셀 1개: 버튼과 같은 높이(min-height 34px)로 맞춰 3행이 버튼 3단과 가로로 정렬되게 한다.
+        # 정보 셀 1개: 카드 폭이 좁아(140px) 제목·값을 '2줄'(제목 윗줄 / 값 아랫줄)로 배열.
+        #  버튼 3단과 높이를 맞추기 위해 셀 min-height 34px + 세로 가운데 정렬.
         def _info_cell(label, value):
-            return ('<div style="min-height: 34px; display: flex; align-items: center;">'
-                    f'<span><strong>{label}</strong> {value}</span></div>')
+            return ('<div style="min-height: 34px; display: flex; flex-direction: column; justify-content: center;">'
+                    f'<strong>{label}</strong><span>{value}</span></div>')
         def _info_col(rows):
             cells = "".join(_info_cell(lbl, val) for lbl, val in rows)
             return (f'<div style="display: flex; flex-direction: column; gap: 4px; '
-                    f'font-size: 11px; color: {c_fg}; line-height: 1.2; word-break: break-word;">{cells}</div>')
+                    f'font-size: 13px; color: {c_fg}; line-height: 1.15; word-break: break-word;">{cells}</div>')
         info_left = _info_col([
             (t('c_applicant'), binfo.get('name', '')),
             (t('c_departure'), binfo.get('departure', '')),
@@ -2153,24 +2155,36 @@ if st.session_state.bookings:
                 _btn_cancel()
                 _btn_done()
 
-    # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열.
-    #  카드 프레임 폭은 위 좌석 차량 박스(.car-layout-container)와 같은 폭으로 맞춘다(booking_board 인셋 CSS).
+    # 배차 예약 카드를 '한 줄에 2개(가로 2열)'로 배치 — 카드 폭 140px.
+    #  차량·좌석번호 순으로 평탄화한 뒤 2개씩 끊어 렌더. 홀수(1자리 등)면 오른쪽 칸은 비워 둔다.
     with st.container(key="booking_board"):
-        list_cols = st.columns(total_cars)
+        # 차량 순 → 좌석번호 순으로 전체 예약을 한 줄로 모은다.
+        ordered = []
         shown = set()
-        for ci, rcar in enumerate(resolved_cars):
-            with list_cols[ci]:
-                car_items = sorted(
-                    [it for it in filtered_items if it[0][0] == rcar["display_name"]],
-                    key=lambda kv: kv[0][1]
-                )
-                for (bc_name, bseat), binfo in car_items:
-                    shown.add((bc_name, bseat))
+        for rcar in resolved_cars:
+            car_items = sorted(
+                [it for it in filtered_items if it[0][0] == rcar["display_name"]],
+                key=lambda kv: kv[0][1]
+            )
+            for key_, binfo in car_items:
+                ordered.append((key_, binfo))
+                shown.add(key_)
+        # 현재 차량 구성에 없는(4/7 설정 변경·삭제된 차량 등) 예약도 뒤에 이어붙인다.
+        for key_, binfo in filtered_items:
+            if key_ not in shown:
+                ordered.append((key_, binfo))
+
+        # 2개씩 한 줄. 오른쪽 칸이 없으면(홀수) 빈 컬럼으로 남겨 '2열' 틀을 유지.
+        for i in range(0, len(ordered), 2):
+            col_l, col_r = st.columns(2)
+            with col_l:
+                (bc_name, bseat), binfo = ordered[i]
+                _render_booking_card(bc_name, bseat, binfo)
+            with col_r:
+                if i + 1 < len(ordered):
+                    (bc_name, bseat), binfo = ordered[i + 1]
                     _render_booking_card(bc_name, bseat, binfo)
-    # 현재 차량 구성에 없는(4/7 설정 변경·삭제된 차량 등) 예약은 아래에 이어서 전체폭 표시
-    for (bc_name, bseat), binfo in filtered_items:
-        if (bc_name, bseat) not in shown:
-            _render_booking_card(bc_name, bseat, binfo)
+                # 홀수 마지막 줄: 오른쪽 칸 비워 둠(카드 자리 유지)
 
     # ⚡ [관리자] 전체 예약 초기화 — INNOVA·SEDONA 운전석 관리자 로그인(admin_unlocked) 후에만 노출/동작
     if st.session_state.get("admin_unlocked"):
