@@ -203,9 +203,12 @@ st.markdown("""
     /* (0,3,0) → Streamlit 모바일 적층(컬럼 flex-basis:100%)을 확실히 덮어씀.
        바깥 2열은 50%씩(2개가 화면에 딱), 안쪽 버튼 3열은 1/3씩 (같은 규칙으로 각 레벨 균등 분배). */
     .st-key-booking_board [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; padding: 0 1px !important; }
-    /* 가로 3분할 버튼(수정·취소·도착완료): word-break:keep-all로 '예약/수정'처럼 단어 사이(공백)에서만 줄바꿈 → 2줄 표시 */
+    /* 가로 3분할 버튼(수정·취소·도착완료): word-break:keep-all로 '예약/수정'처럼 단어 사이(공백)에서만 줄바꿈 → 2줄 표시.
+       버튼 내부 텍스트 요소(p/div/span)까지 직접 적용해야 CJK 글자 중간 끊김('예약 수'/'정')을 확실히 막는다. */
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
-    .st-key-booking_board .stButton button { padding: 2px 1px !important; font-size: 11px !important; white-space: normal !important; word-break: keep-all !important; line-height: 1.1 !important; min-height: 32px !important; width: 100% !important; }
+    .st-key-booking_board .stButton button,
+    .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
+    .st-key-booking_board .stButton button { padding: 2px 1px !important; font-size: 11px !important; line-height: 1.1 !important; min-height: 32px !important; width: 100% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -542,7 +545,9 @@ if IS_MOBILE:
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
     .st-key-booking_board [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 0 1px !important; }
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
-    .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; white-space: normal !important; word-break: keep-all !important; line-height: 1.1 !important; }
+    .st-key-booking_board .stButton button,
+    .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
+    .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; line-height: 1.1 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2171,36 +2176,48 @@ if st.session_state.bookings:
             with bcol3:
                 _btn_done()
 
-    # 배차 예약 카드를 '한 줄에 2개(가로 2열)'로 배치 — 카드 폭 140px.
-    #  차량·좌석번호 순으로 평탄화한 뒤 2개씩 끊어 렌더. 홀수(1자리 등)면 오른쪽 칸은 비워 둔다.
+    # 배차 예약 카드를 '한 줄에 2개(가로 2열)'로 배치하되, '같은 차량끼리만' 짝을 짓는다.
+    #  → 서로 다른 차량이 한 줄에 섞이지 않는다. 한 차량 카드가 홀수면 그 차량 마지막 줄 오른쪽 칸은 비워 둔다.
+    #    (예: VF5가 1대면 [VF5][빈칸], 다음 줄부터 TAXI 시작)
     with st.container(key="booking_board"):
-        # 차량 순 → 좌석번호 순으로 전체 예약을 한 줄로 모은다.
-        ordered = []
+        # 차량 순으로 그룹을 만든다(각 그룹 = 같은 차량의 좌석번호순 예약 목록).
+        car_groups = []
         shown = set()
         for rcar in resolved_cars:
             car_items = sorted(
                 [it for it in filtered_items if it[0][0] == rcar["display_name"]],
                 key=lambda kv: kv[0][1]
             )
-            for key_, binfo in car_items:
-                ordered.append((key_, binfo))
-                shown.add(key_)
-        # 현재 차량 구성에 없는(4/7 설정 변경·삭제된 차량 등) 예약도 뒤에 이어붙인다.
+            if car_items:
+                car_groups.append(car_items)
+                for key_, _binfo in car_items:
+                    shown.add(key_)
+        # 현재 차량 구성에 없는(4/7 설정 변경·삭제된 차량 등) 예약: 표시명별로 묶어 뒤에 추가.
+        leftover_names = []
+        leftover_map = {}
         for key_, binfo in filtered_items:
-            if key_ not in shown:
-                ordered.append((key_, binfo))
+            if key_ in shown:
+                continue
+            nm = key_[0]
+            if nm not in leftover_map:
+                leftover_map[nm] = []
+                leftover_names.append(nm)
+            leftover_map[nm].append((key_, binfo))
+        for nm in leftover_names:
+            car_groups.append(leftover_map[nm])
 
-        # 2개씩 한 줄. 오른쪽 칸이 없으면(홀수) 빈 컬럼으로 남겨 '2열' 틀을 유지.
-        for i in range(0, len(ordered), 2):
-            col_l, col_r = st.columns(2)
-            with col_l:
-                (bc_name, bseat), binfo = ordered[i]
-                _render_booking_card(bc_name, bseat, binfo)
-            with col_r:
-                if i + 1 < len(ordered):
-                    (bc_name, bseat), binfo = ordered[i + 1]
+        # 각 차량 그룹을 2개씩 한 줄로 렌더. 오른쪽 칸이 없으면(홀수) 빈 컬럼으로 남겨 '2열' 틀 유지.
+        for group in car_groups:
+            for i in range(0, len(group), 2):
+                col_l, col_r = st.columns(2)
+                with col_l:
+                    (bc_name, bseat), binfo = group[i]
                     _render_booking_card(bc_name, bseat, binfo)
-                # 홀수 마지막 줄: 오른쪽 칸 비워 둠(카드 자리 유지)
+                with col_r:
+                    if i + 1 < len(group):
+                        (bc_name, bseat), binfo = group[i + 1]
+                        _render_booking_card(bc_name, bseat, binfo)
+                    # 홀수 마지막 줄: 오른쪽 칸 비워 둠(같은 차량 병렬 틀 유지)
 
     # ⚡ [관리자] 전체 예약 초기화 — INNOVA·SEDONA 운전석 관리자 로그인(admin_unlocked) 후에만 노출/동작
     if st.session_state.get("admin_unlocked"):
