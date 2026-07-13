@@ -196,12 +196,13 @@ st.markdown("""
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
-    /* 예약 현황 카드: 한 줄에 2개(가로 2열) — 각 카드 폭 140px(컬럼 144px = 카드140 + 좌우 padding 2px). */
-    .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; flex: 0 0 auto !important; width: 144px !important; }
-    /* 카드 내부 3열(정보2 + 버튼1) 동일 폭 균등 분할 + 좁은 간격 */
-    .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 4px !important; }
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; padding: 0 !important; }
-    /* 우측 버튼 3단(수정·취소·도착완료) 세로 적층: 컴팩트 + 버튼 사이 간격 최소화(카드 하단 라인 정렬) */
+    /* 예약 현황 카드: 한 줄에 '항상 2개'(가로 2열). nowrap로 모바일 세로 적층을 원천 차단하고
+       모든 컬럼을 균등 분배 → 바깥 2열은 50%씩, 안쪽 3열은 1/3씩. (홀수면 오른쪽 칸은 빈 채로 50% 유지) */
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
+    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: 210px !important; padding: 0 2px !important; }
+    /* 안쪽 3열(정보2 + 버튼1)은 카드 안에서 균등 — 폭 캡 해제 */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { max-width: none !important; padding: 0 !important; }
+    /* 우측 버튼 3단(수정·취소·도착완료) 세로 적층: 컴팩트 + 버튼 사이 간격 최소화(카드 하단 라인 정렬), 좁은 폭이라 글자 줄바꿈 허용 */
     .st-key-booking_board .stButton { margin-bottom: 2px !important; }
     .st-key-booking_board .stButton button { padding: 2px 2px !important; font-size: 11px !important; white-space: normal !important; line-height: 1.05 !important; min-height: 34px !important; width: 100% !important; }
     .main-title {
@@ -534,12 +535,12 @@ if IS_MOBILE:
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
     /* 차량명 프레임: 모바일에선 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
-    /* 예약 현황 카드: 앱에서도 한 줄에 2개(가로 2열) — 각 카드 폭 140px(컬럼 144px). 왼쪽부터 채우고 오른쪽 빈칸 유지. */
-    .st-key-booking_board [data-testid="stColumn"] { flex: 0 0 auto !important; width: 144px !important; max-width: 50% !important; margin: 0 !important; padding: 0 2px !important; }
-    /* 앱(모바일): 카드 내부 3열(정보2 + 버튼1)을 140px 카드 안에서 nowrap + flex 1 1 0%로 균등 1/3 유지.
-       버튼 3개는 3열째 안에서 세로 3단(수정/취소/도착완료)으로 쌓인다. 좁은 폭이라 버튼 글자는 줄바꿈 허용. */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
+    /* 예약 현황 카드: 앱에서도 한 줄에 '항상 2개'. nowrap + 균등 분배로 세로 적층 방지 + 화면의 절반을 꽉 채워 가독성↑.
+       (고정 140px 대신 50%씩 → 폰별 화면폭에 맞춰 카드가 커져 글자·버튼이 잘 보임. 홀수면 오른쪽 칸 빈 채 유지.) */
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
+    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: none !important; margin: 0 !important; padding: 0 2px !important; }
+    /* 안쪽 3열(정보2 + 버튼1)은 카드 안에서 균등 1/3 — 버튼 3개는 3열째 안에서 세로 3단으로 쌓인다. */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { padding: 0 !important; }
     .st-key-booking_board .stButton { margin-bottom: 2px !important; }
     .st-key-booking_board .stButton button { min-height: 34px !important; font-size: 11px !important; padding: 2px 2px !important; white-space: normal !important; line-height: 1.05 !important; }
     .car-title-text { font-size: 16px !important; }
