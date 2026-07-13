@@ -203,9 +203,9 @@ st.markdown("""
     /* (0,3,0) → Streamlit 모바일 적층(컬럼 flex-basis:100%)을 확실히 덮어씀.
        바깥 2열은 50%씩(2개가 화면에 딱), 안쪽 버튼 3열은 1/3씩 (같은 규칙으로 각 레벨 균등 분배). */
     .st-key-booking_board [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; padding: 0 1px !important; }
-    /* 가로 3분할 버튼(수정·취소·도착완료): 폰트·패딩 압축, 글자 줄바꿈 허용, 카드 높이 최소화 */
+    /* 가로 3분할 버튼(수정·취소·도착완료): word-break:keep-all로 '예약/수정'처럼 단어 사이(공백)에서만 줄바꿈 → 2줄 표시 */
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
-    .st-key-booking_board .stButton button { padding: 2px 1px !important; font-size: 11px !important; white-space: normal !important; line-height: 1.05 !important; min-height: 28px !important; width: 100% !important; }
+    .st-key-booking_board .stButton button { padding: 2px 1px !important; font-size: 11px !important; white-space: normal !important; word-break: keep-all !important; line-height: 1.1 !important; min-height: 32px !important; width: 100% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -542,7 +542,7 @@ if IS_MOBILE:
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
     .st-key-booking_board [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 0 1px !important; }
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
-    .st-key-booking_board .stButton button { min-height: 28px !important; font-size: 11px !important; padding: 2px 1px !important; white-space: normal !important; line-height: 1.05 !important; }
+    .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; white-space: normal !important; word-break: keep-all !important; line-height: 1.1 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1426,6 +1426,18 @@ def brand_logo(name):
                 '<rect x="5.6" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="12.8" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="20" y="6.3" width="3.6" height="3.3" fill="#111"/></svg>')
     return '🚙 '
 
+def _short_car_name(display_name):
+    """예약 카드용 짧은 차량명: 브랜드 접두어와 '(N SEAT)' 접미어를 제거.
+    'TOYOTA INNOVA (7 SEAT)'→'INNOVA', 'VINFAST VF5 (4 SEAT)'→'VF5', 'TAXI 2 (6 SEAT)'→'TAXI 2'."""
+    s = display_name
+    if "(" in s:
+        s = s[:s.rindex("(")].strip()
+    for brand in ("TOYOTA", "HYUNDAI", "VINFAST", "KIA", "FORD"):
+        if s.upper().startswith(brand + " "):
+            s = s[len(brand) + 1:].strip()
+            break
+    return s
+
 # 차량명 프레임 색: 각 차량 외관색 기준(배경 그라디언트 + 대비 텍스트 + 테두리)
 CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8) 적용
     "innova": ("linear-gradient(180deg,#c5c6c7,#b1b3b7)", "#14171c", "#9ea2a7"),  # 화이트/실버
@@ -2087,10 +2099,15 @@ if st.session_state.bookings:
         _safe = "".join(ch for ch in f"{bc_name}{bseat}" if ch.isalnum())
         cardkey = f"bkcard_{mk}_{_safe}"
 
-        # 헤더: 차량명(왼쪽, 길면 … 줄임) + 좌석 배지(오른쪽 고정) + 구분선. 카드 상단 전체폭.
+        # 헤더: 차량 로고 + 짧은 차량명(INNOVA/SEDONA/VF5/TAXI n) + 좌석 배지 + 구분선. 카드 상단 전체폭.
+        car_logo = brand_logo(bc_name)          # 브랜드 인라인 SVG/이미지 로고
+        car_short = _short_car_name(bc_name)    # 'TOYOTA INNOVA (7 SEAT)' → 'INNOVA'
         header_html = (
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
-            f'<span style="color: {c_fg}; font-weight: bold; font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: 15px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
+            f'{car_logo}'
+            f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{car_short}</span>'
+            '</span>'
             f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
@@ -2101,10 +2118,10 @@ if st.session_state.bookings:
         #  왼쪽열=신청자·출발지·목적지 / 오른쪽열=출발날짜·출발시간·도착시간 → 행 순서대로 좌우 번갈아 채움.
         def _cell(label, value):
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
-                    f'<strong>{label}</strong> {value}</div>')
+                    f'<strong>{label}</strong><br>{value}</div>')
         info_grid = (
-            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; '
-            f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:4px;">'
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
+            f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:5px;">'
             + _cell(t('c_applicant'), binfo.get('name', ''))
             + _cell(t('c_date'), binfo.get('date', ''))
             + _cell(t('c_departure'), binfo.get('departure', ''))
