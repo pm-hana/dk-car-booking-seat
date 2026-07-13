@@ -823,7 +823,7 @@ TR = {
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
         "admin_status_title": "📋 좌석 신청 현황",
         "st_seat": "좌석 번호", "st_name": "신청자", "st_dep": "출발지",
-        "st_dest": "목적지", "st_reqtime": "신청 시간", "st_arrive": "도착 시간",
+        "st_dest": "목적지", "st_reqtime": "신청 시간", "st_deptime": "출발 시간", "st_arrive": "도착 시간",
         "st_empty": "미신청", "btn_close": "닫기", "btn_logout": "로그아웃",
         "admin_keep_login": "로그인 유지 (재접속 시 비밀번호 없이 자동 로그인)",
     },
@@ -875,7 +875,7 @@ TR = {
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
         "admin_status_title": "📋 Seat Request Status",
         "st_seat": "Seat", "st_name": "Applicant", "st_dep": "From",
-        "st_dest": "To", "st_reqtime": "Requested", "st_arrive": "Arrival",
+        "st_dest": "To", "st_reqtime": "Requested", "st_deptime": "Departure", "st_arrive": "Arrival",
         "st_empty": "—", "btn_close": "Close", "btn_logout": "Logout",
         "admin_keep_login": "Keep me logged in (auto-login without password on return)",
     },
@@ -1730,7 +1730,7 @@ def _admin_login_form():
 def _admin_seat_status_view(car_rc):
     """관리자 로그인 성공 후 같은 팝업 안에서 뜨는 '좌석 신청 현황' 표.
     운전석(0번)을 제외한 해당 차량의 전체 좌석(신청 안 된 빈 좌석 포함)을 좌석 번호 순으로 나열.
-    컬럼: 좌석 번호 / 신청자 / 출발지 / 목적지 / 신청 시간 / 도착 시간."""
+    컬럼: 좌석 번호 / 신청자 / 출발지 / 목적지 / 출발 시간 / 도착 시간."""
     car = car_rc["display_name"]
     st.markdown(f'<div class="dlg-step-title">{t("admin_status_title")}</div>', unsafe_allow_html=True)
     st.caption(car)
@@ -1742,20 +1742,20 @@ def _admin_seat_status_view(car_rc):
             name = html.escape(str(info.get("name", "")).strip() or empty)
             dep = html.escape(str(info.get("departure", "")).strip() or empty)
             dest = html.escape(str(info.get("destination", "")).strip() or empty)
-            reqt = html.escape(str(info.get("created_at", "")).strip() or empty)
+            dept = html.escape(str(info.get("time", "")).strip() or empty)   # 출발 시간(예약 폼의 출발시간)
             arr = html.escape(str(info.get("arrive", "")).strip() or empty)
             cls = ""
         else:
-            name = dep = dest = reqt = arr = empty
+            name = dep = dest = dept = arr = empty
             cls = ' class="seat-status-empty"'
         rows_html.append(
             f'<tr{cls}><td class="ss-seat">{seat}</td><td>{name}</td><td>{dep}</td>'
-            f'<td>{dest}</td><td class="ss-time">{reqt}</td><td class="ss-time">{arr}</td></tr>'
+            f'<td>{dest}</td><td class="ss-time">{dept}</td><td class="ss-time">{arr}</td></tr>'
         )
     table_html = (
         '<div class="seat-status-wrap"><table class="seat-status-table"><thead><tr>'
         f'<th>{t("st_seat")}</th><th>{t("st_name")}</th><th>{t("st_dep")}</th>'
-        f'<th>{t("st_dest")}</th><th>{t("st_reqtime")}</th><th>{t("st_arrive")}</th>'
+        f'<th>{t("st_dest")}</th><th>{t("st_deptime")}</th><th>{t("st_arrive")}</th>'
         f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
     )
     st.markdown(table_html, unsafe_allow_html=True)
@@ -1803,8 +1803,9 @@ def seatmap_dialog(car_rc):
         except Exception:
             seat_num = None
     is_form = seat_num is not None and seat_num not in booked
-    # 단계별 커스텀 제목: 배치도=🚗 좌석 선택 / 신청 폼=📝 신청 정보 입력
-    st.markdown(f'<div class="dlg-step-title">{t("form_step_title") if is_form else t("seatmap_title")}</div>', unsafe_allow_html=True)
+    # 단계별 커스텀 제목: 신청 폼일 때만 '📝 신청 정보 입력' 제목을 표시. 좌석 배치도(좌석 선택)는 제목 없이 바로 노출.
+    if is_form:
+        st.markdown(f'<div class="dlg-step-title">{t("form_step_title")}</div>', unsafe_allow_html=True)
     # 좌석이 선택된 상태면 같은 팝업 안에서 신청 폼을 보여준다.
     if is_form:
         _booking_form(car, seat_num)
