@@ -196,11 +196,14 @@ st.markdown("""
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
-    /* 예약 현황 카드: 좁은 차량 컬럼(1/N) 폭을 최대한 살리도록 인셋 없이 컬럼 전체폭 사용(글자 깨짐 방지) */
+    /* 예약 현황 카드: 좁은 차량 컬럼(1/N) 폭을 최대한 살리도록 인셋 최소화 */
     .st-key-booking_board [data-testid="stColumn"] { padding: 0 2px !important; }
-    /* 예약 수정·취소·도착완료 3버튼(1/3씩 병렬): 좁은 폭에서도 한 줄 유지되도록 폰트·패딩 압축 */
-    .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 4px !important; }
-    .st-key-booking_board .stButton button { padding: 3px 2px !important; font-size: 12px !important; white-space: nowrap !important; min-height: 32px !important; }
+    /* 카드 내부 3열(정보2 + 버튼1) 동일 폭 균등 분할 + 좁은 간격 */
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; padding: 0 !important; }
+    /* 우측 버튼 3단(수정·취소·도착완료) 세로 적층: 컴팩트 + 버튼 사이 간격 */
+    .st-key-booking_board .stButton { margin-bottom: 4px !important; }
+    .st-key-booking_board .stButton button { padding: 3px 4px !important; font-size: 11px !important; white-space: nowrap !important; min-height: 34px !important; width: 100% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -533,9 +536,9 @@ if IS_MOBILE:
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
     /* 예약 현황 카드 프레임: 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .st-key-booking_board [data-testid="stColumn"] { flex: 0 1 auto !important; width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
-    /* 앱(모바일): 카드 버튼 3개(예약수정/취소/도착완료)를 PC 웹처럼 한 줄에 가로 3분할(동일 크기)로.
-       중첩 버튼 컬럼을 nowrap + flex 1 1 0%로 균등 1/3 유지, 좁은 폭 대응 위해 폰트·패딩 압축. */
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
+    /* 앱(모바일): 카드 내부 3열(정보2 + 버튼1)을 301px 카드 안에서 nowrap + flex 1 1 0%로 균등 1/3 유지.
+       버튼 3개는 3열째 안에서 세로 3단(수정/취소/도착완료)으로 쌓인다. 좁은 폭 대응 위해 폰트·패딩 압축. */
+    .st-key-booking_board [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
     .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
     .st-key-booking_board .stButton button { min-height: 34px !important; font-size: 11px !important; padding: 3px 2px !important; white-space: nowrap !important; }
     .car-title-text { font-size: 16px !important; }
@@ -1431,10 +1434,11 @@ CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8
 }
 
 # 예약 현황 카드 배경색: 차량 로고 바탕색을 20% 알파 투명도로 틴트(어두운 페이지 위 은은한 차량색).
-#  낮은 알파라 실효 배경은 어두워지므로 본문 글자색은 전 차량 밝게 통일. (배경 rgba, 텍스트색, 테두리 rgba)
+#  낮은 알파라 실효 배경은 어두워지므로 본문 글자색은 밝게. (배경, 텍스트색, 테두리)
+#  단, INNOVA만 상단 네이밍 바와 동일한 '밝은 실버' 배경 + 어두운 글자로 예외 처리(세도나와 확실히 구분).
 CAR_CARD_STYLE = {
-    "innova": ("rgba(203,208,216,0.20)", "#eef1f5", "rgba(203,208,216,0.55)"),  # 화이트/실버
-    "sedona": ("rgba(120,128,142,0.20)", "#eef1f5", "rgba(120,128,142,0.55)"),  # 블랙
+    "innova": ("linear-gradient(180deg,#c9cbce,#b4b7bb)", "#14171c", "#9a9ea3"),  # 밝은 실버(상단 바와 동일 계열·어두운 글자)
+    "sedona": ("rgba(120,128,142,0.20)", "#eef1f5", "rgba(120,128,142,0.55)"),  # 블랙(어두운 회색 유지 → INNOVA와 대비)
     "vf5":    ("rgba(214,72,62,0.22)",   "#ffffff", "rgba(214,72,62,0.60)"),    # 레드
     "taxi4":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),   # 옐로우
     "taxi7":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),
@@ -2065,29 +2069,45 @@ if st.session_state.bookings:
         st.session_state.active_booking_car = bc_name
         st.session_state.duplicate_error_msg = None
 
-    # 예약 카드 1장 렌더.
-    #  · 앱(모바일 ?m=1): 박스 안에서 정보(좌) + 버튼 3단 세로(우) 가로 배치
-    #  · PC(웹): 좁은 차량 컬럼(1/N) → 정보 1단 세로 + 버튼(수정·취소 한 줄 + 도착완료 전체폭)
+    # 예약 카드 1장 렌더 — PC·앱 공통(동일 UI).
+    #  구조: 차량색 배경 컨테이너 안에 헤더(차량명+좌석배지) + 3열×3행 그리드.
+    #        · 1열: 신청자 / 출발지 / 목적지   · 2열: 출발날짜 / 출발시간 / 도착시간   · 3열: 예약수정 / 예약취소 / 도착완료 버튼
+    #        3열 모두 동일 폭(1:1:1), 각 행 높이도 버튼과 맞춰 가로 정렬.
     def _render_booking_card(bc_name, bseat, binfo):
-        # 카드 배경·글자색 = 해당 차량 색(로고 바탕색보다 20% 어둡게). 차량명도 같은 톤으로.
-        c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(_model_key(bc_name), CAR_CARD_STYLE["innova"])
+        # 카드 배경·글자색 = 해당 차량 색. INNOVA는 밝은 실버(어두운 글자), 그 외는 어두운 틴트(밝은 글자).
+        mk = _model_key(bc_name)
+        c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(mk, CAR_CARD_STYLE["innova"])
+        # 카드별 고유 컨테이너 키 → 배경/테두리를 카드 전체(정보+버튼 포함)에 입힌다.
+        _safe = "".join(ch for ch in f"{bc_name}{bseat}" if ch.isalnum())
+        cardkey = f"bkcard_{mk}_{_safe}"
+
+        # 헤더: 차량명(왼쪽, 길면 … 줄임) + 좌석 배지(오른쪽 고정) + 구분선. 카드 상단 전체폭.
         header_html = (
-            # 타이틀 행: 차량명(왼쪽, 한 줄 유지 → 길면 … 줄임) + 좌석 배지(오른쪽 고정). 이미지처럼 정렬.
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
             f'<span style="color: {c_fg}; font-weight: bold; font-size: 20px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
             f'<span style="flex: 0 0 auto; border: 1px solid {c_fg}; color: {c_fg}; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 8px 0;">'
-            # 정보 2단(3줄): 좌(신청자·출발지·목적지) / 우(출발날짜·출발시간·도착시간) → 박스 높이 절반으로 축소
-            f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 12px; color: {c_fg}; line-height: 1.5;">'
-            f"<div><strong>{t('c_applicant')}</strong> {binfo.get('name', '')}</div>"
-            f"<div><strong>{t('c_date')}</strong> {binfo.get('date', '')}</div>"
-            f"<div><strong>{t('c_departure')}</strong> {binfo.get('departure', '')}</div>"
-            f"<div><strong>{t('c_time')}</strong> {binfo.get('time', '')}</div>"
-            f"<div><strong>{t('c_destination')}</strong> {binfo.get('destination', '')}</div>"
-            f"<div><strong>{t('c_arrive')}</strong> {binfo.get('arrive', '')}</div>"
-            '</div>'
         )
+
+        # 정보 셀 1개: 버튼과 같은 높이(min-height 34px)로 맞춰 3행이 버튼 3단과 가로로 정렬되게 한다.
+        def _info_cell(label, value):
+            return ('<div style="min-height: 34px; display: flex; align-items: center;">'
+                    f'<span><strong>{label}</strong> {value}</span></div>')
+        def _info_col(rows):
+            cells = "".join(_info_cell(lbl, val) for lbl, val in rows)
+            return (f'<div style="display: flex; flex-direction: column; gap: 4px; '
+                    f'font-size: 11px; color: {c_fg}; line-height: 1.2; word-break: break-word;">{cells}</div>')
+        info_left = _info_col([
+            (t('c_applicant'), binfo.get('name', '')),
+            (t('c_departure'), binfo.get('departure', '')),
+            (t('c_destination'), binfo.get('destination', '')),
+        ])
+        info_right = _info_col([
+            (t('c_date'), binfo.get('date', '')),
+            (t('c_time'), binfo.get('time', '')),
+            (t('c_arrive'), binfo.get('arrive', '')),
+        ])
 
         def _btn_edit():
             if st.button(t("btn_edit_bk"), key=f"edit_btn_{bc_name}_{bseat}", use_container_width=True):
@@ -2099,7 +2119,7 @@ if st.session_state.bookings:
                 save_bookings(st.session_state.bookings)
                 st.rerun()
         def _btn_done():
-            # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제). 바탕색 없는 일반 버튼.
+            # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제).
             if st.button(t("btn_done_bk"), key=f"done_btn_{bc_name}_{bseat}", use_container_width=True):
                 st.session_state.arrive_target = (bc_name, bseat)
                 # 도착 시간 기본값 = 출발 시각과 동일. 예: 출발 08:10 → 도착 기본 08:10
@@ -2111,18 +2131,23 @@ if st.session_state.bookings:
                 st.session_state.arrive_input_tick = datetime.time(_dh, _dm)
                 st.rerun()
 
-        # PC·앱 공통: 정보 박스(차량색 배경) + 예약수정·예약취소·도착완료 버튼을 한 줄에 1/3씩 병렬 배치
+        # 카드 전체(정보 + 버튼)를 감싸는 컨테이너에 차량색 배경을 입힌다(키별 1회성 스타일 주입).
         st.markdown(
-            f'<div style="background: {c_bg}; border: 1px solid {c_bd}; border-radius: 8px; padding: 10px; margin-bottom: 4px;">{header_html}</div>',
+            f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
+            f"border-radius:8px !important; padding:10px !important; margin-bottom:8px !important;}}</style>",
             unsafe_allow_html=True,
         )
-        e_col, c_col, d_col = st.columns(3)
-        with e_col:
-            _btn_edit()
-        with c_col:
-            _btn_cancel()
-        with d_col:
-            _btn_done()
+        with st.container(key=cardkey):
+            st.markdown(header_html, unsafe_allow_html=True)
+            i_col1, i_col2, b_col = st.columns(3)   # 3등분(정보·정보·버튼) 동일 폭
+            with i_col1:
+                st.markdown(info_left, unsafe_allow_html=True)
+            with i_col2:
+                st.markdown(info_right, unsafe_allow_html=True)
+            with b_col:                              # 오른쪽 열: 상단 수정 / 중단 취소 / 하단 도착완료 세로 3단
+                _btn_edit()
+                _btn_cancel()
+                _btn_done()
 
     # 배차 예약을 해당 차량 모델 컬럼(위 다이어그램과 동일 열·폭) 아래에 좌석번호순으로 세로 나열.
     #  카드 프레임 폭은 위 좌석 차량 박스(.car-layout-container)와 같은 폭으로 맞춘다(booking_board 인셋 CSS).
