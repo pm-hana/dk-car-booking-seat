@@ -196,16 +196,16 @@ st.markdown("""
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
-    /* 예약 현황 카드: 한 줄에 '항상 2개'. 가로 스크롤을 원천 차단하고(overflow-x hidden) 컬럼을 하드 50%로 캡. */
+    /* 예약 현황 카드: 한 줄에 '항상 2개'. Streamlit의 모바일 컬럼 세로적층을 이기기 위해
+       자식결합자(>)로 선택자 특이도를 (0,3,0)까지 올려 nowrap + 균등분배를 강제한다. + 가로 스크롤 차단. */
     .st-key-booking_board { overflow-x: hidden !important; max-width: 100% !important; }
-    .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
-    /* 모든 booking_board 컬럼: 콘텐츠 최소폭에 밀리지 않게 min-width:0, 균등 분배, 최대 50%(단 PC는 230px)로 캡.
-       → 바깥 2열은 화면의 50%씩(2개가 화면에 딱, 가로 스크롤 없음), 안쪽 버튼 3열은 1/3씩. */
-    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: min(50%, 230px) !important; padding: 0 1px !important; }
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { padding: 0 !important; }
-    /* 가로 3분할 버튼(수정·취소·도착완료): 좁으니 폰트·패딩 압축, 글자 줄바꿈 허용, 카드 높이 최소화 */
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
+    /* (0,3,0) → Streamlit 모바일 적층(컬럼 flex-basis:100%)을 확실히 덮어씀.
+       바깥 2열은 50%씩(2개가 화면에 딱), 안쪽 버튼 3열은 1/3씩 (같은 규칙으로 각 레벨 균등 분배). */
+    .st-key-booking_board [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; padding: 0 1px !important; }
+    /* 가로 3분할 버튼(수정·취소·도착완료): 폰트·패딩 압축, 글자 줄바꿈 허용, 카드 높이 최소화 */
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
-    .st-key-booking_board .stButton button { padding: 2px 2px !important; font-size: 11px !important; white-space: normal !important; line-height: 1.05 !important; min-height: 30px !important; width: 100% !important; }
+    .st-key-booking_board .stButton button { padding: 2px 1px !important; font-size: 11px !important; white-space: normal !important; line-height: 1.05 !important; min-height: 28px !important; width: 100% !important; }
     .main-title {
         flex: 0 0 auto;                      /* 크기 고정(title-group이 flex 담당) */
         font-size: 40px !important;          /* 다른 문구보다 확실히 크게(메인 타이틀 강조) */
@@ -536,14 +536,13 @@ if IS_MOBILE:
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
     /* 차량명 프레임: 모바일에선 차량 박스와 동일 폭(58vh*160/250, 최대 301px)으로 가운데 정렬 → 좌우 끝선 일치 */
     .car-name-frame { width: min(calc(58vh * 0.64), 301px) !important; max-width: 100% !important; }
-    /* 예약 현황 카드: 앱에서도 한 줄에 '항상 2개'. 가로 스크롤 차단 + 컬럼 하드 50% 캡 → 2개가 화면에 딱 들어감.
-       (홀수면 오른쪽 칸 빈 채 유지. 버튼은 정보 아래 가로 3분할로 카드 높이 최소화.) */
+    /* 예약 현황 카드: 앱에서도 한 줄에 '항상 2개'. 자식결합자(>)로 특이도(0,3,0) → Streamlit 모바일 적층을 확실히 이김.
+       (홀수면 오른쪽 칸 빈 채 유지. 버튼은 정보 아래 가로 3분할로 카드 높이 최소화. 가로 스크롤 차단.) */
     .st-key-booking_board { overflow-x: hidden !important; max-width: 100% !important; }
-    .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 6px !important; }
-    .st-key-booking_board [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; max-width: 50% !important; margin: 0 !important; padding: 0 1px !important; }
-    .st-key-booking_board [data-testid="stColumn"] [data-testid="stColumn"] { padding: 0 !important; }
+    .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
+    .st-key-booking_board [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; margin: 0 !important; padding: 0 1px !important; }
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
-    .st-key-booking_board .stButton button { min-height: 30px !important; font-size: 11px !important; padding: 2px 2px !important; white-space: normal !important; line-height: 1.05 !important; }
+    .st-key-booking_board .stButton button { min-height: 28px !important; font-size: 11px !important; padding: 2px 1px !important; white-space: normal !important; line-height: 1.05 !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2094,7 +2093,7 @@ if st.session_state.bookings:
             f'<span style="color: {c_fg}; font-weight: bold; font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
             f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
-            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 6px 0;">'
+            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
 
         # 카드가 화면 절반 폭(좁음)이라 정보를 'CSS 2열 그리드'로 배열(제목 + 값 한 줄, 길면 자동 줄바꿈).
@@ -2104,8 +2103,8 @@ if st.session_state.bookings:
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
                     f'<strong>{label}</strong> {value}</div>')
         info_grid = (
-            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 8px; '
-            f'font-size:12px; color:{c_fg}; line-height:1.25; margin-bottom:6px;">'
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; '
+            f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:4px;">'
             + _cell(t('c_applicant'), binfo.get('name', ''))
             + _cell(t('c_date'), binfo.get('date', ''))
             + _cell(t('c_departure'), binfo.get('departure', ''))
@@ -2140,7 +2139,7 @@ if st.session_state.bookings:
         # 카드 전체(정보 + 버튼)를 감싸는 컨테이너에 차량색 배경을 입힌다(키별 1회성 스타일 주입).
         st.markdown(
             f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
-            f"border-radius:8px !important; padding:8px !important; margin-bottom:6px !important;}}</style>",
+            f"border-radius:8px !important; padding:7px 8px !important; margin-bottom:5px !important;}}</style>",
             unsafe_allow_html=True,
         )
         with st.container(key=cardkey):
