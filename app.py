@@ -749,8 +749,27 @@ def load_history():
             return []
     return []
 
+def purge_stale_bookings():
+    """출발날짜가 '오늘'(베트남 기준, 00:00~24:00)보다 이전인 미완료 예약을 자동 삭제.
+    도착완료된 예약은 이미 bookings에서 빠져 이력에만 남으므로, 여기 남은 '지난 날짜' 예약 = 미완료 →
+    익일 00:00부터 정리 대상. (Streamlit은 상시 실행이 아니므로 '앱이 다음에 열릴 때' 지난 예약을 청소한다.)"""
+    today_str = now_vn().strftime("%Y-%m-%d")
+    stale = []
+    for key, info in list(st.session_state.bookings.items()):
+        d = str((info or {}).get("date", "")).strip()
+        # ISO(YYYY-MM-DD) 형식만 안전하게 사전식 비교. 형식이 다르거나 비어 있으면 삭제하지 않음(데이터 보존).
+        if len(d) == 10 and d[4] == "-" and d[7] == "-" and d < today_str:
+            stale.append(key)
+    if stale:
+        for key in stale:
+            st.session_state.bookings.pop(key, None)
+        save_bookings(st.session_state.bookings)
+    return len(stale)
+
 # 파일로부터 기존 예약 정보 상시 로딩
 st.session_state.bookings = load_bookings()
+# 출발날짜가 지난(미완료) 예약은 익일 00:00부터 자동 삭제(앱 로드 시 정리)
+purge_stale_bookings()
 
 if "duplicate_error_msg" not in st.session_state:
     st.session_state.duplicate_error_msg = None
