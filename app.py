@@ -947,7 +947,7 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
         inner_fill = "#3b1e1e"
         text_color = "#ffffff" # 글자색 백색으로 통일
     elif is_booked:
-        stroke_color = "#40c057" # 신청 완료(예약됨) 좌석은 초록색
+        stroke_color = BOOKED_SEAT_LINE # 신청 완료(예약됨) 좌석은 초록색(예약 카드 배지 배경과 동일)
         main_fill = "#1b3b22"
         inner_fill = "#0b2412"
         text_color = "#ffffff" # 글자색 백색으로 통일
@@ -1443,6 +1443,10 @@ CAR_CARD_STYLE = {
     "taxi4":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),   # 옐로우
     "taxi7":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),
 }
+
+# 예약된(신청 완료) 좌석의 배치도 라인(stroke) 색 = 초록. 예약 현황 카드의 좌석번호 배지 배경도 이 색으로 통일.
+#  (render_premium_seat의 is_booked stroke_color와 동일 값 — 한 곳에서 관리)
+BOOKED_SEAT_LINE = "#40c057"
 
 def car_title_frame(mk, inner_html):
     """차량명(로고+이름)을 외관색 배경의 사각 프레임으로 감싼 HTML을 반환."""
@@ -2085,7 +2089,7 @@ if st.session_state.bookings:
         header_html = (
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">'
             f'<span style="color: {c_fg}; font-weight: bold; font-size: 20px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🚙 {bc_name}</span>'
-            f'<span style="flex: 0 0 auto; border: 1px solid {c_fg}; color: {c_fg}; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: 15px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 8px 0;">'
         )
