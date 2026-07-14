@@ -1748,6 +1748,112 @@ def _admin_login_form():
             st.session_state.seatmap_car = None
             st.rerun()
 
+# 좌석 신청 현황 팝업에 삽입되는 '현재 위치 지도'(무료 OpenStreetMap/Leaflet) — Google 지도 API 키 불필요.
+#   GPS 현재위치 버튼 + 주소 검색창 + 지도 클릭 마커. 타일·지오코딩(Nominatim) 모두 무료(워터마크·비용 없음).
+#   다크 테마(#0e1117/#1b1f27/#fab005/#38bdf8)로 팝업과 통일. Leaflet은 CDN(unpkg)에서 로드.
+_ADMIN_LOCATION_MAP_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html,body{margin:0;padding:0;background:#0e1117;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;}
+  .map-tools{display:flex;gap:6px;margin:0 0 6px 0;}
+  #addr{flex:1;min-width:0;background:#1b1f27;border:1px solid #3a3f4a;border-radius:8px;
+    color:#e9ecef;padding:8px 10px;font-size:13px;outline:none;}
+  #addr::placeholder{color:#6c757d;}
+  #addr:focus{border-color:#38bdf8;}
+  .mbtn{white-space:nowrap;background:#1b1f27;border:1px solid #3a3f4a;border-radius:8px;
+    color:#fab005;font-weight:700;font-size:13px;padding:8px 10px;cursor:pointer;}
+  .mbtn:hover{background:#242a33;border-color:#4a5160;}
+  .mbtn.gps{color:#38bdf8;}
+  #map{width:100%;height:230px;border-radius:10px;border:1px solid #2b2f38;}
+  #readout{margin-top:6px;font-size:12px;color:#adb5bd;min-height:16px;line-height:1.45;
+    word-break:break-word;}
+  #readout b{color:#e9ecef;}
+  .leaflet-container{background:#0e1117;}
+</style>
+</head>
+<body>
+  <div class="map-tools">
+    <input id="addr" type="text" placeholder="주소·장소 검색 후 Enter" />
+    <button class="mbtn" id="searchBtn">검색</button>
+    <button class="mbtn gps" id="gpsBtn">📍 현재 위치</button>
+  </div>
+  <div id="map"></div>
+  <div id="readout">지도를 클릭하거나 주소를 검색해 현재 위치를 지정하세요.</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var DEFAULT = [10.8231, 106.6297]; // 기본 중심(호치민) — GPS/검색 전 초기 화면
+    var map = L.map('map', {zoomControl:true}).setView(DEFAULT, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+    var marker = null;
+    var readout = document.getElementById('readout');
+    function setMarker(lat, lng, label){
+      if(marker){ marker.setLatLng([lat,lng]); }
+      else { marker = L.marker([lat,lng]).addTo(map); }
+      readout.innerHTML = (label ? '<b>'+label+'</b><br>' : '')
+        + '위도 '+lat.toFixed(6)+', 경도 '+lng.toFixed(6);
+    }
+    // 역지오코딩 — 마커 위치의 주소를 표시(무료 Nominatim)
+    function reverse(lat, lng){
+      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng)
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d && d.display_name){ setMarker(lat,lng,d.display_name); } })
+        .catch(function(){});
+    }
+    // 지도 클릭 → 마커 이동 + 주소 조회
+    map.on('click', function(e){
+      setMarker(e.latlng.lat, e.latlng.lng, null);
+      reverse(e.latlng.lat, e.latlng.lng);
+    });
+    // 주소·장소 검색(Nominatim 지오코딩)
+    function doSearch(){
+      var q = document.getElementById('addr').value.trim();
+      if(!q){ return; }
+      readout.textContent = '검색 중…';
+      fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d && d.length){
+            var lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+            map.setView([lat,lng], 16);
+            setMarker(lat, lng, d[0].display_name);
+          } else { readout.textContent = '검색 결과가 없습니다.'; }
+        })
+        .catch(function(){ readout.textContent = '검색에 실패했습니다. 잠시 후 다시 시도하세요.'; });
+    }
+    document.getElementById('searchBtn').addEventListener('click', doSearch);
+    document.getElementById('addr').addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); doSearch(); }
+    });
+    // GPS 현재 위치(브라우저 위치권한 필요)
+    document.getElementById('gpsBtn').addEventListener('click', function(){
+      if(!navigator.geolocation){
+        readout.textContent = '이 브라우저는 위치 기능을 지원하지 않습니다.'; return;
+      }
+      readout.textContent = '현재 위치 확인 중…';
+      navigator.geolocation.getCurrentPosition(function(pos){
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        map.setView([lat,lng], 16);
+        setMarker(lat, lng, null);
+        reverse(lat, lng);
+      }, function(err){
+        readout.textContent = (err && err.code === 1)
+          ? '위치 권한이 거부되었습니다. 브라우저에서 위치 접근을 허용해 주세요.'
+          : '현재 위치를 확인하지 못했습니다.';
+      }, {enableHighAccuracy:true, timeout:8000, maximumAge:0});
+    });
+    // iframe 레이아웃 확정 후 타일 재계산(회색 여백 방지)
+    setTimeout(function(){ map.invalidateSize(); }, 250);
+  </script>
+</body>
+</html>
+"""
+
 def _admin_seat_status_view(car_rc):
     """관리자 로그인 성공 후 같은 팝업 안에서 뜨는 '좌석 신청 현황' 표.
     운전석(0번)을 제외한 해당 차량의 전체 좌석(신청 안 된 빈 좌석 포함)을 좌석 번호 순으로 나열.
@@ -1755,6 +1861,13 @@ def _admin_seat_status_view(car_rc):
     car = car_rc["display_name"]
     st.markdown(f'<div class="dlg-step-title">{t("admin_status_title")}</div>', unsafe_allow_html=True)
     st.caption(car)
+
+    # 시트 문구와 좌석 표 사이 — 운전자용 현재 위치 지도(무료 OpenStreetMap/Leaflet, Google 지도 API 키 불필요).
+    #   · '📍 현재 위치' 버튼: 브라우저 GPS로 현 좌표를 잡아 마커+지도 이동(HTTPS·위치권한 허용 필요).
+    #   · 주소 검색창: Nominatim(OSM 무료 지오코딩)으로 입력한 장소로 이동. 지도 클릭으로도 마커 지정 가능.
+    #   Streamlit components.html은 srcdoc iframe(부모와 동일 출처)이라 기본 Permissions-Policy(self)로 iframe 내부에서 GPS가 동작한다.
+    _pwa_components.html(_ADMIN_LOCATION_MAP_HTML, height=340)
+
     empty = t("st_empty")
 
     # 오늘(00:00~24:00, 베트남 기준) '완료'된 탑승 이력을 좌석별로 묶는다 → 완료 건도 표에 누적 표시(자정 지나면 자동 초기화).
