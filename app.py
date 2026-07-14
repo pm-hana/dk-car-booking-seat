@@ -1760,15 +1760,16 @@ _ADMIN_LOCATION_MAP_HTML = """
 <style>
   html,body{margin:0;padding:0;background:#0e1117;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;}
-  .map-tools{display:flex;gap:6px;margin:0 0 6px 0;}
-  #addr{flex:1;min-width:0;background:#1b1f27;border:1px solid #3a3f4a;border-radius:8px;
+  .map-tools{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px 0;}
+  #addr{flex:1 1 100%;min-width:0;background:#1b1f27;border:1px solid #3a3f4a;border-radius:8px;
     color:#e9ecef;padding:8px 10px;font-size:13px;outline:none;}
   #addr::placeholder{color:#6c757d;}
   #addr:focus{border-color:#38bdf8;}
-  .mbtn{white-space:nowrap;background:#1b1f27;border:1px solid #3a3f4a;border-radius:8px;
+  .mbtn{flex:1 1 auto;white-space:nowrap;background:#1b1f27;border:1px solid #3a3f4a;border-radius:8px;
     color:#fab005;font-weight:700;font-size:13px;padding:8px 10px;cursor:pointer;}
   .mbtn:hover{background:#242a33;border-color:#4a5160;}
   .mbtn.gps{color:#38bdf8;}
+  .mbtn.gg{color:#63b365;}
   #map{width:100%;height:230px;border-radius:10px;border:1px solid #2b2f38;}
   #readout{margin-top:6px;font-size:12px;color:#adb5bd;min-height:16px;line-height:1.45;
     word-break:break-word;}
@@ -1778,12 +1779,13 @@ _ADMIN_LOCATION_MAP_HTML = """
 </head>
 <body>
   <div class="map-tools">
-    <input id="addr" type="text" placeholder="주소·장소 검색 후 Enter" />
+    <input id="addr" type="text" placeholder="주소·상호 검색 후 Enter" />
     <button class="mbtn" id="searchBtn">검색</button>
     <button class="mbtn gps" id="gpsBtn">📍 현재 위치</button>
+    <button class="mbtn gg" id="googleBtn">🔗 구글 검색</button>
   </div>
   <div id="map"></div>
-  <div id="readout">지도를 클릭하거나 주소를 검색해 현재 위치를 지정하세요.</div>
+  <div id="readout">주소·지명은 지도 검색으로, 가게·회사 상호는 '🔗 구글 검색'으로 찾으세요.</div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     var DEFAULT = [10.8231, 106.6297]; // 기본 중심(호치민) — GPS/검색 전 초기 화면
@@ -1853,11 +1855,29 @@ _ADMIN_LOCATION_MAP_HTML = """
             var lat = parseFloat(best.lat), lng = parseFloat(best.lon);
             map.setView([lat,lng], 16);
             setMarker(lat, lng, best.display_name, distKm(ref, [lat,lng]));
-          } else { readout.textContent = '검색 결과가 없습니다.'; }
+          } else {
+            readout.innerHTML = '지도 검색 결과가 없습니다. 가게·회사 상호라면 '
+              + "<b style='color:#63b365'>🔗 구글 검색</b>을 눌러보세요.";
+          }
         })
         .catch(function(){ readout.textContent = '검색에 실패했습니다. 잠시 후 다시 시도하세요.'; });
     }
+    // 구글 지도 검색 — 상호(POI) 검색은 Google 데이터가 강하므로 새 탭으로 Google 지도 검색을 연다.
+    //   현재 위치(GPS/지도 중심) 기준으로 결과를 보여주도록 좌표를 함께 전달.
+    function openGoogle(){
+      var q = document.getElementById('addr').value.trim();
+      if(!q){ document.getElementById('addr').focus(); return; }
+      var ref = refPoint();
+      var url = 'https://www.google.com/maps/search/' + encodeURIComponent(q)
+              + '/@' + ref[0] + ',' + ref[1] + ',14z';
+      var w = window.open(url, '_blank', 'noopener');
+      if(!w){ // 팝업 차단 시 직접 누를 수 있는 링크 제공
+        readout.innerHTML = "팝업이 차단됐습니다. <a href='" + url
+          + "' target='_blank' style='color:#63b365;font-weight:700'>구글 지도에서 열기</a>";
+      }
+    }
     document.getElementById('searchBtn').addEventListener('click', doSearch);
+    document.getElementById('googleBtn').addEventListener('click', openGoogle);
     document.getElementById('addr').addEventListener('keydown', function(e){
       if(e.key === 'Enter'){ e.preventDefault(); doSearch(); }
     });
