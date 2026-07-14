@@ -1791,12 +1791,17 @@ _ADMIN_LOCATION_MAP_HTML = """
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
     var marker = null;
+    var myPos = null; // GPS로 잡은 현재 위치([위도,경도]) — 검색 근접 정렬의 기준점
     var readout = document.getElementById('readout');
-    function setMarker(lat, lng, label){
+    function setMarker(lat, lng, label, km){
       if(marker){ marker.setLatLng([lat,lng]); }
       else { marker = L.marker([lat,lng]).addTo(map); }
+      var dist = '';
+      if(typeof km === 'number' && isFinite(km)){
+        dist = '<br>현재 위치에서 약 ' + (km < 1 ? Math.round(km*1000)+'m' : km.toFixed(1)+'km');
+      }
       readout.innerHTML = (label ? '<b>'+label+'</b><br>' : '')
-        + '위도 '+lat.toFixed(6)+', 경도 '+lng.toFixed(6);
+        + '위도 '+lat.toFixed(6)+', 경도 '+lng.toFixed(6) + dist;
     }
     // 역지오코딩 — 마커 위치의 주소를 표시(무료 Nominatim)
     function reverse(lat, lng){
@@ -1810,18 +1815,43 @@ _ADMIN_LOCATION_MAP_HTML = """
       setMarker(e.latlng.lat, e.latlng.lng, null);
       reverse(e.latlng.lat, e.latlng.lng);
     });
-    // 주소·장소 검색(Nominatim 지오코딩)
+    // 검색 기준점 — GPS로 잡은 현재 위치가 있으면 그 좌표, 없으면 현재 지도 중심.
+    function refPoint(){
+      if(myPos){ return myPos; }
+      var c = map.getCenter();
+      return [c.lat, c.lng];
+    }
+    // 두 좌표 간 거리(km, 하버사인) — 검색 결과를 현재 위치에서 가까운 순으로 정렬하는 데 사용.
+    function distKm(a, b){
+      var R = 6371, rad = Math.PI/180;
+      var dLat = (b[0]-a[0])*rad, dLon = (b[1]-a[1])*rad;
+      var s = Math.sin(dLat/2)*Math.sin(dLat/2)
+            + Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(dLon/2)*Math.sin(dLon/2);
+      return R*2*Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+    }
+    // 주소·장소 검색(Nominatim) — 현재 위치 주변을 우선(viewbox)해 받아온 뒤, 현재 위치에서 가장 가까운 결과를 선택.
     function doSearch(){
       var q = document.getElementById('addr').value.trim();
       if(!q){ return; }
       readout.textContent = '검색 중…';
-      fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q))
+      var ref = refPoint();
+      var d = 0.75; // 기준점 주변 약 ±0.75°(≈80km)를 우선 검색 영역(viewbox)으로 지정
+      var vb = (ref[1]-d)+','+(ref[0]+d)+','+(ref[1]+d)+','+(ref[0]-d); // left,top,right,bottom
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=10'
+              + '&viewbox='+vb+'&bounded=0&q='+encodeURIComponent(q);
+      fetch(url)
         .then(function(r){ return r.json(); })
-        .then(function(d){
-          if(d && d.length){
-            var lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+        .then(function(list){
+          if(list && list.length){
+            // 현재 위치에서 가까운 순으로 정렬 → 최근접 결과를 선택
+            list.sort(function(a, b){
+              return distKm(ref, [parseFloat(a.lat), parseFloat(a.lon)])
+                   - distKm(ref, [parseFloat(b.lat), parseFloat(b.lon)]);
+            });
+            var best = list[0];
+            var lat = parseFloat(best.lat), lng = parseFloat(best.lon);
             map.setView([lat,lng], 16);
-            setMarker(lat, lng, d[0].display_name);
+            setMarker(lat, lng, best.display_name, distKm(ref, [lat,lng]));
           } else { readout.textContent = '검색 결과가 없습니다.'; }
         })
         .catch(function(){ readout.textContent = '검색에 실패했습니다. 잠시 후 다시 시도하세요.'; });
@@ -1838,6 +1868,7 @@ _ADMIN_LOCATION_MAP_HTML = """
       readout.textContent = '현재 위치 확인 중…';
       navigator.geolocation.getCurrentPosition(function(pos){
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        myPos = [lat, lng]; // 이후 주소 검색의 근접 정렬 기준점으로 사용
         map.setView([lat,lng], 16);
         setMarker(lat, lng, null);
         reverse(lat, lng);
