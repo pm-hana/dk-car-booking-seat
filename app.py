@@ -1798,12 +1798,12 @@ _ADMIN_LOCATION_MAP_HTML = """
     function setMarker(lat, lng, label, km){
       if(marker){ marker.setLatLng([lat,lng]); }
       else { marker = L.marker([lat,lng]).addTo(map); }
-      var dist = '';
+      var parts = [];
+      if(label){ parts.push('<b>'+label+'</b>'); }
       if(typeof km === 'number' && isFinite(km)){
-        dist = '<br>현재 위치에서 약 ' + (km < 1 ? Math.round(km*1000)+'m' : km.toFixed(1)+'km');
+        parts.push('현재 위치에서 약 ' + (km < 1 ? Math.round(km*1000)+'m' : km.toFixed(1)+'km'));
       }
-      readout.innerHTML = (label ? '<b>'+label+'</b><br>' : '')
-        + '위도 '+lat.toFixed(6)+', 경도 '+lng.toFixed(6) + dist;
+      readout.innerHTML = parts.length ? parts.join('<br>') : '위치를 지정했습니다.';
     }
     // 역지오코딩 — 마커 위치의 주소를 표시(무료 Nominatim)
     function reverse(lat, lng){
