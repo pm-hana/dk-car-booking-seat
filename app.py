@@ -1838,6 +1838,7 @@ _ADMIN_LOCATION_MAP_HTML = """
       var d = 0.75; // 기준점 주변 약 ±0.75°(≈80km)를 우선 검색 영역(viewbox)으로 지정
       var vb = (ref[1]-d)+','+(ref[0]+d)+','+(ref[1]+d)+','+(ref[0]-d); // left,top,right,bottom
       var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=10'
+              + '&countrycodes=vn'  // 검색 결과를 베트남 내로 한정
               + '&viewbox='+vb+'&bounded=0&q='+encodeURIComponent(q);
       fetch(url)
         .then(function(r){ return r.json(); })
