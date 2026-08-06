@@ -17,6 +17,10 @@ serviceAccountKey.json
 # 로컬 전용 데이터/백업 (배포 시 Firestore를 쓰므로 불필요)
 bookings.json
 bookings.json.tmp
+history.json
+history.json.tmp
+audit.json
+audit.json.tmp
 .version_pending
 .version_note
 _backup_*/

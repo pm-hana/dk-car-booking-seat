@@ -861,6 +861,95 @@ def load_history():
             return []
     return []
 
+# ─────────────────────────────────────────────────────────────
+# 🧾 감사 로그(Audit Log) — 누가 언제 어떤 예약을 바꿨는지 기록
+#   전 인원이 매일 쓰면 "내 예약이 사라졌다" 문의는 반드시 생긴다. 그때 답할 수 있는 유일한 근거다.
+#   ⚠️ 탑승 이력(history)과 '분리된' 저장소를 쓴다.
+#      엑셀 내보내기(excel_export_dialog)가 history를 status 필터 없이 전량 내보내므로,
+#      같은 곳에 취소·수정 기록을 섞으면 월간 탑승 실적 엑셀이 오염된다.
+#   · action은 언어와 무관한 고정 토큰(cancel/edit/done/reset)으로 저장하고 화면에서만 번역한다.
+#   [벤치마킹] Đào Văn Bảo(FAE Leader) "K-Pulse" — 확산 계획의
+#              "Nhật ký thao tác phục vụ kiểm toán (Audit Log)". 상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+AUDIT_FILE = "audit.json"
+AUDIT_COLLECTION = "audit"
+AUDIT_KEEP = 1000     # 파일 모드 보관 상한(오래된 것부터 버림) — 무한 증가 방지
+
+def current_actor():
+    """지금 조작하는 사람의 식별값. 관리자면 'ADMIN', '내 정보 기억'이 있으면 그 이름, 없으면 빈 문자열."""
+    if st.session_state.get("admin_unlocked"):
+        return "ADMIN"
+    return (load_user_profile().get("name") or "").strip()
+
+def log_action(action, car, seat, info=None, note=""):
+    """예약 변경 1건을 감사 로그에 남긴다. 기록에 실패해도 예약 처리 자체는 막지 않는다."""
+    info = info or {}
+    rec = {
+        "at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
+        "action": action,                        # cancel / edit / done / reset
+        "actor": current_actor(),                # 조작자(ADMIN 또는 기억된 이름, 없으면 "")
+        "car": car, "seat": seat,
+        "target": str(info.get("name", "")),     # 대상 예약의 신청자
+        "date": str(info.get("date", "")),
+        "note": note,
+    }
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(AUDIT_COLLECTION).add(rec)
+            return
+        except Exception:
+            pass
+    try:
+        rows = []
+        if os.path.exists(AUDIT_FILE):
+            with open(AUDIT_FILE, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+            if not isinstance(rows, list):
+                rows = []
+        rows.append(rec)
+        rows = rows[-AUDIT_KEEP:]
+        tmp_file = AUDIT_FILE + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(rows, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_file, AUDIT_FILE)
+    except Exception:
+        pass
+
+def load_audit(limit=30):
+    """최근 감사 로그를 최신순으로 반환(관리자 화면 표시용)."""
+    rows = []
+    db = _get_db()
+    if db is not None:
+        try:
+            rows = [d.to_dict() for d in db.collection(AUDIT_COLLECTION).stream()]
+        except Exception:
+            rows = []
+    if not rows and os.path.exists(AUDIT_FILE):
+        try:
+            with open(AUDIT_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            rows = data if isinstance(data, list) else []
+        except Exception:
+            rows = []
+    rows.sort(key=lambda r: str(r.get("at", "")), reverse=True)
+    return rows[:limit]
+
+# ─────────────────────────────────────────────────────────────
+# 🔐 예약 소유 확인 — 남의 예약을 실수로 수정·취소·완료 처리하는 사고 방지
+#   전 인원이 매일 쓰면 오터치 한 번으로 남의 출근 배차가 사라진다. 그 앞에 확인 한 단계를 둔다.
+#   ⚠️ 한계를 분명히: 이름은 카드에 그대로 보이므로 '악의'는 막지 못한다(실수를 막는 가드레일).
+#      진짜 차단은 사용자별 로그인이 필요하며, 그때까지는 감사 로그가 사후 추적을 담당한다.
+# ─────────────────────────────────────────────────────────────
+def is_my_booking(info):
+    """'내 정보 기억'에 저장된 이름과 예약자 이름이 같은가(앞뒤 공백·대소문자 무시)."""
+    me = (load_user_profile().get("name") or "").strip().casefold()
+    return bool(me) and me == str((info or {}).get("name", "")).strip().casefold()
+
+def can_manage_booking(info):
+    """이 예약을 수정·취소·도착완료 할 수 있는가. 관리자는 항상 허용."""
+    return bool(st.session_state.get("admin_unlocked")) or is_my_booking(info)
+
 def purge_stale_bookings():
     """출발날짜가 '오늘'(베트남 기준, 00:00~24:00)보다 이전인 미완료 예약을 자동 삭제.
     도착완료된 예약은 이미 bookings에서 빠져 이력에만 남으므로, 여기 남은 '지난 날짜' 예약 = 미완료 →
@@ -951,6 +1040,18 @@ TR = {
         "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "목적지:",
         "c_date": "출발날짜:", "c_time": "출발시간:", "c_arrive": "도착시간:", "edit_tip": "예약 수정하기",
         "btn_edit_bk": "예약 수정", "btn_cancel_bk": "예약 취소", "btn_done_bk": "도착 완료",
+        "owner_warn": "⚠️ [{name}]님의 예약입니다. 본인이 맞으면 신청자 이름을 입력해 주세요.",
+        "owner_ask": "신청자 이름 확인", "owner_ok": "확인",
+        "owner_err": "이름이 일치하지 않습니다. 본인 예약만 변경할 수 있습니다.",
+        "cancel_title": "🗑️ 예약 취소",
+        "cancel_confirm": "[{car}] 좌석 {seat} · {name}\n이 예약을 취소할까요? 되돌릴 수 없습니다.",
+        "cancel_yes": "네, 취소합니다",
+        "toast_cancelled": "🗑️ [{name}]님 좌석 {seat} 예약이 취소되었습니다.",
+        "audit_title": "🧾 최근 활동 기록", "audit_empty": "기록이 없습니다.",
+        "audit_at": "일시", "audit_action": "동작", "audit_actor": "조작자", "audit_target": "대상",
+        "audit_unknown": "(미확인)",
+        "audit_act_cancel": "예약 취소", "audit_act_edit": "예약 수정",
+        "audit_act_done": "도착 완료", "audit_act_reset": "전체 초기화",
         "toast_done": "🏁 [{name}]님 좌석 {seat} 도착 완료로 처리되었습니다.",
         "btn_reset_all": "🗑️ 전체 예약 초기화",
         "reset_warn": "⚠️ 정말 모든 예약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
@@ -1007,6 +1108,18 @@ TR = {
         "c_applicant": "Người ĐK:", "c_departure": "Điểm đi:", "c_destination": "Điểm đến:",
         "c_date": "Ngày đi:", "c_time": "Giờ đi:", "c_arrive": "Giờ đến:", "edit_tip": "Sửa đăng ký",
         "btn_edit_bk": "Sửa ĐK", "btn_cancel_bk": "Hủy ĐK", "btn_done_bk": "Đã đến",
+        "owner_warn": "⚠️ Đây là đăng ký của [{name}]. Nếu đúng là bạn, vui lòng nhập tên người đăng ký.",
+        "owner_ask": "Xác nhận tên người đăng ký", "owner_ok": "Xác nhận",
+        "owner_err": "Tên không khớp. Bạn chỉ có thể thay đổi đăng ký của chính mình.",
+        "cancel_title": "🗑️ Hủy đăng ký",
+        "cancel_confirm": "[{car}] Ghế {seat} · {name}\nBạn có muốn hủy đăng ký này không? Không thể hoàn tác.",
+        "cancel_yes": "Vâng, hủy đăng ký",
+        "toast_cancelled": "🗑️ Đã hủy đăng ký ghế {seat} của [{name}].",
+        "audit_title": "🧾 Nhật ký thao tác gần đây", "audit_empty": "Chưa có ghi nhận nào.",
+        "audit_at": "Thời gian", "audit_action": "Thao tác", "audit_actor": "Người thực hiện", "audit_target": "Đối tượng",
+        "audit_unknown": "(chưa xác định)",
+        "audit_act_cancel": "Hủy đăng ký", "audit_act_edit": "Sửa đăng ký",
+        "audit_act_done": "Hoàn tất chuyến", "audit_act_reset": "Xóa toàn bộ",
         "toast_done": "🏁 [{name}] ghế {seat} đã được xử lý hoàn tất.",
         "btn_reset_all": "🗑️ Xóa toàn bộ đăng ký",
         "reset_warn": "⚠️ Bạn chắc chắn muốn xóa TẤT CẢ đăng ký? Thao tác này không thể hoàn tác.",
@@ -1063,6 +1176,18 @@ TR = {
         "c_applicant": "Applicant:", "c_departure": "Departure:", "c_destination": "Destination:",
         "c_date": "Date:", "c_time": "Time:", "c_arrive": "Arrival:", "edit_tip": "Edit booking",
         "btn_edit_bk": "Edit", "btn_cancel_bk": "Cancel", "btn_done_bk": "Arrived",
+        "owner_warn": "⚠️ This booking belongs to [{name}]. If that is you, enter the applicant name.",
+        "owner_ask": "Confirm applicant name", "owner_ok": "Confirm",
+        "owner_err": "Name does not match. You can only change your own booking.",
+        "cancel_title": "🗑️ Cancel Booking",
+        "cancel_confirm": "[{car}] Seat {seat} · {name}\nCancel this booking? This cannot be undone.",
+        "cancel_yes": "Yes, cancel it",
+        "toast_cancelled": "🗑️ [{name}]'s seat {seat} booking has been cancelled.",
+        "audit_title": "🧾 Recent Activity", "audit_empty": "No records yet.",
+        "audit_at": "When", "audit_action": "Action", "audit_actor": "By", "audit_target": "Target",
+        "audit_unknown": "(unknown)",
+        "audit_act_cancel": "Cancelled", "audit_act_edit": "Edited",
+        "audit_act_done": "Arrived", "audit_act_reset": "Reset all",
         "toast_done": "🏁 [{name}] — seat {seat} marked as arrived.",
         "btn_reset_all": "🗑️ Reset all bookings",
         "reset_warn": "⚠️ Delete ALL bookings? This cannot be undone.",
@@ -1759,9 +1884,75 @@ def _render_car_body(car_rc, show_name=True):
                 args=(car_rc["display_name"], seat),
             )
 
+def owner_gate(car, seat, info):
+    """값을 바꾸기 '직전'에 통과해야 하는 본인 확인 게이트.
+    권한이 있거나 이번 세션에서 이미 확인했으면 True, 아니면 확인 UI를 그리고 False를 돌려준다.
+    ⚠️ 버튼을 숨기는 방식이 아니다 — 수정·취소·완료의 각 실행 지점에서 매번 이 관문을 지난다.
+    [벤치마킹] Đào Văn Bảo "K-Pulse" — 권한 검사는 서버에서 수행하고, 버튼을 숨기거나
+               비활성화한 것에 의존하지 않는다는 원칙. 상세: docs/BENCHMARK.md"""
+    if can_manage_booking(info):
+        return True
+    verified = st.session_state.setdefault("verified_bookings", set())
+    if (car, seat) in verified:
+        return True
+    st.warning(t("owner_warn", name=info.get("name", "")))
+    typed = st.text_input(t("owner_ask"), key=f"ownerchk_{car}_{seat}")
+    if st.button(t("owner_ok"), type="primary", key=f"ownerbtn_{car}_{seat}", use_container_width=True):
+        if typed.strip().casefold() == str(info.get("name", "")).strip().casefold():
+            verified.add((car, seat))
+            st.rerun()
+        else:
+            st.error(t("owner_err"))
+    return False
+
+def _render_audit_log():
+    """관리자 전용 '최근 활동 기록' — 누가 언제 어떤 예약을 취소·수정·완료했는지 보여준다.
+    좌석 신청 현황표(.seat-status-table)의 스타일을 그대로 재사용한다."""
+    rows = load_audit(30)
+    with st.expander(t("audit_title")):
+        if not rows:
+            st.caption(t("audit_empty"))
+            return
+        act_label = {
+            "cancel": t("audit_act_cancel"), "edit": t("audit_act_edit"),
+            "done": t("audit_act_done"), "reset": t("audit_act_reset"),
+        }
+        body = []
+        for r in rows:
+            actor = str(r.get("actor", "")).strip() or t("audit_unknown")
+            seat = r.get("seat") or 0
+            where = f'{_short_car_name(str(r.get("car", "")))} {t("seat_n", n=seat)}' if seat else "—"
+            target = str(r.get("target", "")).strip() or "—"
+            if r.get("note"):
+                target += f' ({r["note"]})'
+            act = str(r.get("action", ""))
+            body.append(
+                f'<tr><td class="ss-time">{esc(r.get("at", ""))}</td>'
+                f'<td>{esc(act_label.get(act, act))}</td>'
+                f'<td>{esc(actor)}</td>'
+                f'<td>{esc(target)}</td>'
+                f'<td>{esc(where)}</td></tr>'
+            )
+        st.markdown(
+            '<div class="seat-status-wrap"><table class="seat-status-table"><thead><tr>'
+            f'<th>{t("audit_at")}</th><th>{t("audit_action")}</th><th>{t("audit_actor")}</th>'
+            f'<th>{t("audit_target")}</th><th>{t("st_seat")}</th>'
+            f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
+            unsafe_allow_html=True,
+        )
+
+
 def _booking_form(car_target, seat_target):
     """차량 신청/수정 입력 폼 본체 — 웹 신청 팝업(booking_dialog)과 앱 좌석맵 팝업에서 공용.
     완료/취소 시 앱 좌석맵 팝업(seatmap_car)도 함께 닫는다."""
+    # 남의 예약을 수정하려는 경우 → 폼 대신 본인 확인을 먼저 그린다(같은 팝업 안에서 내용 전환).
+    #  신규 신청은 대상이 없으므로 게이트 없음.
+    _edit_key = st.session_state.editing_booking
+    if _edit_key:
+        _einfo = st.session_state.bookings.get(_edit_key)
+        if _einfo and not owner_gate(_edit_key[0], _edit_key[1], _einfo):
+            return
+
     form_title = t("form_edit", car=car_target, seat=seat_target) if st.session_state.editing_booking else t("form_new", car=car_target, seat=seat_target)
     # 이 차량의 메인 네이밍 바 색(배경 그라디언트/대비 텍스트/테두리)을 그대로 가져와 팝업에도 적용
     _mk = next((c["mk"] for c in resolved_cars if c["display_name"] == car_target), "innova")
@@ -1837,6 +2028,13 @@ def _booking_form(car_target, seat_target):
                             prev = st.session_state.bookings[old_key]
                             if prev.get("created_at"):
                                 created_at = prev["created_at"]
+                            # 값을 바꾸기 직전 권한 재확인(버튼 노출이 아니라 실행 지점에서 검사)
+                            if not (can_manage_booking(prev)
+                                    or old_key in st.session_state.get("verified_bookings", set())):
+                                st.error(t("owner_err"))
+                                st.stop()
+                            log_action("edit", old_key[0], old_key[1], prev,
+                                       note=f"→ {car_target} / {t('seat_n', n=seat_target)}")
                             del st.session_state.bookings[old_key]
                         st.session_state.editing_booking = None
                     st.session_state.bookings[(car_target, seat_target)] = {
@@ -2427,6 +2625,43 @@ def excel_export_dialog():
     st.caption(t("export_caption"))
 
 
+def _close_cancel():
+    st.session_state.cancel_target = None
+
+
+@st.dialog(t("cancel_title"), on_dismiss=_close_cancel)
+def cancel_dialog(car, seat):
+    """예약 취소 확인 팝업. 예전에는 버튼 한 번에 즉시 삭제돼 오터치로 남의 배차가 사라질 수 있었다.
+    남의 예약이면 본인 확인을 먼저 통과해야 하고, 삭제 직전에 권한을 한 번 더 검사한다."""
+    info = st.session_state.bookings.get((car, seat))
+    if not info:
+        _close_cancel()
+        return
+    st.markdown(
+        f'<div style="font-size:13px; color:#c7ccd6; line-height:1.6; margin-bottom:8px; white-space:pre-line;">'
+        f'{esc(t("cancel_confirm", car=car, seat=seat, name=info.get("name", "")))}</div>',
+        unsafe_allow_html=True,
+    )
+    if not owner_gate(car, seat, info):
+        return
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        if st.button(t("cancel_yes"), type="primary", use_container_width=True, key="cancel_yes_btn"):
+            if not (can_manage_booking(info) or (car, seat) in st.session_state.get("verified_bookings", set())):
+                st.error(t("owner_err"))
+                st.stop()
+            log_action("cancel", car, seat, info)      # 삭제 전에 기록 — 지운 뒤엔 근거가 남지 않는다
+            del st.session_state.bookings[(car, seat)]
+            save_bookings(st.session_state.bookings)
+            st.session_state.cancel_target = None
+            st.toast(t("toast_cancelled", name=info.get("name", ""), seat=seat))
+            st.rerun()
+    with cc2:
+        if st.button(t("btn_cancel"), use_container_width=True, key="cancel_no_btn"):
+            st.session_state.cancel_target = None
+            st.rerun()
+
+
 def _close_arrival():
     st.session_state.arrive_target = None
 
@@ -2438,6 +2673,9 @@ def arrival_dialog(car, seat):
     if not info:
         _close_arrival()
         return
+    # 도착완료도 좌석을 비우는 파괴적 동작 → 남의 예약이면 본인 확인을 먼저 통과해야 한다.
+    if not owner_gate(car, seat, info):
+        return
     st.markdown(
         f'<div style="font-size:13px; color:#c7ccd6; line-height:1.6; margin-bottom:8px; white-space:pre-line;">'
         f'{esc(t("arrive_desc", car=car, seat=seat, name=info.get("name", "")))}</div>',
@@ -2446,8 +2684,13 @@ def arrival_dialog(car, seat):
     # 6. 도착 시간 (기본값은 도착 완료 클릭 시각의 5분 슬롯; 위젯 상태로 유지)
     a_time = st.time_input(t("f_arrive"), step=300, key="arrive_input_tick")
     if st.button(t("arrive_done"), type="primary", use_container_width=True, key="arrive_done_btn"):
+        # 값 변경 직전 권한 재확인
+        if not (can_manage_booking(info) or (car, seat) in st.session_state.get("verified_bookings", set())):
+            st.error(t("owner_err"))
+            st.stop()
         arrive_str = a_time.strftime("%H:%M") if a_time else "00:00"
         archive_booking(car, seat, {**info, "arrive": arrive_str}, status="완료")
+        log_action("done", car, seat, info, note=t("f_arrive") + " " + arrive_str)
         del st.session_state.bookings[(car, seat)]
         save_bookings(st.session_state.bookings)
         st.session_state.arrive_target = None
@@ -2490,6 +2733,11 @@ if st.session_state.get("export_open"):
 if st.session_state.get("arrive_target"):
     _at_car, _at_seat = st.session_state.arrive_target
     arrival_dialog(_at_car, _at_seat)
+
+# 예약 취소 버튼이 눌렸으면 확인 팝업을 띄운다(본인 확인 → 삭제).
+if st.session_state.get("cancel_target"):
+    _ct_car, _ct_seat = st.session_state.cancel_target
+    cancel_dialog(_ct_car, _ct_seat)
 
 if st.session_state.bookings:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)
@@ -2582,9 +2830,9 @@ if st.session_state.bookings:
                 _start_edit(bc_name, bseat)
                 st.rerun()
         def _btn_cancel():
+            # 즉시 삭제하지 않고 확인 팝업을 연다(오터치로 남의 배차가 사라지던 문제).
             if st.button(t("btn_cancel_bk"), key=f"cancel_btn_{bc_name}_{bseat}", use_container_width=True):
-                del st.session_state.bookings[(bc_name, bseat)]
-                save_bookings(st.session_state.bookings)
+                st.session_state.cancel_target = (bc_name, bseat)
                 st.rerun()
         def _btn_done():
             # 도착 완료: 도착 시간 입력 팝업을 연다(완료 눌러야 이력 기록 + 좌석 해제).
@@ -2683,6 +2931,8 @@ if st.session_state.bookings:
             rc1, rc2 = st.columns(2)
             with rc1:
                 if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
+                    # 전량 삭제 전에 몇 건을 지웠는지 기록 — 지운 뒤에는 확인할 방법이 없다.
+                    log_action("reset", "", 0, None, note=str(len(st.session_state.bookings)))
                     st.session_state.bookings = {}
                     save_bookings(st.session_state.bookings)
                     st.session_state.confirm_reset_all = False
@@ -2692,6 +2942,7 @@ if st.session_state.bookings:
                 if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
                     st.session_state.confirm_reset_all = False
                     st.rerun()
+        _render_audit_log()
 else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
