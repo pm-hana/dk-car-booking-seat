@@ -4,16 +4,78 @@ import datetime
 # 1. 페이지 기본 설정 및 다크 테마 고정
 st.set_page_config(page_title="DK CAR BOOKING", page_icon="🚗", layout="wide")
 
-# [관리자 PIN] INNOVA·SEDONA '운전석'을 클릭하면 뜨는 관리자 로그인 팝업에서 입력하는 4자리 숫자(0~9) PIN.
-#   인증에 성공하면 '전체 예약 초기화' 등 관리자 기능이 잠금 해제된다(공용 PIN 1개, 저장 없이 매번 입력).
-#   주의: 이 값은 소스에 그대로 있어 배포 저장소에 노출되는 내부용 간이 게이트다. 필요 시 여기만 바꾸면 된다.
-ADMIN_PIN = "1234"
-
 # 2. 시스템 버전 및 새로고침 업데이트 카운터 연산 (00h 기준 초기화 및 mmdd ver.N 포맷, app.py 수정 저장 시 자동 감지 갱신)
 import json
 import os
 import re
 import html
+import hmac
+import hashlib
+
+# ─────────────────────────────────────────────────────────────
+# 🔒 [보안 1] 사용자 입력을 HTML/SVG에 넣기 직전 이스케이프하는 공통 헬퍼
+#   이 앱은 좌석 배치도·예약 카드·팝업을 unsafe_allow_html=True로 직접 그린다.
+#   신청자 이름·출발지·목적지를 그대로 끼워 넣으면, 한 사람이 넣은 태그가
+#   현황판을 여는 '전원의 브라우저'에서 실행된다(저장형 XSS). 전 인원이 매일 쓰면
+#   예약 1건으로 전 직원 화면이 영향을 받는다.
+#   → 저장값은 원본 그대로 두고, '화면에 출력할 때만' 여기서 막는다.
+#   [벤치마킹] NGUYỄN VĂN HẢI(FAE Engineer Staff) "Daekhon Vina Vision"
+#              — 사내 PWA에서 XSS 취약점을 찾아 패치한 사례를 참고. 상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+def esc(v):
+    """HTML/SVG 출력용 이스케이프. None·숫자도 안전하게 문자열로 변환."""
+    return html.escape("" if v is None else str(v), quote=True)
+
+# ─────────────────────────────────────────────────────────────
+# 🔒 [보안 2] 관리자 PIN — 원문·해시 모두 소스에 두지 않는다
+#   INNOVA·SEDONA '운전석'을 클릭하면 뜨는 관리자 로그인 팝업의 숫자 PIN.
+#   인증 성공 시 '전체 예약 초기화' 등 관리자 기능이 잠금 해제된다.
+#
+#   ⚠️ 소스에 PIN을 적으면 배포 저장소와 '커밋 이력'에 남는다. 나중에 값을 바꿔도
+#      과거 커밋에서 조회할 수 있어, 값 교체만으로는 절대 닫히지 않는다.
+#      → Streamlit Cloud Secrets에 해시로만 넣는다(Firebase 자격증명과 같은 방식).
+#
+#   설정 방법 (Streamlit Cloud → App settings → Secrets):
+#       [admin]
+#       salt = "임의 문자열 (예: dkvina-2026)"
+#       pin_hash = "sha256(salt + PIN) 16진 문자열"
+#   해시 만들기:
+#       python -c "import hashlib;print(hashlib.sha256('dkvina-2026' '9137'.encode()).hexdigest())"
+#   (해시를 미리 못 만들면 pin_hash 대신 pin = "9137" 로 넣어도 된다 — 값은 Secrets 안에만 존재)
+#
+#   Secrets 미설정 배포에서는 앱이 멈추지 않도록 기존 PIN으로 계속 동작하되,
+#   로그인 팝업에 경고를 띄워 '아직 막히지 않은 상태'임을 드러낸다.
+#   [벤치마킹] Đào Văn Bảo(FAE Leader) "K-Pulse" — 평문 비밀번호 저장·DB 키 노출을
+#              해시 + 서버측 권한 검사로 해결한 사례.
+#              NGUYỄN TRỌNG CHƯƠNG(FAE) "AOI Log Analyzer" — 비밀 키를 .gitignore로 커밋 차단.
+#              상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+_LEGACY_ADMIN_PIN = "1234"   # Secrets 미설정 배포용 임시 폴백(경고 표시). 설정하면 더 이상 쓰이지 않는다.
+ADMIN_MAX_TRIES = 5          # 연속 실패 허용 횟수 — 4자리 PIN은 무제한 시도면 해시로 옮겨도 의미가 없다.
+
+def _admin_pin_config():
+    """(기대 해시, salt, Secrets 설정 여부) 반환. 미설정이면 폴백 해시 + configured=False."""
+    salt, pin_hash = "", ""
+    try:
+        sec = st.secrets["admin"]
+        salt = str(sec.get("salt", ""))
+        pin_hash = str(sec.get("pin_hash", "")).strip().lower()
+        if not pin_hash and sec.get("pin"):
+            pin_hash = hashlib.sha256((salt + str(sec["pin"])).encode("utf-8")).hexdigest()
+    except Exception:
+        pass   # secrets.toml 자체가 없는 로컬 개발 등 → 폴백
+    if pin_hash:
+        return pin_hash, salt, True
+    return hashlib.sha256((salt + _LEGACY_ADMIN_PIN).encode("utf-8")).hexdigest(), salt, False
+
+def verify_admin_pin(pin):
+    """입력 PIN 검증. 해시 비교는 타이밍 차로 값을 추정당하지 않도록 hmac.compare_digest 사용."""
+    pin = (pin or "").strip()
+    if not pin.isdigit() or not (4 <= len(pin) <= 8):
+        return False
+    expected, salt, _ = _admin_pin_config()
+    given = hashlib.sha256((salt + pin).encode("utf-8")).hexdigest()
+    return hmac.compare_digest(given, expected)
 
 COUNTER_FILE = "version_counter.json"
 
@@ -836,9 +898,12 @@ TR = {
         "btn_reset_all": "🗑️ 전체 예약 초기화",
         "reset_warn": "⚠️ 정말 모든 예약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
         "btn_reset_yes": "네, 전체 삭제", "toast_reset": "🧹 모든 예약이 초기화되었습니다.",
-        "admin_title": "🔑 관리자 로그인", "admin_pw_label": "PASSWORD (숫자 4자리)", "admin_pw_ph": "****",
-        "admin_hint": "0~9 숫자 4자리를 입력하세요.", "admin_ok": "확인",
+        "admin_title": "🔑 관리자 로그인", "admin_pw_label": "PASSWORD (숫자)", "admin_pw_ph": "****",
+        "admin_hint": "0~9 숫자 4~8자리를 입력하세요.", "admin_ok": "확인",
         "admin_err": "PIN이 올바르지 않습니다.", "admin_unlocked_toast": "🔓 관리자 잠금이 해제되었습니다.",
+        "admin_locked_out": "🚫 입력 실패가 많아 잠겼습니다. 페이지를 새로고침한 뒤 다시 시도하세요.",
+        "admin_pin_unset": "⚠️ 관리자 PIN이 아직 Secrets에 설정되지 않아 기본값으로 동작 중입니다. "
+                           "Streamlit Cloud → App settings → Secrets 에 [admin] pin_hash 를 등록하세요.",
         "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 잠금 상태로 돌아갔습니다.",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
@@ -888,9 +953,12 @@ TR = {
         "btn_reset_all": "🗑️ Reset all bookings",
         "reset_warn": "⚠️ Delete ALL bookings? This cannot be undone.",
         "btn_reset_yes": "Yes, delete all", "toast_reset": "🧹 All bookings have been reset.",
-        "admin_title": "🔑 Admin Login", "admin_pw_label": "PASSWORD (4 digits)", "admin_pw_ph": "****",
-        "admin_hint": "Enter a 4-digit number (0-9).", "admin_ok": "OK",
+        "admin_title": "🔑 Admin Login", "admin_pw_label": "PASSWORD (digits)", "admin_pw_ph": "****",
+        "admin_hint": "Enter 4-8 digits (0-9).", "admin_ok": "OK",
         "admin_err": "Incorrect PIN.", "admin_unlocked_toast": "🔓 Admin unlocked.",
+        "admin_locked_out": "🚫 Too many failed attempts. Reload the page and try again.",
+        "admin_pin_unset": "⚠️ The admin PIN is not yet set in Secrets, so the default is still in use. "
+                           "Add [admin] pin_hash under Streamlit Cloud → App settings → Secrets.",
         "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Admin locked again.",
         "no_bookings": "No dispatch requests yet.",
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
@@ -1012,8 +1080,7 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
 
     # 예약된 좌석에 마우스를 올리면 뜨는 예약 현황(SVG 네이티브 <title> 툴팁)
     if tooltip:
-        safe_tip = tooltip.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        svg.append(f'<title>{safe_tip}</title>')
+        svg.append(f'<title>{esc(tooltip)}</title>')
 
     # ── 좌석 형상(첨부 이미지 형): 팔걸이(양쪽) + 시트 쿠션(아래) + 등받이(메인) ──
     aw = w * 0.20  # 팔걸이 폭
@@ -1023,6 +1090,8 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
     svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.12:.1f}" y="{y:.1f}" width="{w*0.76:.1f}" height="{h*0.66:.1f}" rx="{w*0.26:.1f}" fill="{main_fill}" stroke="{stroke_color}" stroke-width="1.8" />')
 
     cx = x + w/2
+    # 글자 크기·textLength 계산은 '원본' 길이 기준(이스케이프하면 &amp; 처럼 길어져 크기가 틀어진다).
+    #  화면에 넣을 때만 esc()로 감싼다 — 예약된 좌석의 label은 신청자가 입력한 이름이다.
     if is_driver or is_booked:
         # 운전석 / 예약자 이름: 등받이 중앙 한 줄(길면 자동 축소). 보조라벨(운전자명)은 아랫줄.
         fs = 8.0
@@ -1030,16 +1099,16 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
         if len(label) > 5: fs = 5.5
         lattr = f' textLength="{w*0.66:.1f}" lengthAdjust="spacingAndGlyphs"' if len(label) >= 4 else ""
         if sub_label:
-            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.30:.1f}" font-family="sans-serif" font-size="{fs}" font-weight="bold" fill="{text_color}" text-anchor="middle"{lattr}>{label}</text>')
-            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.48:.1f}" font-family="sans-serif" font-size="6" font-weight="bold" fill="#fab005" text-anchor="middle">{sub_label}</text>')
+            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.30:.1f}" font-family="sans-serif" font-size="{fs}" font-weight="bold" fill="{text_color}" text-anchor="middle"{lattr}>{esc(label)}</text>')
+            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.48:.1f}" font-family="sans-serif" font-size="6" font-weight="bold" fill="#fab005" text-anchor="middle">{esc(sub_label)}</text>')
         else:
-            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.40:.1f}" font-family="sans-serif" font-size="{fs}" font-weight="bold" fill="{text_color}" text-anchor="middle"{lattr}>{label}</text>')
+            svg.append(f'<text x="{cx:.1f}" y="{y+h*0.40:.1f}" font-family="sans-serif" font-size="{fs}" font-weight="bold" fill="{text_color}" text-anchor="middle"{lattr}>{esc(label)}</text>')
     else:
         # 빈 좌석: "좌석"(윗줄, 작게) / 숫자(아랫줄, 크게) — label 예: "좌석 5" / "Seat 5"
         _p = label.rsplit(" ", 1)
         _word, _num = (_p[0], _p[1]) if len(_p) == 2 else (label, "")
-        svg.append(f'<text x="{cx:.1f}" y="{y+h*0.27:.1f}" font-family="sans-serif" font-size="5.5" font-weight="bold" fill="{text_color}" text-anchor="middle">{_word}</text>')
-        svg.append(f'<text x="{cx:.1f}" y="{y+h*0.52:.1f}" font-family="sans-serif" font-size="11" font-weight="bold" fill="{text_color}" text-anchor="middle">{_num}</text>')
+        svg.append(f'<text x="{cx:.1f}" y="{y+h*0.27:.1f}" font-family="sans-serif" font-size="5.5" font-weight="bold" fill="{text_color}" text-anchor="middle">{esc(_word)}</text>')
+        svg.append(f'<text x="{cx:.1f}" y="{y+h*0.52:.1f}" font-family="sans-serif" font-size="11" font-weight="bold" fill="{text_color}" text-anchor="middle">{esc(_num)}</text>')
 
     svg.append('</g>')
     return "".join(svg)
@@ -1598,7 +1667,7 @@ def _booking_form(car_target, seat_target):
     if st.session_state.duplicate_error_msg:
         st.markdown(f"""
         <div class="custom-error-box">
-            <span class="custom-error-text">{st.session_state.duplicate_error_msg}</span>
+            <span class="custom-error-text">{esc(st.session_state.duplicate_error_msg)}</span>
         </div>
         <div style="margin-bottom: 10px;"></div>
         """, unsafe_allow_html=True)
@@ -1707,24 +1776,33 @@ def _restore_admin():
     # 복원은 localStorage가 이미 '1'일 때만 발동하므로 별도 저장(admin_save_ls) 불필요
 
 def _admin_login_form():
-    """관리자 로그인 폼 — 좌석맵 팝업 안에서 표시. 4자리 숫자 PIN이 ADMIN_PIN과 일치하면 관리자 잠금 해제.
-    저장 없이 매번 입력(공용 PIN 1개)."""
+    """관리자 로그인 폼 — 좌석맵 팝업 안에서 표시. 입력 PIN의 해시가 Secrets의 pin_hash와 같으면 잠금 해제.
+    PIN은 저장하지 않고 매번 입력(공용 PIN 1개). 연속 실패가 ADMIN_MAX_TRIES를 넘으면 이 세션에서 잠근다."""
     st.markdown(f'<div class="dlg-step-title">{t("admin_title")}</div>', unsafe_allow_html=True)
     st.caption(t("admin_hint"))
+    # Secrets 미설정이면 PIN이 여전히 소스 기본값으로 동작 중 → 관리자에게 그 사실을 드러낸다.
+    if not _admin_pin_config()[2]:
+        st.warning(t("admin_pin_unset"))
     pin = st.text_input(t("admin_pw_label"), placeholder=t("admin_pw_ph"), type="password",
-                        max_chars=4, key="admin_pin_input")
+                        max_chars=8, key="admin_pin_input")
     if st.session_state.get("admin_pin_error"):
         st.error(t("admin_err"))
+    tries = int(st.session_state.get("admin_pin_tries", 0))
+    locked = tries >= ADMIN_MAX_TRIES
+    if locked:
+        st.error(t("admin_locked_out"))
     # 팝업 하단 '로그인 유지' 선택 — 체크 시 재접속해도 비밀번호 없이 자동 로그인(localStorage 저장)
     keep_login = st.checkbox(t("admin_keep_login"), key="admin_keep_login_cb")
     ac1, ac2 = st.columns(2)
     with ac1:
-        if st.button(t("admin_ok"), type="primary", key="admin_pin_ok_btn", use_container_width=True):
-            # 0~9 4자리 조합 검증(공용 PIN 일치)
-            if pin and pin.isdigit() and len(pin) == 4 and pin == ADMIN_PIN:
+        if st.button(t("admin_ok"), type="primary", key="admin_pin_ok_btn",
+                     use_container_width=True, disabled=locked):
+            # 해시 비교로 검증(원문 PIN은 소스·세션 어디에도 남기지 않는다)
+            if verify_admin_pin(pin):
                 st.session_state.admin_unlocked = True
                 st.session_state.admin_login_open = False
                 st.session_state.admin_pin_error = False
+                st.session_state.admin_pin_tries = 0
                 # '로그인 유지' 체크 여부 저장
                 st.session_state.admin_keep = bool(keep_login)
                 # localStorage 저장/삭제는 '전환 시 1회성 컴포넌트'로만 수행(브릿지는 저장 안 함 → 재설정 사고 원천 차단).
@@ -1740,6 +1818,7 @@ def _admin_login_form():
                 st.rerun()
             else:
                 st.session_state.admin_pin_error = True
+                st.session_state.admin_pin_tries = tries + 1   # 연속 실패 누적 → 한도 초과 시 잠금
                 st.rerun()
     with ac2:
         if st.button(t("btn_cancel"), key="admin_pin_cancel_btn", use_container_width=True):
@@ -2225,7 +2304,7 @@ def arrival_dialog(car, seat):
         return
     st.markdown(
         f'<div style="font-size:13px; color:#c7ccd6; line-height:1.6; margin-bottom:8px; white-space:pre-line;">'
-        f'{t("arrive_desc", car=car, seat=seat, name=info.get("name", ""))}</div>',
+        f'{esc(t("arrive_desc", car=car, seat=seat, name=info.get("name", "")))}</div>',
         unsafe_allow_html=True,
     )
     # 6. 도착 시간 (기본값은 도착 완료 클릭 시각의 5분 슬롯; 위젯 상태로 유지)
@@ -2289,7 +2368,7 @@ if st.session_state.bookings:
             filtered_items.append(((car_name, seat_num), info))
 
     if q and not filtered_items:
-        st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_result", q=search_query)}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{esc(t("no_result", q=search_query))}</div>', unsafe_allow_html=True)
 
     # 예약 수정: 해당 예약을 입력 필드에 로드 후 editing_booking 설정(→ rerun 시 팝업 오픈)
     def _start_edit(bc_name, bseat):
@@ -2346,9 +2425,10 @@ if st.session_state.bookings:
         # 카드가 화면 절반 폭(좁음)이라 정보를 'CSS 2열 그리드'로 배열(제목 + 값 한 줄, 길면 자동 줄바꿈).
         #  중첩 Streamlit 컬럼을 쓰지 않아 열 겹침·가로 오버플로우가 없다. 높이 축소를 위해 인라인·압축 배치.
         #  왼쪽열=신청자·출발지·목적지 / 오른쪽열=출발날짜·출발시간·도착시간 → 행 순서대로 좌우 번갈아 채움.
+        #  value는 신청자가 입력한 값(이름·출발지·목적지) → esc()로 감싸 태그가 실행되지 않게 한다.
         def _cell(label, value):
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
-                    f'<strong>{label}</strong><br>{value}</div>')
+                    f'<strong>{label}</strong><br>{esc(value)}</div>')
         info_grid = (
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
             f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:5px;">'
