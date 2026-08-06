@@ -381,11 +381,12 @@ st.markdown("""
         margin: 0 !important;
     }
 
-    /* 언어 선택 토글(한국어/ENG)은 항상 한 줄에 나란히 우측 정렬 */
+    /* 언어 선택 토글(한국어/Tiếng Việt/ENG)은 항상 한 줄에 나란히 우측 정렬.
+       3종으로 늘면서 폭이 커졌으므로 항목 간격을 12px → 10px로 좁힌다. */
     .st-key-lang_toggle div[role="radiogroup"] {
         flex-wrap: nowrap !important;
         justify-content: flex-end !important;
-        gap: 12px !important;
+        gap: 10px !important;
     }
     .st-key-lang_toggle div[role="radiogroup"] label {
         white-space: nowrap !important;
@@ -542,8 +543,10 @@ st.markdown("""
         .brand-version { font-size: 12px !important; margin-left: 6px !important; }
         .sub-title { font-size: 11px !important; text-align: center !important; margin-bottom: 8px !important; }
 
-        /* 언어 선택은 모바일에선 가운데 정렬 */
+        /* 언어 선택은 모바일에선 가운데 정렬 + 3종(한국어/Tiếng Việt/ENG)이 한 줄에 들어가도록 축소 */
         .st-key-lang_toggle, .st-key-lang_toggle [role="radiogroup"] { justify-content: center !important; align-items: center !important; }
+        .st-key-lang_toggle div[role="radiogroup"] { gap: 8px !important; }
+        .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: 13px !important; }
 
         /* 차량/예약 컬럼을 한 화면에 하나씩 세로로 강제 스택 */
         div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
@@ -596,8 +599,10 @@ if IS_MOBILE:
     .brand-version { font-size: 13px !important; margin-left: 6px !important; }
     .sub-title { font-size: 11px !important; text-align: center !important; margin-bottom: 10px !important; }
 
-    /* 언어 선택은 모바일에선 가운데 정렬 */
+    /* 언어 선택은 모바일에선 가운데 정렬 + 3종(한국어/Tiếng Việt/ENG)이 한 줄에 들어가도록 축소 */
     .st-key-lang_toggle, .st-key-lang_toggle [role="radiogroup"] { justify-content: center !important; align-items: center !important; }
+    .st-key-lang_toggle div[role="radiogroup"] { gap: 8px !important; }
+    .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: 13px !important; }
 
     /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
@@ -663,6 +668,51 @@ HISTORY_COLLECTION = "history"
 # 베트남(UTC+7) 실시간 — 상단 시계·출발시간 기본값과 동일 기준. 서버가 UTC라도 현지시각으로 기록.
 def now_vn():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
+
+# ─────────────────────────────────────────────────────────────
+# 👤 '내 정보 기억' — 매일 아침 이름·출발지를 다시 타이핑하는 마찰 제거
+#   저장 위치: 브라우저 쿠키(dk_profile). 서버에는 남기지 않는다(개인정보를 앱 DB에 쌓지 않음).
+#   · 읽기: st.context.cookies (Streamlit 1.42+) — 요청과 함께 오므로 별도 왕복이 필요 없다.
+#   · 쓰기: '신청 완료를 누른 순간'에만 1회성 컴포넌트로 기록한다.
+#     ⚠️ 매 실행 도는 JS 브릿지에서는 절대 쓰지 않는다 — 관리자 '로그인 유지'에서 브릿지가 값을
+#        되살려 재로그인 사고를 냈던 것과 같은 함정이다(0710~0711에 여러 번 겪음).
+#   [벤치마킹] NGUYỄN THẾ ANH(AE Engineer) "Vision Inspection V2" — Session Persistence(Auto Save/Load)로
+#              매일 반복되던 설정 입력 시간을 제거한 사례. 상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+import urllib.parse
+
+PROFILE_COOKIE = "dk_profile"
+PROFILE_MAX_NAME = 40      # 쿠키 비대·장난 입력 방지용 길이 상한
+PROFILE_MAX_DEP = 60
+
+def load_user_profile():
+    """브라우저에 저장해 둔 '내 정보'(이름·기본 출발지)를 읽는다. 없거나 손상되면 빈 dict."""
+    try:
+        raw = st.context.cookies.get(PROFILE_COOKIE)
+    except Exception:
+        return {}
+    if not raw:
+        return {}
+    try:
+        data = json.loads(urllib.parse.unquote(raw))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        "name": str(data.get("n", ""))[:PROFILE_MAX_NAME],
+        "departure": str(data.get("d", ""))[:PROFILE_MAX_DEP],
+    }
+
+def _profile_cookie_script(payload=None):
+    """쿠키 기록/삭제용 1회성 <script>. payload=None이면 삭제.
+    값은 전부 퍼센트 인코딩하므로 따옴표·세미콜론이 섞여도 쿠키·JS 문자열이 깨지지 않는다."""
+    if payload is None:
+        body = PROFILE_COOKIE + "=; path=/; max-age=0; SameSite=Lax"
+    else:
+        enc = urllib.parse.quote(json.dumps(payload, ensure_ascii=False), safe="")
+        body = PROFILE_COOKIE + "=" + enc + "; path=/; max-age=31536000; SameSite=Lax"
+    return "<script>try{window.parent.document.cookie='" + body + "';}catch(e){}</script>"
 
 _db_cache = "uninit"  # "uninit" | None(파일모드) | Firestore client
 
@@ -850,12 +900,18 @@ if "selected_seat_state" not in st.session_state:
     }
 
 # ─────────────────────────────────────────────────────────────
-# 🌐 다국어(i18n): 한국어/English 전환
+# 🌐 다국어(i18n): 한국어 / Tiếng Việt / English 전환
 #   · 언어는 배너의 라디오 위젯 값(lang_toggle)에서 매 실행 최상단에서 도출한다.
-#   · 내부 상태 토큰("좌석 N", "-- 선택 --", "4인승" 등)은 그대로 두고,
+#   · 내부 상태 토큰("좌석 N", "-- 선택 --", "완료" 등)은 그대로 두고,
 #     화면 표시만 t()/format_func로 번역해 로직 호환성을 유지한다.
+#     → 언어를 바꿔도 저장된 예약·이력 데이터는 전혀 영향을 받지 않는다.
+#   · 베트남어(vi): 매일 아침 실제 사용 인원 대다수가 베트남 직원이라 모국어가 필수.
+#     [벤치마킹] Nguyễn Huy Hoàng(AE Staff) "Button Design 2.0" — 사내 도구는 VI/EN 이중언어가 기본이라는 전제.
+#                컨테스트 플랫폼(AI Work Booster 2026)도 한국어·Tiếng Việt·English 3종 토글 제공.
+#                상세: docs/BENCHMARK.md
 # ─────────────────────────────────────────────────────────────
-lang = "en" if st.session_state.get("lang_toggle") == "ENG" else "ko"
+LANG_OPTIONS = {"한국어": "ko", "Tiếng Việt": "vi", "ENG": "en"}   # 표시 라벨 → 내부 언어 코드
+lang = LANG_OPTIONS.get(st.session_state.get("lang_toggle"), "ko")
 
 TR = {
     "ko": {
@@ -875,6 +931,7 @@ TR = {
         "f_dep": "2. 출발지", "f_dep_ph": "예: 본사 오피스",
         "f_dest": "3. 목적지 (위치)", "f_dest_ph": "예: 하노이 박닌 공장",
         "f_date": "4. 출발 날짜", "f_time": "5. 출발 시간", "f_arrive": "6. 도착 시간",
+        "remember_me": "이 기기에 내 정보 기억 (다음부터 이름·출발지 자동 입력)",
         "btn_update": "수정 완료", "btn_submit": "신청 완료", "btn_cancel": "취소",
         "err_name_dest": "이름과 목적지를 정확히 입력해 주세요!",
         "toast_booked": "🎉 [{name}]님 좌석 {seat} 신청(수정) 완료!",
@@ -913,6 +970,62 @@ TR = {
         "st_empty": "미신청", "btn_close": "닫기", "btn_logout": "로그아웃",
         "admin_keep_login": "로그인 유지 (재접속 시 비밀번호 없이 자동 로그인)",
     },
+    "vi": {
+        "app_title": "DK CAR BOOKING SEAT",
+        "subtitle": "Anh/chị CBNV DAEKHON VINA, vui lòng xem sơ đồ ghế và chọn chỗ trống để đăng ký xe!",
+        "legend_empty": "Chỗ trống", "legend_booked": "Đã đặt", "legend_selected": "Đang chọn",
+        "legend_driver": "Ghế lái", "legend_drag": "· Có thể kéo ghế đã đặt sang chỗ trống",
+        "seat_driver": "Ghế lái", "seat_n": "Ghế {n}",
+        "badge_seats": "{n} chỗ", "taxi_4": "4 chỗ", "taxi_7": "7 chỗ", "taxi_count": "Số xe TAXI",
+        "seats_left": "Còn {n} chỗ",
+        "select_ph": "-- Chọn --", "seat_select": "Chọn ghế {car}", "full": "❌ Hết chỗ",
+        "seatmap_title": "🚗 Chọn ghế", "seatmap_hint": "Nhấn vào ghế trống để mở form đăng ký xe.",
+        "dialog_title": "📝 Nhập thông tin đăng ký xe", "form_step_title": "📝 Nhập thông tin",
+        "form_edit": "[{car}] Ghế {seat} · Sửa đăng ký", "form_new": "[{car}] Ghế {seat} · Đăng ký xe",
+        "dup_error": "⚠️ Từ chối đăng ký trùng: [{name}] đã được xếp cho xe khác!",
+        "f_name": "1. Tên người đăng ký", "f_name_ph": "VD: Nguyễn Văn A (PM)",
+        "f_dep": "2. Điểm đi", "f_dep_ph": "VD: Văn phòng trụ sở",
+        "f_dest": "3. Điểm đến (vị trí)", "f_dest_ph": "VD: Nhà máy Bắc Ninh, Hà Nội",
+        "f_date": "4. Ngày đi", "f_time": "5. Giờ đi", "f_arrive": "6. Giờ đến",
+        "remember_me": "Ghi nhớ thông tin trên thiết bị này (tự động điền tên·điểm đi lần sau)",
+        "btn_update": "Cập nhật", "btn_submit": "Hoàn tất", "btn_cancel": "Hủy",
+        "err_name_dest": "Vui lòng nhập chính xác tên và điểm đến!",
+        "toast_booked": "🎉 [{name}] đã đăng ký ghế {seat} thành công!",
+        "toast_moved": "🔄 Đăng ký của [{name}] đã chuyển sang [{car}] ghế {seat}!",
+        "list_title": "📋 Tình trạng đặt xe theo thời gian thực · {n}",
+        "csv_btn": "📄 Lịch sử đặt xe",
+        "search_ph": "🔍 Tìm theo tên · xe · điểm đến",
+        "csv_headers": ["Thời gian đăng ký", "Xe", "Ghế", "Người đăng ký", "Ngày đi", "Điểm đi", "Điểm đến", "Giờ đi", "Giờ đến"],
+        "csv_file": "Lich su dat xe_{date}.csv",
+        "export_title": "📥 Xuất dữ liệu Excel", "export_year": "Năm", "export_month": "Tháng", "export_day": "Ngày",
+        "export_all": "Tất cả", "export_btn": "⬇️ Tải Excel",
+        "export_caption": "Truy xuất lịch sử di chuyển của năm·tháng·ngày đã chọn từ Firebase và xuất ra file Excel (XLSX).",
+        "export_file": "Lich su di chuyen_{ym}.xlsx", "export_empty": "Không có lịch sử di chuyển trong khoảng thời gian đã chọn.",
+        "arrive_title": "🏁 Xử lý hoàn tất chuyến", "arrive_done": "Hoàn tất",
+        "arrive_desc": "[{car}] Ghế {seat} · {name}\nNhập giờ đến rồi nhấn Hoàn tất để ghi vào lịch sử di chuyển.",
+        "no_result": "🔍 Không có kết quả cho [{q}].",
+        "c_applicant": "Người ĐK:", "c_departure": "Điểm đi:", "c_destination": "Điểm đến:",
+        "c_date": "Ngày đi:", "c_time": "Giờ đi:", "c_arrive": "Giờ đến:", "edit_tip": "Sửa đăng ký",
+        "btn_edit_bk": "Sửa ĐK", "btn_cancel_bk": "Hủy ĐK", "btn_done_bk": "Đã đến",
+        "toast_done": "🏁 [{name}] ghế {seat} đã được xử lý hoàn tất.",
+        "btn_reset_all": "🗑️ Xóa toàn bộ đăng ký",
+        "reset_warn": "⚠️ Bạn chắc chắn muốn xóa TẤT CẢ đăng ký? Thao tác này không thể hoàn tác.",
+        "btn_reset_yes": "Vâng, xóa tất cả", "toast_reset": "🧹 Toàn bộ đăng ký đã được xóa.",
+        "admin_title": "🔑 Đăng nhập quản trị", "admin_pw_label": "PASSWORD (số)", "admin_pw_ph": "****",
+        "admin_hint": "Nhập 4~8 chữ số (0-9).", "admin_ok": "Xác nhận",
+        "admin_err": "PIN không đúng.", "admin_unlocked_toast": "🔓 Đã mở khóa quản trị.",
+        "admin_locked_out": "🚫 Nhập sai quá nhiều lần nên đã bị khóa. Vui lòng tải lại trang và thử lại.",
+        "admin_pin_unset": "⚠️ PIN quản trị chưa được đặt trong Secrets nên đang dùng giá trị mặc định. "
+                           "Hãy thêm [admin] pin_hash tại Streamlit Cloud → App settings → Secrets.",
+        "admin_lock": "🔒 Khóa quản trị", "admin_locked_toast": "🔒 Đã trở lại trạng thái khóa quản trị.",
+        "no_bookings": "Chưa có đăng ký xe nào.",
+        "tip_from": "📍 Đi: {v}", "tip_to": "🎯 Đến: {v}",
+        "admin_status_title": "📋 Tình trạng đăng ký ghế",
+        "st_seat": "Số ghế", "st_name": "Người ĐK", "st_dep": "Điểm đi",
+        "st_dest": "Điểm đến", "st_reqtime": "Giờ đăng ký", "st_deptime": "Giờ đi", "st_arrive": "Giờ đến",
+        "st_empty": "Chưa ĐK", "btn_close": "Đóng", "btn_logout": "Đăng xuất",
+        "admin_keep_login": "Duy trì đăng nhập (tự động đăng nhập không cần mật khẩu khi quay lại)",
+    },
     "en": {
         "app_title": "DK CAR BOOKING SEAT",
         "subtitle": "DAEKHON VINA staff — to request a vehicle, check the seat map and pick an empty seat!",
@@ -930,6 +1043,7 @@ TR = {
         "f_dep": "2. Departure", "f_dep_ph": "e.g. HQ Office",
         "f_dest": "3. Destination", "f_dest_ph": "e.g. Hanoi Bac Ninh Plant",
         "f_date": "4. Departure date", "f_time": "5. Departure time", "f_arrive": "6. Arrival time",
+        "remember_me": "Remember me on this device (auto-fill name & departure next time)",
         "btn_update": "Update", "btn_submit": "Submit", "btn_cancel": "Cancel",
         "err_name_dest": "Please enter a valid name and destination!",
         "toast_booked": "🎉 [{name}] — seat {seat} request saved!",
@@ -1020,7 +1134,7 @@ with _bn_r:
     # 실시간 시계(위) + 언어 토글(아래)을 컴팩트 세로 스택으로 묶어 오른쪽 프레임 끝선에 정렬
     with st.container(key="hdr_right"):
         st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
-        st.radio("Language", ["한국어", "ENG"], key="lang_toggle",
+        st.radio("Language", list(LANG_OPTIONS.keys()), key="lang_toggle",
                  horizontal=True, label_visibility="collapsed")
 
 st.markdown(f'<div class="sub-title">{t("subtitle")}</div>', unsafe_allow_html=True)
@@ -1672,6 +1786,16 @@ def _booking_form(car_target, seat_target):
         <div style="margin-bottom: 10px;"></div>
         """, unsafe_allow_html=True)
 
+    # '내 정보 기억'으로 저장해 둔 값이 있으면 이름·출발지를 미리 채운다.
+    #   · 위젯 생성 '전에' session_state를 세팅해야 기본값으로 들어간다.
+    #   · 수정 모드(editing_booking)이거나 이미 입력값이 있으면 건드리지 않는다 → 남의 예약을 덮어쓰지 않음.
+    _prof = load_user_profile()
+    if _prof and not st.session_state.editing_booking:
+        if not st.session_state.get("input_user_real_name"):
+            st.session_state.input_user_real_name = _prof.get("name", "")
+        if not st.session_state.get("input_user_departure_loc"):
+            st.session_state.input_user_departure_loc = _prof.get("departure", "")
+
     u_name = st.text_input(t("f_name"), placeholder=t("f_name_ph"), key="input_user_real_name")
     u_dep = st.text_input(t("f_dep"), placeholder=t("f_dep_ph"), key="input_user_departure_loc")
     u_dest = st.text_input(t("f_dest"), placeholder=t("f_dest_ph"), key="input_user_destination_loc")
@@ -1682,6 +1806,9 @@ def _booking_form(car_target, seat_target):
         u_time = st.time_input(t("f_time"), step=300, key="input_user_departure_time_tick")
     with fc3:
         u_arrive = st.time_input(t("f_arrive"), step=300, key="input_user_arrival_time_tick")
+
+    # 공용 PC를 함께 쓰는 경우를 위해 저장 여부를 사용자가 직접 고른다(끄면 저장된 값도 즉시 삭제).
+    remember_me = st.checkbox(t("remember_me"), value=True, key="remember_me_cb")
 
     act_col1, act_col2 = st.columns(2)
     with act_col1:
@@ -1723,6 +1850,15 @@ def _booking_form(car_target, seat_target):
                     }
                     st.session_state.duplicate_error_msg = None
                     save_bookings(st.session_state.bookings)
+                    # '내 정보 기억' — 예약이 실제로 저장된 뒤에만 반영. 체크 해제 시에는 기존 쿠키를 지운다.
+                    #  (기록은 아래 8-c의 1회성 컴포넌트가 담당 — 상시 브릿지는 쿠키를 건드리지 않는다)
+                    if remember_me:
+                        st.session_state.profile_save = {
+                            "n": u_name.strip()[:PROFILE_MAX_NAME],
+                            "d": (u_dep.strip() if u_dep else "")[:PROFILE_MAX_DEP],
+                        }
+                    else:
+                        st.session_state.profile_clear = True
                     st.session_state.selected_seat_state[car_target] = "-- 선택 --"
                     st.session_state.seatmap_car = None   # 앱 좌석맵 팝업도 함께 닫힘
                     st.toast(t("toast_booked", name=u_name, seat=seat_target))
@@ -2582,6 +2718,15 @@ if st.session_state.get("admin_save_ls"):
         "<script>try{window.parent.localStorage.setItem('dk_admin','1');}catch(e){}</script>",
         height=0,
     )
+
+# 8-c. '내 정보 기억' 1회성 기록/삭제 — 신청 완료를 누른 그 순간에만 쿠키를 쓴다.
+#   8-b의 관리자 유지와 같은 원칙: 매 실행 도는 JS 브릿지는 쿠키를 절대 건드리지 않는다.
+#   (브릿지가 값을 되살려 사고를 낸 전례 → 쓰기 경로를 '전환 시 1회'로만 좁혀 둔다)
+if st.session_state.get("profile_save"):
+    _pwa_components.html(_profile_cookie_script(st.session_state.pop("profile_save")), height=0)
+elif st.session_state.get("profile_clear"):
+    st.session_state.profile_clear = False
+    _pwa_components.html(_profile_cookie_script(None), height=0)
 
 # 9. 드래그 앤 드롭 이벤트를 부모 DOM에 강제로 바인딩하는 투명 JS 브릿지 컴포넌트 및 실시간 시계 가동
 import streamlit.components.v1 as components
