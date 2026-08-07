@@ -1456,25 +1456,47 @@ with _bn_r:
 
 st.markdown(f'<div class="sub-title">{t("subtitle")}</div>', unsafe_allow_html=True)
 
+# 좌석 상태 색 — 배치도 좌석 테두리 / 범례 / 예약 카드 배지가 모두 이 두 상수를 참조한다(한 곳에서 관리).
+#  ⚠️ 범례가 모듈 실행 시점에 바로 그려지므로, 상수는 반드시 범례보다 먼저 정의돼야 한다.
+BOOKED_SEAT_LINE = "#40c057"    # 승인 완료(확정) — 초록 실선
+# 승인 대기 — 주황 파선.
+#  색 선택 근거(눈대중 아님): 검증 도구로 빈자리(#1c7ed6)·확정(#40c057)과 함께 검사한 결과
+#  정상 색각 분리도는 충분(ΔE 27.1)하나, 적록 색각에서 확정과의 분리도가 6.6(deutan)로 경계 구간이다.
+#  → 이 구간은 '보조 인코딩을 반드시 동반할 때만' 허용되므로 파선(stroke-dasharray) 테두리를 함께 쓰고,
+#    범례·툴팁에도 상태 문구를 넣어 색을 못 읽어도 상태를 알 수 있게 했다.
+#  (핑크 #e64980은 검사를 완전히 통과했지만 '대기'라는 의미 전달이 약해 채택하지 않음)
+PENDING_SEAT_LINE = "#fd7e14"
+
 # 좌석 색상 의미를 한눈에 알려주는 범례(legend) — 배치도 위 안내
 st.markdown(f"""
 <div style="display: flex; flex-direction: row; gap: 18px; align-items: center; flex-wrap: wrap; margin: -8px 0 14px 2px; font-size: 12px; color: #c7ccd6;">
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#1e293b; border:2px solid #1c7ed6; display:inline-block;"></span>{t("legend_empty")}</span>
-    <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#1b3b22; border:2px solid #40c057; display:inline-block;"></span>{t("legend_booked")}</span>
+    <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#1b3b22; border:2px solid {BOOKED_SEAT_LINE}; display:inline-block;"></span>{t("status_approved")}</span>
+    <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3b2a12; border:2px dashed {PENDING_SEAT_LINE}; display:inline-block;"></span>{t("status_pending")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3a2f15; border:2px solid #fab005; display:inline-block;"></span>{t("legend_selected")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#2c1a1a; border:2px solid #e03131; display:inline-block;"></span>{t("legend_driver")}</span>
 </div>
 """, unsafe_allow_html=True)
 
 # ⚡ [OPT1 트리거 지원] 좌석 배치도 내부 프리미엄 가죽 시트 렌더러 (클릭 이벤트 주입)
-def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip="", sub_label="", admin_login=False):
+def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip="", sub_label="", admin_login=False, book_state=""):
+    # 예약된 좌석의 테두리 실선/파선 — 승인 대기는 파선으로 그린다.
+    #  ⚠️ 색만으로 구분하지 않는다: 적록 색각에서 초록(확정)↔주황(대기)은 구분이 약하다(deutan ΔE 6.6).
+    #     파선은 흑백으로 봐도 구분되므로, 색이 안 보여도 상태를 읽을 수 있다.
+    dash_attr = ""
     if is_driver:
         stroke_color = "#e03131"
         main_fill = "#2c1a1a"
         inner_fill = "#3b1e1e"
         text_color = "#ffffff" # 글자색 백색으로 통일
+    elif is_booked and book_state == STATUS_PENDING:
+        stroke_color = PENDING_SEAT_LINE   # 승인 대기 좌석은 주황색 + 파선 테두리
+        main_fill = "#3b2a12"
+        inner_fill = "#241606"
+        text_color = "#ffffff"
+        dash_attr = ' stroke-dasharray="3 2"'
     elif is_booked:
-        stroke_color = BOOKED_SEAT_LINE # 신청 완료(예약됨) 좌석은 초록색(예약 카드 배지 배경과 동일)
+        stroke_color = BOOKED_SEAT_LINE # 신청 완료(승인) 좌석은 초록색(예약 카드 배지 배경과 동일)
         main_fill = "#1b3b22"
         inner_fill = "#0b2412"
         text_color = "#ffffff" # 글자색 백색으로 통일
@@ -1515,10 +1537,10 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
 
     # ── 좌석 형상(첨부 이미지 형): 팔걸이(양쪽) + 시트 쿠션(아래) + 등받이(메인) ──
     aw = w * 0.20  # 팔걸이 폭
-    svg.append(f'<rect class="clickable-seat-rect" x="{x:.1f}" y="{y+h*0.34:.1f}" width="{aw:.1f}" height="{h*0.52:.1f}" rx="{aw*0.5:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3" />')
-    svg.append(f'<rect class="clickable-seat-rect" x="{x+w-aw:.1f}" y="{y+h*0.34:.1f}" width="{aw:.1f}" height="{h*0.52:.1f}" rx="{aw*0.5:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3" />')
-    svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.13:.1f}" y="{y+h*0.58:.1f}" width="{w*0.74:.1f}" height="{h*0.40:.1f}" rx="{w*0.14:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3" />')
-    svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.12:.1f}" y="{y:.1f}" width="{w*0.76:.1f}" height="{h*0.66:.1f}" rx="{w*0.26:.1f}" fill="{main_fill}" stroke="{stroke_color}" stroke-width="1.8" />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x:.1f}" y="{y+h*0.34:.1f}" width="{aw:.1f}" height="{h*0.52:.1f}" rx="{aw*0.5:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3"{dash_attr} />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x+w-aw:.1f}" y="{y+h*0.34:.1f}" width="{aw:.1f}" height="{h*0.52:.1f}" rx="{aw*0.5:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3"{dash_attr} />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.13:.1f}" y="{y+h*0.58:.1f}" width="{w*0.74:.1f}" height="{h*0.40:.1f}" rx="{w*0.14:.1f}" fill="{inner_fill}" stroke="{stroke_color}" stroke-width="1.3"{dash_attr} />')
+    svg.append(f'<rect class="clickable-seat-rect" x="{x+w*0.12:.1f}" y="{y:.1f}" width="{w*0.76:.1f}" height="{h*0.66:.1f}" rx="{w*0.26:.1f}" fill="{main_fill}" stroke="{stroke_color}" stroke-width="1.8"{dash_attr} />')
 
     cx = x + w/2
     # 글자 크기·textLength 계산은 '원본' 길이 기준(이스케이프하면 &amp; 처럼 길어져 크기가 틀어진다).
@@ -1775,7 +1797,22 @@ def render_car_layout(car_name, layout_type, bookings):
         dt = f"{info.get('date', '')} {info.get('time', '')}".strip()
         if dt:
             lines.append(f"🕒 {dt}")
+        # 승인 상태를 '글자로도' 남긴다 — 색·파선을 못 읽는 경우에도 상태를 알 수 있어야 한다.
+        urg = pending_urgency(info)
+        if booking_status(info) == STATUS_APPROVED:
+            lines.append("✅ " + t("status_approved"))
+        else:
+            lines.append("⏳ " + (t("status_over") if urg == "over"
+                                  else t("status_soon") if urg == "soon"
+                                  else t("status_pending")))
         return "\n".join(lines)
+
+    def get_seat_state(seat_id):
+        """좌석 배치도의 예약 상태 — 승인 대기면 주황·파선, 그 외(승인·기존 예약)는 초록 실선."""
+        info = car_bookings.get(seat_id)
+        if not info:
+            return ""
+        return STATUS_PENDING if booking_status(info) == STATUS_PENDING else STATUS_APPROVED
 
     # 좌석 배치: 운전석 + 인승별 승객석 좌표 (실사 사진 차실 x29~136 / y96~242에 맞춤)
     #   3열 X: 좌 35 / 중 66 / 우 97,  3행 Y: 앞 104 / 중 151 / 뒤 198,  좌석 32x32
@@ -1806,7 +1843,8 @@ def render_car_layout(car_name, layout_type, bookings):
             svg.append('  <line x1="33" y1="150" x2="129" y2="150" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
         for sid, sx, sy in seat_map[layout_type]:
             svg.append(render_premium_seat(sx, sy, SW, SH, get_seat_label(sid), sid, car_name,
-                                           is_booked=(sid in car_bookings), tooltip=get_seat_tip(sid)))
+                                           is_booked=(sid in car_bookings), tooltip=get_seat_tip(sid),
+                                           book_state=get_seat_state(sid)))
 
         # 잔여 좌석 수 배지 — 운전석과의 간격을 좌석 행 간격만큼 벌리기 위해 y=70에 배치
         remaining = sum(1 for _sid, _sx, _sy in seat_map[layout_type] if _sid not in car_bookings)
@@ -1983,10 +2021,6 @@ CAR_CARD_STYLE = {
     "taxi4":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),   # 옐로우
     "taxi7":  ("rgba(232,192,70,0.22)",  "#f3f4f6", "rgba(232,192,70,0.60)"),
 }
-
-# 예약된(신청 완료) 좌석의 배치도 라인(stroke) 색 = 초록. 예약 현황 카드의 좌석번호 배지 배경도 이 색으로 통일.
-#  (render_premium_seat의 is_booked stroke_color와 동일 값 — 한 곳에서 관리)
-BOOKED_SEAT_LINE = "#40c057"
 
 def car_title_frame(mk, inner_html):
     """차량명(로고+이름)을 외관색 배경의 사각 프레임으로 감싼 HTML을 반환."""
