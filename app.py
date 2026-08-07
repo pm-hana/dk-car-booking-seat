@@ -192,6 +192,35 @@ st.markdown("""
     /* 관리자 모드 종료 버튼: 패널 맨 위에서 '나가는 문'임이 바로 보이도록 같은 붉은 톤 + 전체폭 */
     .st-key-admin_exit_row button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; min-height: 42px !important; }
     .st-key-admin_exit_row button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
+    /* ===== 관리자 기능 타일: 차량 선택 타일과 같은 정사각형, 가로 한 줄에 3개 =====
+       펼침 목록(expander) 3개가 세로로 길게 늘어지던 것을 타일+팝업으로 바꿔 관리자 영역 높이를 줄였다. */
+    .st-key-admin_tiles { max-width: 520px !important; margin: 4px auto 0 auto !important; }
+    /* 모바일에서도 3열 유지 — 자식결합자 특이도(0,3,0)로 Streamlit의 컬럼 세로적층을 덮어씀 */
+    .st-key-admin_tiles [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 8px !important; }
+    .st-key-admin_tiles [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
+    .st-key-admin_tiles button {
+        aspect-ratio: 1 / 1;
+        width: 100% !important;
+        max-width: 160px !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        white-space: normal !important;
+        word-break: keep-all !important;
+        line-height: 1.3 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        padding: 8px !important;
+        border-radius: 14px !important;
+        background: #1b1f27 !important;
+        border: 1px solid #3a3f4a !important;
+        color: #e9ecef !important;
+        transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .st-key-admin_tiles button * { white-space: normal !important; word-break: keep-all !important; }
+    .st-key-admin_tiles button:hover { background: #242a33 !important; border-color: #4a5160 !important; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
     /* 관리자 잠금 해제(진입) 버튼: 일반 사용자에게는 주장이 세지 않도록 차분한 회색 톤 */
     .st-key-admin_enter_row button { background: #1b1f27 !important; border-color: #3a3f4a !important; color: #adb5bd !important; font-weight: 700 !important; }
     .st-key-admin_enter_row button:hover { background: #242a33 !important; border-color: #4a5160 !important; color: #e9ecef !important; }
@@ -263,6 +292,8 @@ st.markdown("""
     .st-key-hdr_right .st-key-lang_toggle { margin: 0 !important; padding: 0 !important; }
     /* 예약 이력 버튼: TAXI 박스(width 80% 가운데정렬)와 동일 끝선·폭으로 → 박스 바로 아래 한 줄 정렬 */
     .st-key-csv_inset { padding: 0 10% !important; }
+    /* 예약 이력 버튼 높이를 기존(약 38px) 대비 2배로 — 현황판에서 가장 자주 누르는 버튼이라 탭 영역을 키운다 */
+    .st-key-csv_inset button { min-height: 76px !important; font-size: 15px !important; font-weight: 700 !important; }
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
@@ -679,6 +710,12 @@ if IS_MOBILE:
     .car-nav-tile .car-nav-info { padding: 4px 7px; border-radius: 7px; }
     .car-nav-tile .cni-driver { font-size: 12px; }
     .car-nav-tile .cni-line { font-size: 10.5px; }
+    /* 관리자 타일: 폰에서도 3열 유지하되 글자·여백을 줄여 정사각형이 찌그러지지 않게 */
+    .st-key-admin_tiles { max-width: 100% !important; }
+    .st-key-admin_tiles [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    .st-key-admin_tiles button { max-width: none !important; font-size: 11px !important; padding: 5px !important; border-radius: 12px !important; }
+    /* 예약 이력 버튼: 폰에서도 2배 높이 유지(가장 자주 누르는 버튼) */
+    .st-key-csv_inset button { min-height: 68px !important; font-size: 14px !important; }
 
     /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
@@ -2319,136 +2356,197 @@ def _status_chip(info):
             f'font-size:10px; font-weight:700; white-space:nowrap;">{esc(label)}</span></div>')
 
 
-def _render_pending_approvals():
-    """관리자 전용 '승인 대기' 패널 — 출발이 급한 순으로 나열하고 한 건씩 승인한다.
+def _pending_approvals_body():
+    """'승인 대기' 내용 — 출발이 급한 순으로 나열하고 한 건씩 승인한다.
     카드의 버튼 3개(수정·취소·도착완료)는 이미 폭이 빠듯해 4번째 버튼을 넣을 자리가 없으므로,
-    승인은 카드가 아니라 이 패널에서 처리한다(0713에 카드 폭 문제로 11번 수정한 전례)."""
+    승인은 카드가 아니라 여기서 처리한다(0713에 카드 폭 문제로 11번 수정한 전례)."""
     items = pending_bookings()
-    with st.expander(t("approve_title", n=len(items)), expanded=bool(items)):
-        if not items:
-            st.caption(t("approve_none"))
-            return
-        for (pc_name, pseat), pinfo in items:
-            urg = pending_urgency(pinfo)
-            mark = "🔴" if urg == "over" else ("🟠" if urg == "soon" else "🟡")
-            col_l, col_r = st.columns([3, 1], vertical_alignment="center")
-            with col_l:
-                st.markdown(
-                    f'<div style="font-size:12px; color:#e9ecef; line-height:1.45;">'
-                    f'{mark} <strong>{esc(pinfo.get("name", ""))}</strong> · '
-                    f'{esc(_short_car_name(pc_name))} {esc(t("seat_n", n=pseat))}<br>'
-                    f'<span style="color:#adb5bd;">{esc(pinfo.get("date", ""))} {esc(pinfo.get("time", ""))} '
-                    f'→ {esc(pinfo.get("destination", ""))}</span></div>',
-                    unsafe_allow_html=True,
-                )
-            with col_r:
-                if st.button(t("approve_btn"), key=f"approve_{pc_name}_{pseat}",
-                             type="primary", use_container_width=True):
-                    cur = st.session_state.bookings.get((pc_name, pseat))
-                    if cur:   # 승인 직전 재확인 — 그 사이 취소·완료됐을 수 있다
-                        cur["status"] = STATUS_APPROVED
-                        if save_bookings(st.session_state.bookings):
-                            log_action("approve", pc_name, pseat, cur)
-                            st.toast(t("toast_approved", name=cur.get("name", ""), seat=pseat))
-                    st.rerun()
-
-
-def _render_backup_tools():
-    """관리자 전용 백업·복원 — ① 원클릭 내보내기 ② 파일로 복원 ③ 마지막 초기화/복원 되돌리기.
-    복원·되돌리기도 파괴적이므로, 실행 직전에 현재 상태를 다시 스냅샷으로 남긴다."""
-    with st.expander(t("backup_title")):
-        cur_n = len(st.session_state.bookings)
-        # ① 내보내기 — 지금 예약 전체를 JSON 파일로
-        st.download_button(
-            t("backup_export", n=cur_n),
-            data=json.dumps({
-                "exported_at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
-                "count": cur_n,
-                "data": _encode_bookings(st.session_state.bookings),
-            }, ensure_ascii=False, indent=2).encode("utf-8"),
-            file_name=t("backup_file", date=now_vn().strftime("%Y%m%d_%H%M")),
-            mime="application/json", use_container_width=True, key="backup_export_btn",
-        )
-
-        # ② 복원 — 내려받은 백업 파일을 올려 현재 예약을 통째로 교체
-        st.divider()
-        up = st.file_uploader(t("backup_import"), type=["json"], key="backup_import_file")
-        if up is not None:
-            incoming = None
-            try:
-                raw = json.loads(up.getvalue().decode("utf-8"))
-                # 이 앱이 내보낸 형식({"data": {...}})과 예약 dict 자체 둘 다 받아준다
-                incoming = _decode_bookings(raw.get("data") if isinstance(raw, dict) and "data" in raw else raw)
-            except Exception:
-                incoming = None
-            if not incoming:
-                st.error(t("backup_bad_file"))
-            else:
-                st.warning(t("backup_import_warn", n=len(incoming), cur=cur_n))
-                if st.button(t("backup_import_do"), type="primary",
-                             key="backup_import_btn", use_container_width=True):
-                    save_snapshot(st.session_state.bookings, reason="import")   # 교체 전 상태 보관
-                    st.session_state.bookings = incoming
+    if not items:
+        st.caption(t("approve_none"))
+        return
+    for (pc_name, pseat), pinfo in items:
+        urg = pending_urgency(pinfo)
+        mark = "🔴" if urg == "over" else ("🟠" if urg == "soon" else "🟡")
+        col_l, col_r = st.columns([3, 1], vertical_alignment="center")
+        with col_l:
+            st.markdown(
+                f'<div style="font-size:12px; color:#e9ecef; line-height:1.45;">'
+                f'{mark} <strong>{esc(pinfo.get("name", ""))}</strong> · '
+                f'{esc(_short_car_name(pc_name))} {esc(t("seat_n", n=pseat))}<br>'
+                f'<span style="color:#adb5bd;">{esc(pinfo.get("date", ""))} {esc(pinfo.get("time", ""))} '
+                f'→ {esc(pinfo.get("destination", ""))}</span></div>',
+                unsafe_allow_html=True,
+            )
+        with col_r:
+            if st.button(t("approve_btn"), key=f"approve_{pc_name}_{pseat}",
+                         type="primary", use_container_width=True):
+                cur = st.session_state.bookings.get((pc_name, pseat))
+                if cur:   # 승인 직전 재확인 — 그 사이 취소·완료됐을 수 있다
+                    cur["status"] = STATUS_APPROVED
                     if save_bookings(st.session_state.bookings):
-                        log_action("restore", "", 0, None, note=str(len(incoming)))
-                        st.toast(t("backup_restored", n=len(incoming)))
-                        st.rerun()
+                        log_action("approve", pc_name, pseat, cur)
+                        st.toast(t("toast_approved", name=cur.get("name", ""), seat=pseat))
+                st.rerun()
 
-        # ③ 되돌리기 — 마지막 초기화/복원 직전 상태로
-        st.divider()
-        snap = load_snapshot()
-        snap_data = snap.get("data") if isinstance(snap, dict) else None
-        if snap_data:
-            st.caption(t("backup_snap_info", at=snap.get("at", ""), n=snap.get("count", 0)))
-            if st.button(t("backup_undo"), key="backup_undo_btn", use_container_width=True):
-                restored = _decode_bookings(snap_data)
-                save_snapshot(st.session_state.bookings, reason="undo")   # 되돌리기도 되돌릴 수 있게
-                st.session_state.bookings = restored
-                if save_bookings(st.session_state.bookings):
-                    log_action("undo", "", 0, None, note=str(len(restored)))
-                    st.toast(t("backup_restored", n=len(restored)))
-                    st.rerun()
+
+def _backup_tools_body():
+    """백업·복원 내용 — ① 원클릭 내보내기 ② 파일로 복원 ③ 마지막 초기화/복원 되돌리기.
+    복원·되돌리기도 파괴적이므로, 실행 직전에 현재 상태를 다시 스냅샷으로 남긴다."""
+    cur_n = len(st.session_state.bookings)
+    # ① 내보내기 — 지금 예약 전체를 JSON 파일로
+    st.download_button(
+        t("backup_export", n=cur_n),
+        data=json.dumps({
+            "exported_at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
+            "count": cur_n,
+            "data": _encode_bookings(st.session_state.bookings),
+        }, ensure_ascii=False, indent=2).encode("utf-8"),
+        file_name=t("backup_file", date=now_vn().strftime("%Y%m%d_%H%M")),
+        mime="application/json", use_container_width=True, key="backup_export_btn",
+    )
+
+    # ② 복원 — 내려받은 백업 파일을 올려 현재 예약을 통째로 교체
+    st.divider()
+    up = st.file_uploader(t("backup_import"), type=["json"], key="backup_import_file")
+    if up is not None:
+        incoming = None
+        try:
+            raw = json.loads(up.getvalue().decode("utf-8"))
+            # 이 앱이 내보낸 형식({"data": {...}})과 예약 dict 자체 둘 다 받아준다
+            incoming = _decode_bookings(raw.get("data") if isinstance(raw, dict) and "data" in raw else raw)
+        except Exception:
+            incoming = None
+        if not incoming:
+            st.error(t("backup_bad_file"))
         else:
-            st.caption(t("backup_no_snap"))
+            st.warning(t("backup_import_warn", n=len(incoming), cur=cur_n))
+            if st.button(t("backup_import_do"), type="primary",
+                         key="backup_import_btn", use_container_width=True):
+                save_snapshot(st.session_state.bookings, reason="import")   # 교체 전 상태 보관
+                st.session_state.bookings = incoming
+                if save_bookings(st.session_state.bookings):
+                    log_action("restore", "", 0, None, note=str(len(incoming)))
+                    st.toast(t("backup_restored", n=len(incoming)))
+                    st.rerun()
+
+    # ③ 되돌리기 — 마지막 초기화/복원 직전 상태로
+    st.divider()
+    snap = load_snapshot()
+    snap_data = snap.get("data") if isinstance(snap, dict) else None
+    if snap_data:
+        st.caption(t("backup_snap_info", at=snap.get("at", ""), n=snap.get("count", 0)))
+        if st.button(t("backup_undo"), key="backup_undo_btn", use_container_width=True):
+            restored = _decode_bookings(snap_data)
+            save_snapshot(st.session_state.bookings, reason="undo")   # 되돌리기도 되돌릴 수 있게
+            st.session_state.bookings = restored
+            if save_bookings(st.session_state.bookings):
+                log_action("undo", "", 0, None, note=str(len(restored)))
+                st.toast(t("backup_restored", n=len(restored)))
+                st.rerun()
+    else:
+        st.caption(t("backup_no_snap"))
 
 
-def _render_audit_log():
-    """관리자 전용 '최근 활동 기록' — 누가 언제 어떤 예약을 취소·수정·완료했는지 보여준다.
+def _audit_log_body():
+    """'최근 활동 기록' 내용 — 누가 언제 어떤 예약을 취소·수정·완료했는지 보여준다.
     좌석 신청 현황표(.seat-status-table)의 스타일을 그대로 재사용한다."""
     rows = load_audit(30)
-    with st.expander(t("audit_title")):
-        if not rows:
-            st.caption(t("audit_empty"))
-            return
-        act_label = {
-            "cancel": t("audit_act_cancel"), "edit": t("audit_act_edit"),
-            "done": t("audit_act_done"), "reset": t("audit_act_reset"),
-            "restore": t("audit_act_restore"), "undo": t("audit_act_undo"),
-            "approve": t("audit_act_approve"), "migrate": t("audit_act_migrate"),
-        }
-        body = []
-        for r in rows:
-            actor = str(r.get("actor", "")).strip() or t("audit_unknown")
-            seat = r.get("seat") or 0
-            where = f'{_short_car_name(str(r.get("car", "")))} {t("seat_n", n=seat)}' if seat else "—"
-            target = str(r.get("target", "")).strip() or "—"
-            if r.get("note"):
-                target += f' ({r["note"]})'
-            act = str(r.get("action", ""))
-            body.append(
-                f'<tr><td class="ss-time">{esc(r.get("at", ""))}</td>'
-                f'<td>{esc(act_label.get(act, act))}</td>'
-                f'<td>{esc(actor)}</td>'
-                f'<td>{esc(target)}</td>'
-                f'<td>{esc(where)}</td></tr>'
-            )
-        st.markdown(
-            '<div class="seat-status-wrap"><table class="seat-status-table"><thead><tr>'
-            f'<th>{t("audit_at")}</th><th>{t("audit_action")}</th><th>{t("audit_actor")}</th>'
-            f'<th>{t("audit_target")}</th><th>{t("st_seat")}</th>'
-            f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
-            unsafe_allow_html=True,
+    if not rows:
+        st.caption(t("audit_empty"))
+        return
+    act_label = {
+        "cancel": t("audit_act_cancel"), "edit": t("audit_act_edit"),
+        "done": t("audit_act_done"), "reset": t("audit_act_reset"),
+        "restore": t("audit_act_restore"), "undo": t("audit_act_undo"),
+        "approve": t("audit_act_approve"), "migrate": t("audit_act_migrate"),
+    }
+    body = []
+    for r in rows:
+        actor = str(r.get("actor", "")).strip() or t("audit_unknown")
+        seat = r.get("seat") or 0
+        where = f'{_short_car_name(str(r.get("car", "")))} {t("seat_n", n=seat)}' if seat else "—"
+        target = str(r.get("target", "")).strip() or "—"
+        if r.get("note"):
+            target += f' ({r["note"]})'
+        act = str(r.get("action", ""))
+        body.append(
+            f'<tr><td class="ss-time">{esc(r.get("at", ""))}</td>'
+            f'<td>{esc(act_label.get(act, act))}</td>'
+            f'<td>{esc(actor)}</td>'
+            f'<td>{esc(target)}</td>'
+            f'<td>{esc(where)}</td></tr>'
         )
+    st.markdown(
+        '<div class="seat-status-wrap"><table class="seat-status-table"><thead><tr>'
+        f'<th>{t("audit_at")}</th><th>{t("audit_action")}</th><th>{t("audit_actor")}</th>'
+        f'<th>{t("audit_target")}</th><th>{t("st_seat")}</th>'
+        f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# 🪟 한 실행에 팝업은 '하나만'
+#   Streamlit은 한 rerun에서 dialog를 두 번 호출하면 예외로 죽는다
+#   ("Only one dialog is allowed to be opened at the same time").
+#   좌석맵·신청·엑셀·도착완료·취소·관리자 로그인·관리자 패널 팝업의 플래그가 겹칠 수 있으므로,
+#   먼저 요청한 팝업이 우선권을 갖고 나머지는 이번 실행에서 건너뛴다(플래그는 남아 다음에 열린다).
+# ─────────────────────────────────────────────────────────────
+_dialog_claimed = False
+
+def _claim_dialog():
+    global _dialog_claimed
+    if _dialog_claimed:
+        return False
+    _dialog_claimed = True
+    return True
+
+
+def _close_admin_panel():
+    st.session_state.admin_panel_open = None
+
+
+@st.dialog(" ", on_dismiss=_close_admin_panel)
+def admin_panel_dialog():
+    """관리자 타일(승인 대기 / 백업·복원 / 최근 활동 기록)을 누르면 뜨는 공용 팝업.
+    타일이 정사각형이라 내용을 안에 담을 수 없으므로 팝업으로 연다.
+    ⚠️ 팝업을 3개로 나누지 않고 '하나의 팝업 안에서 내용 전환'으로 처리한다 —
+       Streamlit은 한 rerun에 dialog A → dialog B 전환을 못 한다(0709 ver.8에서 겪은 제약)."""
+    which = st.session_state.get("admin_panel_open")
+    title = {"approve": t("approve_title", n=len(pending_bookings())),
+             "backup": t("backup_title"), "audit": t("audit_title")}.get(which, "")
+    st.markdown(f'<div class="dlg-step-title">{esc(title)}</div>', unsafe_allow_html=True)
+    if which == "approve":
+        _pending_approvals_body()
+    elif which == "backup":
+        _backup_tools_body()
+    elif which == "audit":
+        _audit_log_body()
+
+
+def _render_admin_tiles():
+    """관리자 기능 3종을 차량 선택 타일과 같은 정사각형으로, 가로 한 줄에 3개 배치.
+    각 타일은 눌리면 위 공용 팝업을 연다(펼침 목록이던 것을 타일+팝업으로 바꿔 관리자 영역 높이를 줄였다)."""
+    pend_n = len(pending_bookings())
+    # 승인 대기가 있으면 그 타일만 호박색으로 강조 — 아침에 놓치면 안 되는 항목이다
+    if pend_n:
+        st.markdown(
+            "<style>.st-key-admin_tile_approve button{border-color:#fab005 !important;"
+            "color:#fab005 !important;}</style>", unsafe_allow_html=True)
+    with st.container(key="admin_tiles"):
+        tc1, tc2, tc3 = st.columns(3)
+        with tc1:
+            if st.button(t("approve_title", n=pend_n), key="admin_tile_approve", use_container_width=True):
+                st.session_state.admin_panel_open = "approve"
+                st.rerun()
+        with tc2:
+            if st.button(t("backup_title"), key="admin_tile_backup", use_container_width=True):
+                st.session_state.admin_panel_open = "backup"
+                st.rerun()
+        with tc3:
+            if st.button(t("audit_title"), key="admin_tile_audit", use_container_width=True):
+                st.session_state.admin_panel_open = "audit"
+                st.rerun()
 
 
 def _booking_form(car_target, seat_target):
@@ -3026,7 +3124,7 @@ with st.container(key="car_nav_grid"):
 # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
 if st.session_state.get("seatmap_car"):
     _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
-    if _tgt:
+    if _tgt and _claim_dialog():
         seatmap_dialog(_tgt)
     else:
         st.session_state.seatmap_car = None
@@ -3070,7 +3168,7 @@ if selected_seat_trigger:
     car_target, seat_target = selected_seat_trigger
     st.session_state.active_booking_car = car_target
     # 좌석맵 팝업이 열려 있으면 신청 폼은 그 팝업 안에서 처리(웹·앱 동일) → top-level 팝업 건너뜀(2중 dialog 방지)
-    if not st.session_state.get("seatmap_car"):
+    if not st.session_state.get("seatmap_car") and _claim_dialog():
         booking_dialog(car_target, seat_target)
 
 # ── 엑셀 데이터 내보내기(탑승 이력) 팝업 ─────────────────────────────
@@ -3385,16 +3483,16 @@ if _pend:
     )
 
 # 예약 이력 버튼이 눌렸으면 엑셀 내보내기 팝업(모달)을 띄운다. 닫으면 on_dismiss로 플래그 해제.
-if st.session_state.get("export_open"):
+if st.session_state.get("export_open") and _claim_dialog():
     excel_export_dialog()
 
 # 도착 완료 버튼이 눌렸으면 '도착 시간' 입력 팝업을 띄운다. 완료 시 이력 기록 + 좌석 해제.
-if st.session_state.get("arrive_target"):
+if st.session_state.get("arrive_target") and _claim_dialog():
     _at_car, _at_seat = st.session_state.arrive_target
     arrival_dialog(_at_car, _at_seat)
 
 # 예약 취소 버튼이 눌렸으면 확인 팝업을 띄운다(본인 확인 → 삭제).
-if st.session_state.get("cancel_target"):
+if st.session_state.get("cancel_target") and _claim_dialog():
     _ct_car, _ct_seat = st.session_state.cancel_target
     cancel_dialog(_ct_car, _ct_seat)
 
@@ -3622,9 +3720,7 @@ if st.session_state.get("admin_unlocked"):
             if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
                 st.session_state.confirm_reset_all = False
                 st.rerun()
-    _render_pending_approvals()
-    _render_backup_tools()
-    _render_audit_log()
+    _render_admin_tiles()
 else:
     # 잠금 상태(일반 화면)에서도 '관리자 모드로 들어가는 문'이 보여야 한다.
     #  예전에는 INNOVA·SEDONA 운전석을 눌러야만 로그인할 수 있어, 그 방법을 모르면 들어갈 길이 없었다.
@@ -3642,8 +3738,13 @@ else:
             st.rerun()
 
 # 관리자 잠금 해제 버튼이 눌렸으면 PIN 입력 팝업을 띄운다(잠금 상태에서만).
-if st.session_state.get("admin_login_main_open") and not st.session_state.get("admin_unlocked"):
+if (st.session_state.get("admin_login_main_open") and not st.session_state.get("admin_unlocked")
+        and _claim_dialog()):
     admin_login_dialog()
+
+# 관리자 타일이 눌렸으면 해당 내용 팝업을 띄운다(관리자 모드에서만).
+if st.session_state.get("admin_panel_open") and st.session_state.get("admin_unlocked") and _claim_dialog():
+    admin_panel_dialog()
 
 # 8-b. 관리자 '로그인 유지' 영속화 브릿지 — 체크 시 재접속해도 비밀번호 없이 자동 로그인.
 #   ⚠️ 핵심 원칙: localStorage 저장(setItem)은 '로그인 시 1회성 컴포넌트'에서만 한다.
