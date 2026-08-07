@@ -189,6 +189,9 @@ st.markdown("""
     /* 로그아웃 버튼: 눈에 띄되 과하지 않게(붉은 톤) */
     .st-key-admin_status_logout_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; }
     .st-key-admin_status_logout_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
+    /* 관리자 모드 종료 버튼: 패널 맨 위에서 '나가는 문'임이 바로 보이도록 같은 붉은 톤 + 전체폭 */
+    .st-key-admin_exit_row button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; min-height: 42px !important; }
+    .st-key-admin_exit_row button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
 
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
@@ -1278,7 +1281,10 @@ TR = {
         "admin_locked_out": "🚫 입력 실패가 많아 잠겼습니다. 페이지를 새로고침한 뒤 다시 시도하세요.",
         "admin_pin_unset": "⚠️ 관리자 PIN이 아직 Secrets에 설정되지 않아 기본값으로 동작 중입니다. "
                            "Streamlit Cloud → App settings → Secrets 에 [admin] pin_hash 를 등록하세요.",
-        "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 잠금 상태로 돌아갔습니다.",
+        "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 모드를 종료했습니다.",
+        "admin_mode_on": "🔑 관리자 모드 사용 중 — 아래 버튼으로 종료하면 일반 화면으로 돌아갑니다.",
+        "admin_exit": "🔓 관리자 모드 종료 (메인 화면으로)",
+        "audit_act_migrate": "예약 이관",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
         "admin_status_title": "📋 좌석 신청 현황",
@@ -1369,7 +1375,10 @@ TR = {
         "admin_locked_out": "🚫 Nhập sai quá nhiều lần nên đã bị khóa. Vui lòng tải lại trang và thử lại.",
         "admin_pin_unset": "⚠️ PIN quản trị chưa được đặt trong Secrets nên đang dùng giá trị mặc định. "
                            "Hãy thêm [admin] pin_hash tại Streamlit Cloud → App settings → Secrets.",
-        "admin_lock": "🔒 Khóa quản trị", "admin_locked_toast": "🔒 Đã trở lại trạng thái khóa quản trị.",
+        "admin_lock": "🔒 Khóa quản trị", "admin_locked_toast": "🔒 Đã thoát chế độ quản trị.",
+        "admin_mode_on": "🔑 Đang ở chế độ quản trị — nhấn nút bên dưới để quay lại màn hình thường.",
+        "admin_exit": "🔓 Thoát chế độ quản trị (về màn hình chính)",
+        "audit_act_migrate": "Chuyển đăng ký",
         "no_bookings": "Chưa có đăng ký xe nào.",
         "tip_from": "📍 Đi: {v}", "tip_to": "🎯 Đến: {v}",
         "admin_status_title": "📋 Tình trạng đăng ký ghế",
@@ -1460,7 +1469,10 @@ TR = {
         "admin_locked_out": "🚫 Too many failed attempts. Reload the page and try again.",
         "admin_pin_unset": "⚠️ The admin PIN is not yet set in Secrets, so the default is still in use. "
                            "Add [admin] pin_hash under Streamlit Cloud → App settings → Secrets.",
-        "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Admin locked again.",
+        "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Exited admin mode.",
+        "admin_mode_on": "🔑 Admin mode is on — use the button below to return to the normal screen.",
+        "admin_exit": "🔓 Exit admin mode (back to main)",
+        "audit_act_migrate": "Moved bookings",
         "no_bookings": "No dispatch requests yet.",
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
         "admin_status_title": "📋 Seat Request Status",
@@ -1892,8 +1904,11 @@ def render_car_layout(car_name, layout_type, bookings):
         "2-3-3": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, MX, R3), (7, RX, R3)],
         "2-2-3": [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, MX, R3), (6, RX, R3)],
         "2-3":   [(1, RX, R1), (2, LX, R3), (3, MX, R3), (4, RX, R3)],
-        # TAXI 6인승: 앞(운전석+1)·중(3)·뒤(2), 뒤열은 좌/우로 벌려 배치
-        "2-3-2": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, RX, R3)],
+        # TAXI: 2열 × 3행(운전석 포함 6칸) → 좌/우 2줄이 3행으로 나란히, 승객석 5석
+        #   [운전석][1]
+        #   [  2  ][3]
+        #   [  4  ][5]
+        "2x3":   [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, RX, R3)],
     }
     if layout_type in seat_map:
         # 운전석 아래에 표시할 운전자 이름 — 메인 타일과 같은 CAR_INFO를 참조한다.
@@ -2014,14 +2029,15 @@ elif "car" in query_params and "seat" in query_params:
 # 4. 차량 기본 구성 데이터 명세 수립
 #   운용 차량: INNOVA / SEDONA / TAXI1 / TAXI2 (2×2 타일 한 화면에 딱 맞는 4대)
 #   · VINFAST VF5는 운용에서 제외하고 그 자리를 TAXI 한 대로 대체했다.
-#   · TAXI는 모두 6인승 2-3-2 동일 사양. 대수를 늘리려면 n_taxi만 올리면 된다(TAXI3… 자동 생성).
+#   · TAXI는 2열 × 3행(운전석 포함 6칸) 배치 → 예약 가능한 승객석은 5석.
+#     대수를 늘리려면 n_taxi만 올리면 된다(TAXI3… 자동 생성).
 n_taxi = 2
 cars_data = [
     {"name": "TOYOTA INNOVA", "layout": "2-3-3", "seats": 7},
     {"name": "HYUNDAI SEDONA", "layout": "2-2-3", "seats": 6},
 ]
 for _ti in range(1, n_taxi + 1):
-    cars_data.append({"name": "TAXI", "layout": "2-3-2", "seats": 6, "taxi_index": _ti})
+    cars_data.append({"name": "TAXI", "layout": "2x3", "seats": 5, "taxi_index": _ti})
 
 total_cars = len(cars_data)  # 고정 2종 + TAXI n대
 
@@ -2192,6 +2208,37 @@ for car in cars_data:
         "is_taxi": car["name"] == "TAXI", "taxi_index": car.get("taxi_index"),
         "nav_label": nav_label, "mk": mk, "logo_html": logo_html,
     })
+
+def migrate_renamed_car_bookings():
+    """차량 구성 변경으로 표시명이 바뀌었을 때, 기존 예약을 새 표시명으로 옮긴다.
+    (예: 좌석 배치가 6석 2-3-2 → 5석 2×3이 되며 'TAXI1 (6 SEAT)' → 'TAXI1 (5 SEAT)')
+    그냥 두면 아침에 멀쩡하던 예약이 '미등록 차량'으로 떨어져 배치도에서 사라진다.
+    ⚠️ 안전 조건 — 아래를 모두 만족할 때만 옮기고, 하나라도 어긋나면 원본을 그대로 둔다:
+       ① 차량 접두어(TAXI1 등)가 현재 운용 차량과 일치  ② 좌석 번호가 새 정원 이내  ③ 대상 자리가 비어 있음"""
+    by_prefix = {c["display_name"].split(" (")[0].strip().upper(): c for c in resolved_cars}
+    valid = {c["display_name"] for c in resolved_cars}
+    moved, stuck = 0, 0
+    for (car, seat), info in list(st.session_state.bookings.items()):
+        if car in valid:
+            continue                      # 현재 운용 중인 차량 → 그대로
+        prefix = str(car).split(" (")[0].strip().upper()
+        if prefix == "TAXI":
+            prefix = "TAXI1"              # 번호가 없던 옛 1호차는 TAXI1로 승계
+        target = by_prefix.get(prefix)
+        if target is None:
+            continue                      # 아예 없어진 차량(VF5 등)은 건드리지 않는다
+        if seat > target["seats"] or (target["display_name"], seat) in st.session_state.bookings:
+            stuck += 1                    # 정원 초과 좌석·자리 충돌 → 사용자가 직접 처리하도록 남겨 둠
+            continue
+        st.session_state.bookings.pop((car, seat), None)
+        st.session_state.bookings[(target["display_name"], seat)] = info
+        moved += 1
+    if moved:
+        save_bookings(st.session_state.bookings)
+        log_action("migrate", "", 0, None, note=f"{moved}건 이관" + (f" / {stuck}건 보류" if stuck else ""))
+    return moved, stuck
+
+migrate_renamed_car_bookings()
 
 selected_seat_trigger = None
 
@@ -2369,7 +2416,7 @@ def _render_audit_log():
             "cancel": t("audit_act_cancel"), "edit": t("audit_act_edit"),
             "done": t("audit_act_done"), "reset": t("audit_act_reset"),
             "restore": t("audit_act_restore"), "undo": t("audit_act_undo"),
-            "approve": t("audit_act_approve"),
+            "approve": t("audit_act_approve"), "migrate": t("audit_act_migrate"),
         }
         body = []
         for r in rows:
@@ -3503,22 +3550,31 @@ else:
 #      (그래서 예약 유무와 무관하게 항상 렌더되도록 바깥으로 뺐다)
 if st.session_state.get("admin_unlocked"):
     st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
+    # 지금이 관리자 모드라는 사실과 '나가는 방법'을 패널 맨 위에 먼저 보여준다.
+    #  이전에는 나가는 버튼이 '전체 예약 초기화' 옆에 작게 있었고 라벨('관리자 잠금')이 상태 표시처럼 읽혀,
+    #  들어온 뒤 어떻게 빠져나가는지 알기 어려웠다.
+    st.markdown(
+        '<div style="display:flex; align-items:center; gap:8px; background:rgba(250,176,5,0.12); '
+        'border:1px solid #fab005; border-radius:8px; padding:6px 10px; margin:0 0 8px 0; '
+        f'font-size:12px; font-weight:700; color:#fab005;">{esc(t("admin_mode_on"))}</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(key="admin_exit_row"):
+        # 관리자 모드 종료(로그아웃) — 세션·유지 플래그 해제 + localStorage 1회성 클리어 예약
+        #  ⚠️ key는 admin_lock_btn을 유지해야 한다. JS 브릿지가 이 키로 로그아웃 클릭을 감지해
+        #     localStorage를 즉시 비운다(.st-key-admin_lock_btn button).
+        if st.button(t("admin_exit"), key="admin_lock_btn", use_container_width=True):
+            st.session_state.admin_unlocked = False
+            st.session_state.admin_keep = False
+            st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
+            st.session_state.confirm_reset_all = False
+            st.toast(t("admin_locked_toast"))
+            st.rerun()
     if not st.session_state.get("confirm_reset_all"):
-        rlc1, rlc2 = st.columns(2)
-        with rlc1:
-            if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
-                         disabled=not st.session_state.bookings):
-                st.session_state.confirm_reset_all = True
-                st.rerun()
-        with rlc2:
-            # 관리자 재잠금(로그아웃) — 세션·유지 플래그 해제 + localStorage 1회성 클리어 예약
-            if st.button(t("admin_lock"), key="admin_lock_btn", use_container_width=True):
-                st.session_state.admin_unlocked = False
-                st.session_state.admin_keep = False
-                st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
-                st.session_state.confirm_reset_all = False
-                st.toast(t("admin_locked_toast"))
-                st.rerun()
+        if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
+                     disabled=not st.session_state.bookings):
+            st.session_state.confirm_reset_all = True
+            st.rerun()
     else:
         # 몇 건이 사라지는지 숫자로 보여준다(실수 방지) + 되돌릴 수 있음을 함께 안내
         st.warning(t("reset_warn", n=len(st.session_state.bookings)))
