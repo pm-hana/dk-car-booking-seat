@@ -1008,6 +1008,57 @@ def load_audit(limit=30):
     return rows[:limit]
 
 # ─────────────────────────────────────────────────────────────
+# ✅ 승인 워크플로우 — 신청(대기) → 승인 → 도착 완료
+#   신청 = 즉시 확정이던 것을 관리자 승인 단계로 나눈다. 아침 배차는 실제로는 차량·기사 사정에 따라
+#   조정이 필요하고, 지금은 그 조정이 앱 바깥(구두·메신저)에서만 일어나 화면과 실제가 어긋난다.
+#   ⚠️ 기존 예약에는 status 필드가 없다 → '승인됨'으로 간주한다.
+#      그렇지 않으면 배포 순간 기존 예약이 전부 '대기'로 바뀌어 아침에 혼란이 생긴다.
+#   [벤치마킹] Larry Nguyen(FAE Manager) "창고 관리 SW" —
+#              "thêm các chức năng approval, cảnh báo quá hạn trả"(승인 기능 + 기한 초과 경고).
+#              상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+STATUS_PENDING = "pending"
+STATUS_APPROVED = "approved"
+URGENT_MINUTES = 30      # 출발까지 이 시간 이내인데 아직 대기면 '임박' 경고
+
+def booking_status(info):
+    """예약의 승인 상태. 필드가 없거나 알 수 없는 값이면 기존 예약으로 보고 '승인됨' 처리."""
+    s = str((info or {}).get("status", "")).strip().lower()
+    return STATUS_PENDING if s == STATUS_PENDING else STATUS_APPROVED
+
+def _departure_dt(info):
+    """예약의 출발 일시(date + time)를 datetime으로. 형식이 어긋나면 None."""
+    d = str((info or {}).get("date", "")).strip()
+    tm = str((info or {}).get("time", "")).strip()
+    try:
+        y, mo, dd = (int(x) for x in d.split("-"))
+        hh, mi = (int(x) for x in tm.split(":")[:2])
+        return datetime.datetime(y, mo, dd, hh % 24, mi % 60,
+                                 tzinfo=datetime.timezone(datetime.timedelta(hours=7)))
+    except Exception:
+        return None
+
+def pending_urgency(info):
+    """승인 대기 건의 시급도 — 'over'(출발시각 지남) / 'soon'(임박) / ''(여유·승인됨)."""
+    if booking_status(info) != STATUS_PENDING:
+        return ""
+    dep = _departure_dt(info)
+    if dep is None:
+        return ""
+    left = (dep - now_vn()).total_seconds() / 60.0
+    if left < 0:
+        return "over"
+    if left <= URGENT_MINUTES:
+        return "soon"
+    return ""
+
+def pending_bookings():
+    """승인 대기 예약을 출발이 급한 순(날짜·시간 오름차순)으로 반환."""
+    items = [(k, v) for k, v in st.session_state.bookings.items()
+             if booking_status(v) == STATUS_PENDING]
+    return sorted(items, key=lambda kv: (str(kv[1].get("date", "")), str(kv[1].get("time", "")), kv[0][1]))
+
+# ─────────────────────────────────────────────────────────────
 # 🔐 예약 소유 확인 — 남의 예약을 실수로 수정·취소·완료 처리하는 사고 방지
 #   전 인원이 매일 쓰면 오터치 한 번으로 남의 출근 배차가 사라진다. 그 앞에 확인 한 단계를 둔다.
 #   ⚠️ 한계를 분명히: 이름은 카드에 그대로 보이므로 '악의'는 막지 못한다(실수를 막는 가드레일).
@@ -1139,7 +1190,17 @@ TR = {
         "backup_snap_info": "보관된 직전 상태: {at} · {n}건",
         "backup_no_snap": "되돌릴 수 있는 직전 상태가 없습니다.",
         "save_failed": "⚠️ 저장에 실패했습니다. 방금 변경한 내용이 서버에 반영되지 않았을 수 있습니다. 새로고침 후 다시 확인해 주세요.",
-        "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기",
+        "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기", "audit_act_approve": "배차 승인",
+        "status_pending": "승인 대기", "status_approved": "승인 완료",
+        "status_soon": "출발 임박 · 미승인", "status_over": "출발 시각 초과 · 미승인",
+        "approve_title": "✅ 승인 대기 ({n}건)", "approve_none": "승인 대기 중인 신청이 없습니다.",
+        "approve_btn": "승인",
+        "toast_approved": "✅ [{name}]님 좌석 {seat} 배차가 승인되었습니다.",
+        "pending_banner": "⏳ 승인 대기 {n}건",
+        "pending_banner_urgent": "⏳ 승인 대기 {n}건 · 이 중 출발 임박·초과 {u}건",
+        "stats_title": "📊 기간 요약", "stats_total": "탑승 건수", "stats_cars": "이용 차량",
+        "stats_top_dest": "최다 목적지", "stats_by_car": "차량별 탑승",
+        "stats_top_dests": "목적지 TOP 5", "stats_by_hour": "출발 시간대", "stats_hour": "{h}시",
         "btn_reset_yes": "네, 전체 삭제", "toast_reset": "🧹 모든 예약이 초기화되었습니다.",
         "admin_title": "🔑 관리자 로그인", "admin_pw_label": "PASSWORD (숫자)", "admin_pw_ph": "****",
         "admin_hint": "0~9 숫자 4~8자리를 입력하세요.", "admin_ok": "확인",
@@ -1220,7 +1281,17 @@ TR = {
         "backup_snap_info": "Trạng thái đã lưu: {at} · {n} đăng ký",
         "backup_no_snap": "Không có trạng thái nào để hoàn tác.",
         "save_failed": "⚠️ Lưu thất bại. Thay đổi vừa rồi có thể chưa được ghi lên máy chủ. Vui lòng tải lại trang và kiểm tra.",
-        "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác",
+        "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác", "audit_act_approve": "Duyệt xe",
+        "status_pending": "Chờ duyệt", "status_approved": "Đã duyệt",
+        "status_soon": "Sắp khởi hành · chưa duyệt", "status_over": "Quá giờ đi · chưa duyệt",
+        "approve_title": "✅ Chờ duyệt ({n})", "approve_none": "Không có đăng ký nào đang chờ duyệt.",
+        "approve_btn": "Duyệt",
+        "toast_approved": "✅ Đã duyệt xe ghế {seat} cho [{name}].",
+        "pending_banner": "⏳ {n} đăng ký đang chờ duyệt",
+        "pending_banner_urgent": "⏳ {n} đăng ký chờ duyệt · trong đó {u} sắp/đã quá giờ đi",
+        "stats_title": "📊 Tổng quan kỳ", "stats_total": "Số chuyến", "stats_cars": "Số xe sử dụng",
+        "stats_top_dest": "Điểm đến nhiều nhất", "stats_by_car": "Chuyến theo xe",
+        "stats_top_dests": "TOP 5 điểm đến", "stats_by_hour": "Khung giờ đi", "stats_hour": "{h}h",
         "btn_reset_yes": "Vâng, xóa tất cả", "toast_reset": "🧹 Toàn bộ đăng ký đã được xóa.",
         "admin_title": "🔑 Đăng nhập quản trị", "admin_pw_label": "PASSWORD (số)", "admin_pw_ph": "****",
         "admin_hint": "Nhập 4~8 chữ số (0-9).", "admin_ok": "Xác nhận",
@@ -1301,7 +1372,17 @@ TR = {
         "backup_snap_info": "Saved state: {at} · {n} bookings",
         "backup_no_snap": "No saved state available to undo.",
         "save_failed": "⚠️ Save failed. Your latest change may not have reached the server. Please reload and check again.",
-        "audit_act_restore": "Restored backup", "audit_act_undo": "Undone",
+        "audit_act_restore": "Restored backup", "audit_act_undo": "Undone", "audit_act_approve": "Approved",
+        "status_pending": "Pending", "status_approved": "Approved",
+        "status_soon": "Departing soon · not approved", "status_over": "Past departure · not approved",
+        "approve_title": "✅ Pending approval ({n})", "approve_none": "No requests are waiting for approval.",
+        "approve_btn": "Approve",
+        "toast_approved": "✅ [{name}]'s seat {seat} has been approved.",
+        "pending_banner": "⏳ {n} request(s) pending approval",
+        "pending_banner_urgent": "⏳ {n} pending · {u} departing soon or overdue",
+        "stats_title": "📊 Period summary", "stats_total": "Rides", "stats_cars": "Vehicles used",
+        "stats_top_dest": "Top destination", "stats_by_car": "Rides by vehicle",
+        "stats_top_dests": "Top 5 destinations", "stats_by_hour": "Departure hour", "stats_hour": "{h}h",
         "btn_reset_yes": "Yes, delete all", "toast_reset": "🧹 All bookings have been reset.",
         "admin_title": "🔑 Admin Login", "admin_pw_label": "PASSWORD (digits)", "admin_pw_ph": "****",
         "admin_hint": "Enter 4-8 digits (0-9).", "admin_ok": "OK",
@@ -2016,6 +2097,57 @@ def owner_gate(car, seat, info):
             st.error(t("owner_err"))
     return False
 
+def _status_chip(info):
+    """예약 카드 헤더에 붙는 승인 상태 배지 HTML.
+    대기=호박색, 임박(30분 이내)=주황, 출발시각 지남=빨강, 승인=초록."""
+    urg = pending_urgency(info)
+    if booking_status(info) == STATUS_APPROVED:
+        bg, fg, label = "rgba(64,192,87,0.18)", "#63b365", t("status_approved")
+    elif urg == "over":
+        bg, fg, label = "rgba(224,49,49,0.22)", "#ff8787", t("status_over")
+    elif urg == "soon":
+        bg, fg, label = "rgba(253,126,20,0.22)", "#ffa94d", t("status_soon")
+    else:
+        bg, fg, label = "rgba(250,176,5,0.18)", "#fab005", t("status_pending")
+    return (f'<div style="margin-top:3px;"><span style="display:inline-block; background:{bg}; '
+            f'color:{fg}; border:1px solid {fg}; border-radius:4px; padding:0 5px; '
+            f'font-size:10px; font-weight:700; white-space:nowrap;">{esc(label)}</span></div>')
+
+
+def _render_pending_approvals():
+    """관리자 전용 '승인 대기' 패널 — 출발이 급한 순으로 나열하고 한 건씩 승인한다.
+    카드의 버튼 3개(수정·취소·도착완료)는 이미 폭이 빠듯해 4번째 버튼을 넣을 자리가 없으므로,
+    승인은 카드가 아니라 이 패널에서 처리한다(0713에 카드 폭 문제로 11번 수정한 전례)."""
+    items = pending_bookings()
+    with st.expander(t("approve_title", n=len(items)), expanded=bool(items)):
+        if not items:
+            st.caption(t("approve_none"))
+            return
+        for (pc_name, pseat), pinfo in items:
+            urg = pending_urgency(pinfo)
+            mark = "🔴" if urg == "over" else ("🟠" if urg == "soon" else "🟡")
+            col_l, col_r = st.columns([3, 1], vertical_alignment="center")
+            with col_l:
+                st.markdown(
+                    f'<div style="font-size:12px; color:#e9ecef; line-height:1.45;">'
+                    f'{mark} <strong>{esc(pinfo.get("name", ""))}</strong> · '
+                    f'{esc(_short_car_name(pc_name))} {esc(t("seat_n", n=pseat))}<br>'
+                    f'<span style="color:#adb5bd;">{esc(pinfo.get("date", ""))} {esc(pinfo.get("time", ""))} '
+                    f'→ {esc(pinfo.get("destination", ""))}</span></div>',
+                    unsafe_allow_html=True,
+                )
+            with col_r:
+                if st.button(t("approve_btn"), key=f"approve_{pc_name}_{pseat}",
+                             type="primary", use_container_width=True):
+                    cur = st.session_state.bookings.get((pc_name, pseat))
+                    if cur:   # 승인 직전 재확인 — 그 사이 취소·완료됐을 수 있다
+                        cur["status"] = STATUS_APPROVED
+                        if save_bookings(st.session_state.bookings):
+                            log_action("approve", pc_name, pseat, cur)
+                            st.toast(t("toast_approved", name=cur.get("name", ""), seat=pseat))
+                    st.rerun()
+
+
 def _render_backup_tools():
     """관리자 전용 백업·복원 — ① 원클릭 내보내기 ② 파일로 복원 ③ 마지막 초기화/복원 되돌리기.
     복원·되돌리기도 파괴적이므로, 실행 직전에 현재 상태를 다시 스냅샷으로 남긴다."""
@@ -2087,6 +2219,7 @@ def _render_audit_log():
             "cancel": t("audit_act_cancel"), "edit": t("audit_act_edit"),
             "done": t("audit_act_done"), "reset": t("audit_act_reset"),
             "restore": t("audit_act_restore"), "undo": t("audit_act_undo"),
+            "approve": t("audit_act_approve"),
         }
         body = []
         for r in rows:
@@ -2215,7 +2348,10 @@ def _booking_form(car_target, seat_target):
                         "date": date_str,
                         "time": time_str,
                         "arrive": arrive_str,
-                        "created_at": created_at
+                        "created_at": created_at,
+                        # 신청은 '승인 대기'로 시작한다. 내용을 수정하면(차량·시간·목적지 변경) 다시 대기로 돌아간다
+                        #  — 승인은 '그 내용'에 대한 승인이므로, 내용이 바뀌면 승인도 다시 받아야 한다.
+                        "status": STATUS_PENDING,
                     }
                     st.session_state.duplicate_error_msg = None
                     save_bookings(st.session_state.bookings)
@@ -2734,6 +2870,101 @@ def _build_history_xlsx(rows):
         return ("﻿" + sb.getvalue()).encode("utf-8"), "csv"
 
 
+# ─────────────────────────────────────────────────────────────
+# 📊 기간 요약 통계 — 엑셀을 열지 않아도 화면에서 바로 읽히는 지표
+#   기존에는 연·월·일을 골라 XLSX로 '내려받는 것'만 가능해, 추이를 보려면 매번 엑셀을 열어야 했다.
+#   · 색은 '크기 비교(magnitude)'용 단일 색 하나만 쓴다 — 항목마다 다른 색을 주면
+#     색이 의미를 갖는 것처럼 읽혀 오해를 부른다(순위가 색을 바꾸는 것도 금지).
+#   · CHART_BAR은 눈대중이 아니라 검증 도구로 골랐다: 다크 배경 대비 3:1 이상, 밝기 밴드 통과.
+#   · 막대 끝에 값을 직접 표기(항목이 5개 이하라 전부 라벨링해도 지저분해지지 않는다).
+#   · 표 형태의 원본은 같은 팝업의 '엑셀 다운로드'가 담당한다(숫자를 직접 확인할 경로 확보).
+#   [벤치마킹] Lê Quang Trung(AE) "SMART REPORT VER 2" — 일·월·년 통계를 차트로 보관 /
+#              Lê Khắc Hưng(AE Leader) "Log Analyzer V2" — 차트·통계·필터로 빠른 조회 /
+#              Nguyễn Hoàng Qúy(AE) — dashboard·search/filter UI. 상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+CHART_BAR = "#1c7ed6"      # 크기 비교용 단일 색(빈 좌석 테두리와 동일 계열 → 앱 전체와 통일)
+CHART_TRACK = "rgba(255,255,255,0.05)"
+
+def _bars_html(pairs, total=0):
+    """(라벨, 값) 목록을 가로 막대로. 값이 큰 순으로 이미 정렬된 목록을 받는다."""
+    if not pairs:
+        return ""
+    mx = max(v for _l, v in pairs) or 1
+    out = []
+    for label, v in pairs:
+        pct = max(2.0, v * 100.0 / mx)          # 0건이어도 흔적은 남겨 축이 끊겨 보이지 않게
+        share = f" · {v * 100.0 / total:.0f}%" if total else ""
+        tip = f"{label}: {v}"
+        out.append(
+            '<div style="display:flex; align-items:center; gap:8px; margin:0 0 2px 0;">'
+            f'<div title="{esc(label)}" style="flex:0 0 33%; min-width:0; font-size:11px; color:#adb5bd; '
+            'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(label) + '</div>'
+            f'<div style="flex:1 1 auto; min-width:0; background:{CHART_TRACK}; border-radius:4px;">'
+            f'<div title="{esc(tip)}" style="width:{pct:.1f}%; height:10px; background:{CHART_BAR}; '
+            'border-radius:0 4px 4px 0;"></div></div>'
+            '<div style="flex:0 0 auto; font-size:11px; color:#e9ecef; font-variant-numeric:tabular-nums;">'
+            + esc(str(v)) + esc(share) + '</div>'
+            '</div>'
+        )
+    return "".join(out)
+
+def _stat_tiles(tiles):
+    """숫자 하나가 답인 지표는 차트로 만들지 않고 타일로 보여준다."""
+    cells = "".join(
+        '<div style="flex:1 1 0; min-width:0; background:#1b1f27; border:1px solid #2b2f38; '
+        'border-radius:8px; padding:8px 10px;">'
+        f'<div style="font-size:10px; color:#868e96; white-space:nowrap; overflow:hidden; '
+        f'text-overflow:ellipsis;">{esc(label)}</div>'
+        f'<div style="font-size:18px; font-weight:800; color:#e9ecef; white-space:nowrap; '
+        f'overflow:hidden; text-overflow:ellipsis;">{esc(value)}</div></div>'
+        for label, value in tiles
+    )
+    return f'<div style="display:flex; gap:6px; margin:0 0 10px 0;">{cells}</div>'
+
+def _render_period_stats(rows):
+    """선택한 기간의 탑승 이력 요약 — 타일 3개 + 차량별 / 목적지 TOP5 / 출발 시간대."""
+    total = len(rows)
+
+    by_car, by_dest, by_hour = {}, {}, {}
+    for r in rows:
+        car = _short_car_name(str(r.get("car", "")).strip()) or "—"
+        by_car[car] = by_car.get(car, 0) + 1
+        dest = str(r.get("destination", "")).strip() or "—"
+        by_dest[dest] = by_dest.get(dest, 0) + 1
+        try:
+            hh = int(str(r.get("time", "")).split(":")[0]) % 24
+            by_hour[hh] = by_hour.get(hh, 0) + 1
+        except Exception:
+            pass
+
+    top_dest = max(by_dest.items(), key=lambda kv: kv[1])[0] if by_dest else "—"
+    st.markdown(f'<div class="dlg-step-title" style="margin:0 0 8px 0; font-size:15px !important;">'
+                f'{t("stats_title")}</div>', unsafe_allow_html=True)
+    st.markdown(_stat_tiles([
+        (t("stats_total"), str(total)),
+        (t("stats_cars"), str(len(by_car))),
+        (t("stats_top_dest"), top_dest),
+    ]), unsafe_allow_html=True)
+
+    def _section(title, pairs):
+        if not pairs:
+            return
+        st.markdown(
+            f'<div style="font-size:12px; font-weight:700; color:#fab005; margin:6px 0 4px 0;">{esc(title)}</div>'
+            + _bars_html(pairs, total),
+            unsafe_allow_html=True,
+        )
+
+    _section(t("stats_by_car"), sorted(by_car.items(), key=lambda kv: -kv[1]))
+    _section(t("stats_top_dests"), sorted(by_dest.items(), key=lambda kv: -kv[1])[:5])
+    if by_hour:
+        # 시간대는 '순서가 있는 축'이라 값 크기순이 아니라 시간순으로, 빈 시간대도 0으로 채운다
+        #  (비어 있는 구간을 빼면 분포 모양이 왜곡된다)
+        lo, hi = min(by_hour), max(by_hour)
+        _section(t("stats_by_hour"),
+                 [(t("stats_hour", h=h), by_hour.get(h, 0)) for h in range(lo, hi + 1)])
+
+
 def _close_export():
     st.session_state.export_open = False
 
@@ -2787,6 +3018,8 @@ def excel_export_dialog():
     st.write("")
     if not rows:
         st.info(t("export_empty"))
+    else:
+        _render_period_stats(rows)
     with st.container(key="export_dl"):
         st.download_button(
             t("export_btn"),
@@ -2900,6 +3133,20 @@ with h_csv:
             st.session_state.export_open = True
             st.rerun()
 
+# 승인 대기 요약 — 관리자만이 아니라 전원에게 보인다(내 배차가 확정됐는지 모두가 알아야 한다).
+#  임박·초과 건이 있으면 붉은 톤으로 올려 아침에 놓치지 않게 한다.
+_pend = pending_bookings()
+if _pend:
+    _urgent = sum(1 for _k, _v in _pend if pending_urgency(_v))
+    _pb_fg, _pb_bg = ("#ffa94d", "rgba(253,126,20,0.14)") if _urgent else ("#fab005", "rgba(250,176,5,0.12)")
+    _pb_txt = t("pending_banner_urgent", n=len(_pend), u=_urgent) if _urgent else t("pending_banner", n=len(_pend))
+    st.markdown(
+        f'<div style="background:{_pb_bg}; border:1px solid {_pb_fg}; color:{_pb_fg}; '
+        f'border-radius:8px; padding:6px 10px; margin:2px 0 8px 0; font-size:12px; font-weight:700;">'
+        f'{esc(_pb_txt)}</div>',
+        unsafe_allow_html=True,
+    )
+
 # 예약 이력 버튼이 눌렸으면 엑셀 내보내기 팝업(모달)을 띄운다. 닫으면 on_dismiss로 플래그 해제.
 if st.session_state.get("export_open"):
     excel_export_dialog()
@@ -2978,6 +3225,8 @@ if st.session_state.bookings:
             '</span>'
             f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
+            # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
+            f'{_status_chip(binfo)}'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
 
@@ -3127,6 +3376,7 @@ if st.session_state.get("admin_unlocked"):
             if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
                 st.session_state.confirm_reset_all = False
                 st.rerun()
+    _render_pending_approvals()
     _render_backup_tools()
     _render_audit_log()
 
