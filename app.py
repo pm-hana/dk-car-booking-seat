@@ -135,6 +135,48 @@ st.markdown("""
         visibility: hidden !important;
     }
 
+    /* ===== 동작 피드백 ① 팝업이 '펼쳐지며' 열리는 애니메이션 =====
+       클릭이 먹었는지 알 수 있게, 팝업이 작게 시작해 살짝 튀며 제자리를 잡는다.
+       60% 지점에서 1.02배로 살짝 넘겼다가 1로 돌아오는 오버슈트 → 딱딱하지 않고 경쾌한 느낌. */
+    @keyframes dkDialogPop {
+        0%   { opacity: 0; transform: scale(0.90) translateY(10px); }
+        60%  { opacity: 1; transform: scale(1.02) translateY(0); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes dkBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+    /* ⚠️ fill-mode를 두지 않는다(both 금지). transform이 끝난 뒤에도 남으면 그 요소가
+       position:fixed의 기준(컨테이닝 블록)이 되어, 팝업 안의 숨김 버튼(SEATSEL·CARNAV 등)
+       배치 기준이 화면이 아니라 팝업으로 바뀐다. 애니메이션이 끝나면 흔적 없이 원래 상태로 돌아가게 한다. */
+    div[role="dialog"] {
+        animation: dkDialogPop 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        transform-origin: center center;
+    }
+    [data-testid="stDialog"] { animation: dkBackdropIn 180ms ease-out; }
+
+    /* ===== 동작 피드백 ② 누르는 순간 '눌리는' 느낌 =====
+       hover는 살짝 뜨고(기존), active(누름)는 반대로 들어가게 해 터치에도 반응이 보이게 한다.
+       폰은 hover가 없어 이 press 효과가 유일한 클릭 피드백이다. */
+    .stButton button, .stDownloadButton button {
+        transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease !important;
+    }
+    .stButton button:active, .stDownloadButton button:active { transform: scale(0.97); }
+    .car-nav-tile .car-name-frame { transition: transform 0.09s ease, box-shadow 0.09s ease; }
+    .car-nav-tile:active .car-name-frame { transform: scale(0.96) !important; box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important; }
+    .st-key-admin_tiles button:active { transform: scale(0.95) !important; }
+    /* 좌석은 SVG라 transform 기준점이 흔들리므로 밝기로 눌림을 표현한다 */
+    .seat-clickable:active, .admin-login-seat:active, .clickable-seat-rect:active { filter: brightness(1.55); }
+    .car-nav-click, .seat-clickable, .admin-login-seat { -webkit-tap-highlight-color: transparent; }
+
+    /* ⚠️ 동작 최소화를 켠 사용자(멀미·전정기관 예민)에게는 애니메이션을 끈다 — OS 접근성 설정을 존중 */
+    @media (prefers-reduced-motion: reduce) {
+        div[role="dialog"], [data-testid="stDialog"] { animation: none !important; }
+        .stButton button, .stDownloadButton button,
+        .car-nav-tile .car-name-frame { transition: none !important; }
+        .stButton button:active, .stDownloadButton button:active,
+        .car-nav-tile:active .car-name-frame,
+        .st-key-admin_tiles button:active { transform: none !important; }
+    }
+
     /* ===== 팝업(다이얼로그) 공통: 좁은 화면(폰)에서도 웹과 동일한 구성 유지 ===== */
     /* 날짜/시간 3칸·버튼 2칸 등 폼 컬럼이 폰에서 세로로 쌓이지 않고 한 줄 가로 유지되게
        (Streamlit 모바일 반응형이 컬럼에 min-width:100%를 걸어 wrap 되는 것을 해제) */
