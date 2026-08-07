@@ -495,6 +495,41 @@ st.markdown("""
     .car-nav-click:hover .car-name-frame { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     /* 이름 바 바로 아래 숨김 CARNAV 버튼 컨테이너가 차지하던 빈 세로 공간 제거(간격 이중 발생 방지) */
     div[class*="st-key-carnavclick_"] { height: 0 !important; }
+
+    /* ===== 메인 차량 선택: 정사각형 타일 2×2 =====
+       가로로 긴 바는 탭 영역이 화면 폭 전체라 옆 차량까지 잘못 눌리기 쉬웠다(오클릭).
+       정사각형으로 줄이고 2열로 배치해 각 타일의 경계를 분명히 한다. */
+    .st-key-car_nav_grid { max-width: 520px !important; margin: 0 auto 4px auto !important; }
+    /* 모바일에서도 2열 유지 — Streamlit의 컬럼 세로적층(flex-basis:100%)을 자식결합자 특이도(0,3,0)로 덮어씀 */
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 10px !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
+    .car-nav-tile { margin: 0 0 10px 0 !important; }
+    /* 정사각형 본체: 로고(위) + 이름(아래) 세로 스택 */
+    .car-nav-tile .car-name-frame {
+        width: 100% !important;
+        max-width: 240px !important;
+        margin: 0 auto !important;
+        aspect-ratio: 1 / 1;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px !important;
+        border-radius: 14px;
+    }
+    .car-nav-tile:hover .car-name-frame { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
+    /* 로고는 가로 바 시절의 우측 여백(inline margin-right)을 지우고 크게 — 세로 스택이라 필요 없다 */
+    .car-nav-tile .car-nav-logo { display: flex; align-items: center; justify-content: center; font-size: 34px; line-height: 1; }
+    .car-nav-tile .car-nav-logo svg,
+    .car-nav-tile .car-nav-logo img { width: 54px !important; height: 34px !important; margin-right: 0 !important; }
+    /* 이름은 타일 폭에 맞춰 줄바꿈 허용(단어 사이에서만) */
+    .car-nav-tile .car-title-text {
+        white-space: normal !important;
+        text-align: center;
+        line-height: 1.2;
+        font-size: clamp(12px, 1.5vw, 17px) !important;
+        word-break: keep-all;
+        overflow: visible;
+        text-overflow: clip;
+    }
     
     /* 드래그 대상 마우스 커서 grab/grabbing 형태 지정 */
     [draggable="true"] {
@@ -557,6 +592,15 @@ st.markdown("""
             min-width: 100% !important;
         }
 
+        /* 차량 선택 타일: 폰에서도 2열 유지하되 화면 폭을 꽉 채워 탭 영역을 키운다 */
+        .st-key-car_nav_grid { max-width: 100% !important; }
+        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { gap: 8px !important; }
+        .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
+        .car-nav-tile .car-nav-logo { font-size: 28px; }
+        .car-nav-tile .car-nav-logo svg,
+        .car-nav-tile .car-nav-logo img { width: 44px !important; height: 28px !important; }
+        .car-nav-tile .car-title-text { font-size: 13px !important; }
+
         /* 차량 박스: 화면 폭 88%·세로비율(160:250)로, 가운데 */
         .car-layout-container { width: 88% !important; height: auto !important; aspect-ratio: 160 / 250 !important; max-height: 62vh; margin: 2px auto 6px !important; padding: 6px !important; }
         .car-title-text { font-size: 16px !important; }
@@ -603,6 +647,15 @@ if IS_MOBILE:
     .st-key-lang_toggle, .st-key-lang_toggle [role="radiogroup"] { justify-content: center !important; align-items: center !important; }
     .st-key-lang_toggle div[role="radiogroup"] { gap: 8px !important; }
     .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: 13px !important; }
+
+    /* 차량 선택 타일: 폰에서도 2열 유지하되 화면 폭을 꽉 채워 탭 영역을 키운다 */
+    .st-key-car_nav_grid { max-width: 100% !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { gap: 8px !important; }
+    .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
+    .car-nav-tile .car-nav-logo { font-size: 28px; }
+    .car-nav-tile .car-nav-logo svg,
+    .car-nav-tile .car-nav-logo img { width: 44px !important; height: 28px !important; }
+    .car-nav-tile .car-title-text { font-size: 13px !important; }
 
     /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
@@ -2023,11 +2076,24 @@ CAR_CARD_STYLE = {
 }
 
 def car_title_frame(mk, inner_html):
-    """차량명(로고+이름)을 외관색 배경의 사각 프레임으로 감싼 HTML을 반환."""
+    """차량명(로고+이름)을 외관색 배경의 가로 프레임으로 감싼 HTML을 반환.
+    (좌석맵 팝업 헤더·배치도 위 제목용 — 메인 화면 선택 타일은 car_nav_tile를 쓴다)"""
     bg, fg, bd = CAR_FRAME_STYLE.get(mk, CAR_FRAME_STYLE["innova"])
     return (f'<div class="car-name-frame" style="background:{bg}; border:1px solid {bd};">'
             f'<span class="car-title-text" style="color:{fg};">{inner_html}</span>'
             f'</div>')
+
+def car_nav_tile(mk, logo_html, label, idx):
+    """메인 화면 차량 선택 타일(정사각형). 프레임 전체가 클릭 영역이다.
+    가로로 긴 바는 탭 영역이 화면 폭 전체라 옆 차량까지 잘못 눌리기 쉬웠다(오클릭).
+    → 정사각형으로 줄이고 2열로 배치해 타일 경계를 분명히 했다.
+    class는 car-nav-click을 그대로 유지 — JS 브릿지(숨김 CARNAV 버튼 클릭)가 이 클래스에 걸려 있다."""
+    bg, fg, bd = CAR_FRAME_STYLE.get(mk, CAR_FRAME_STYLE["innova"])
+    return (f'<div class="car-nav-click car-nav-tile" data-navidx="{idx}">'
+            f'<div class="car-name-frame" style="background:{bg}; border:1px solid {bd};">'
+            f'<span class="car-nav-logo">{logo_html}</span>'
+            f'<span class="car-title-text" style="color:{fg};">{esc(label)}</span>'
+            f'</div></div>')
 
 # 5·6. 차량별 컬럼: 제목 + 인승 + 좌석 배치도를 한 컬럼에 묶어 렌더링한다.
 #       (모바일에서 컬럼이 세로로 쌓여도 각 차량의 이름·인승이 자기 배치도 바로 위에 오도록 병합)
@@ -2812,14 +2878,25 @@ def seatmap_dialog(car_rc):
 #  메인 화면엔 차량 네이밍 바만 노출하고, 바를 클릭하면 해당 차량 좌석 배치도가 팝업(seatmap_dialog)으로 뜬다.
 if "seatmap_car" not in st.session_state:
     st.session_state.seatmap_car = None
-for i, car_rc in enumerate(resolved_cars):
-    # 로고+이름 프레임 전체를 클릭 가능하게(car-nav-click) 렌더 + JS가 대신 눌러줄 숨김 버튼
-    st.markdown(
-        f'<div class="car-nav-click" data-navidx="{i}">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>',
-        unsafe_allow_html=True,
-    )
-    # on_click 콜백으로 즉시 상태 세팅 → 단일 rerun에 바로 팝업 오픈(클릭 후 바로 열림)
-    st.button(f"CARNAV::{i}", key=f"carnavclick_{i}", on_click=_open_seatmap, args=(car_rc["display_name"],))
+# 차량 선택은 '정사각형 타일 2×2'. 한 줄에 2개씩 끊어 배치하고, 홀수면 마지막 줄 오른쪽 칸은 비워 둔다.
+#  (가로로 긴 바 → 오클릭 우려로 변경. 웹·앱 동일 레이아웃이며 크기만 화면 폭에 맞춰 달라진다)
+with st.container(key="car_nav_grid"):
+    for _row in range(0, len(resolved_cars), 2):
+        _cols = st.columns(2)
+        for _slot in range(2):
+            i = _row + _slot
+            if i >= len(resolved_cars):
+                break          # 홀수 대수: 오른쪽 칸은 빈 채로 둬 2열 틀 유지
+            car_rc = resolved_cars[i]
+            with _cols[_slot]:
+                # 타일 전체를 클릭 가능하게 렌더 + JS가 대신 눌러줄 숨김 버튼
+                st.markdown(
+                    car_nav_tile(car_rc["mk"], car_rc["logo_html"], car_rc["nav_label"], i),
+                    unsafe_allow_html=True,
+                )
+                # on_click 콜백으로 즉시 상태 세팅 → 단일 rerun에 바로 팝업 오픈(클릭 후 바로 열림)
+                st.button(f"CARNAV::{i}", key=f"carnavclick_{i}",
+                          on_click=_open_seatmap, args=(car_rc["display_name"],))
 # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
 if st.session_state.get("seatmap_car"):
     _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
