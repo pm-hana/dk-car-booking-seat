@@ -516,20 +516,34 @@ st.markdown("""
         border-radius: 14px;
     }
     .car-nav-tile:hover .car-name-frame { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
-    /* 로고는 가로 바 시절의 우측 여백(inline margin-right)을 지우고 크게 — 세로 스택이라 필요 없다 */
-    .car-nav-tile .car-nav-logo { display: flex; align-items: center; justify-content: center; font-size: 34px; line-height: 1; }
+    /* 로고는 가로 바 시절의 우측 여백(inline margin-right)을 지우고 크게 — 세로 스택이라 필요 없다.
+       (로고·차량명은 운행 정보보다 확실히 커야 해서 이전 대비 50% 확대: 54×34 → 81×51) */
+    .car-nav-tile .car-nav-logo { display: flex; align-items: center; justify-content: center; font-size: 51px; line-height: 1; }
     .car-nav-tile .car-nav-logo svg,
-    .car-nav-tile .car-nav-logo img { width: 54px !important; height: 34px !important; margin-right: 0 !important; }
-    /* 이름은 타일 폭에 맞춰 줄바꿈 허용(단어 사이에서만) */
+    .car-nav-tile .car-nav-logo img { width: 81px !important; height: 51px !important; margin-right: 0 !important; }
+    /* 이름은 타일 폭에 맞춰 줄바꿈 허용(단어 사이에서만). 이전 대비 50% 확대 */
     .car-nav-tile .car-title-text {
         white-space: normal !important;
         text-align: center;
         line-height: 1.2;
-        font-size: clamp(12px, 1.5vw, 17px) !important;
+        font-size: clamp(18px, 2.25vw, 25px) !important;
         word-break: keep-all;
         overflow: visible;
         text-overflow: clip;
     }
+    /* 운행 정보 패널: 어두운 스크림(alpha 0.55) 위 흰 글자 — 실버·블랙·옐로우 어느 타일에서도 최저 7.0:1 */
+    .car-nav-tile .car-nav-info {
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 8px;
+        padding: 5px 9px;
+        text-align: center;
+        color: #ffffff;
+        line-height: 1.3;
+        max-width: 100%;
+    }
+    /* 운전자 이름은 정보 3줄 중 대표값이라 조금 크고 굵게, 번호·연락처는 한 단계 작게 */
+    .car-nav-tile .cni-driver { font-size: 14px; font-weight: 800; letter-spacing: 0.3px; }
+    .car-nav-tile .cni-line { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
     
     /* 드래그 대상 마우스 커서 grab/grabbing 형태 지정 */
     [draggable="true"] {
@@ -652,10 +666,13 @@ if IS_MOBILE:
     .st-key-car_nav_grid { max-width: 100% !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { gap: 8px !important; }
     .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
-    .car-nav-tile .car-nav-logo { font-size: 28px; }
+    .car-nav-tile .car-nav-logo { font-size: 42px; }
     .car-nav-tile .car-nav-logo svg,
-    .car-nav-tile .car-nav-logo img { width: 44px !important; height: 28px !important; }
-    .car-nav-tile .car-title-text { font-size: 13px !important; }
+    .car-nav-tile .car-nav-logo img { width: 66px !important; height: 42px !important; }
+    .car-nav-tile .car-title-text { font-size: 20px !important; }
+    .car-nav-tile .car-nav-info { padding: 4px 7px; border-radius: 7px; }
+    .car-nav-tile .cni-driver { font-size: 12px; }
+    .car-nav-tile .cni-line { font-size: 10.5px; }
 
     /* 차량 박스: 화면 높이 기준 적당한 세로 크기로 고정(폭은 세로비율로 자동), 가운데 */
     .car-layout-container { width: auto !important; height: 58vh !important; max-height: 470px !important; aspect-ratio: 160 / 250 !important; margin: 2px auto 6px !important; padding: 6px !important; }
@@ -1879,15 +1896,9 @@ def render_car_layout(car_name, layout_type, bookings):
         "2-3-2": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, RX, R3)],
     }
     if layout_type in seat_map:
-        # ENG 모드일 때만 운전자 이름 지정 (INNOVA=Tuan / SEDONA=Son / VF5=Vuong)
-        driver_name = ""
-        if lang == "en":
-            if "INNOVA" in car_name:
-                driver_name = "Tuan"
-            elif "SEDONA" in car_name:
-                driver_name = "Son"
-            elif "VF5" in car_name or "VINFAST" in car_name:
-                driver_name = "Vuong"
+        # 운전석 아래에 표시할 운전자 이름 — 메인 타일과 같은 CAR_INFO를 참조한다.
+        #  (예전에는 여기에 이름을 따로 적어 둬, 차량이 바뀌어도 옛 이름이 남는 문제가 있었다)
+        driver_name = car_info(car_name).get("driver", "")
         # 운전석: 이름이 있으면 'Driver' 아래 줄로 함께 박스 세로 중앙 정렬(이름은 골드 #fab005)
         #   INNOVA·SEDONA 운전석은 클릭 시 관리자 로그인 팝업이 뜨도록 admin_login=True
         _admin_car = ("INNOVA" in car_name) or ("SEDONA" in car_name)
@@ -2066,6 +2077,27 @@ CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8
     "taxi7":  ("linear-gradient(180deg,#ccab38,#c29204)", "#191b1f", "#a77b00"),
 }
 
+# ─────────────────────────────────────────────────────────────
+# 🚘 차량별 운행 정보(운전자·차량번호·연락처) — 메인 타일과 좌석맵 운전석이 함께 참조한다.
+#   키는 네비 라벨(TOYOTA INNOVA / HYUNDAI SEDONA / TAXI1 / TAXI2).
+#   차량이 바뀌거나 기사가 교체되면 여기만 고치면 화면 전체에 반영된다.
+# ─────────────────────────────────────────────────────────────
+CAR_INFO = {
+    "TOYOTA INNOVA":  {"driver": "TUAN", "plate": "98H 047 00", "phone": "0983.993.330"},
+    "HYUNDAI SEDONA": {"driver": "SON",  "plate": "99A 667 46", "phone": "0977956965"},
+    "TAXI1":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
+    "TAXI2":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
+}
+
+def car_info(name):
+    """표시명('TAXI1 (6 SEAT)')·네비 라벨('TAXI1') 어느 쪽으로 물어도 차량 정보를 돌려준다.
+    긴 키부터 검사해 TAXI1/TAXI10 처럼 앞부분이 겹치는 이름이 섞이지 않게 한다."""
+    n = (name or "").upper()
+    for key in sorted(CAR_INFO, key=len, reverse=True):
+        if n.startswith(key.upper()):
+            return CAR_INFO[key]
+    return {}
+
 # 예약 현황 카드 배경색: 차량 로고 바탕색을 20% 알파 투명도로 틴트(어두운 페이지 위 은은한 차량색).
 #  낮은 알파라 실효 배경은 어두워지므로 본문 글자색은 밝게. (배경, 텍스트색, 테두리)
 #  단, INNOVA만 상단 네이밍 바와 동일한 '밝은 실버' 배경 + 어두운 글자로 예외 처리(세도나와 확실히 구분).
@@ -2091,10 +2123,25 @@ def car_nav_tile(mk, logo_html, label, idx):
     → 정사각형으로 줄이고 2열로 배치해 타일 경계를 분명히 했다.
     class는 car-nav-click을 그대로 유지 — JS 브릿지(숨김 CARNAV 버튼 클릭)가 이 클래스에 걸려 있다."""
     bg, fg, bd = CAR_FRAME_STYLE.get(mk, CAR_FRAME_STYLE["innova"])
+    # 운행 정보(운전자·차량번호·연락처)는 반투명 어두운 패널 위 흰 글자로 그린다.
+    #  ⚠️ 타일 배경이 차량마다 실버·블랙·옐로우로 달라, '하나의 글자색'으로는 어디서나 읽히게 만들 수 없다.
+    #     계산 결과 흰색·검정·연회색 모두 최저 명암비 1.7:1 수준으로 기준(4.5:1) 미달이었다.
+    #     → 배경 위에 어두운 스크림(alpha 0.55)을 깔면 실효 배경이 통일되어 흰 글자가 최저 7.0:1로 안전하다.
+    info = car_info(label)
+    info_html = ""
+    if info:
+        info_html = (
+            '<div class="car-nav-info">'
+            f'<div class="cni-driver">{esc(info.get("driver", ""))}</div>'
+            f'<div class="cni-line">{esc(info.get("plate", ""))}</div>'
+            f'<div class="cni-line">{esc(info.get("phone", ""))}</div>'
+            '</div>'
+        )
     return (f'<div class="car-nav-click car-nav-tile" data-navidx="{idx}">'
             f'<div class="car-name-frame" style="background:{bg}; border:1px solid {bd};">'
             f'<span class="car-nav-logo">{logo_html}</span>'
             f'<span class="car-title-text" style="color:{fg};">{esc(label)}</span>'
+            f'{info_html}'
             f'</div></div>')
 
 # 5·6. 차량별 컬럼: 제목 + 인승 + 좌석 배치도를 한 컬럼에 묶어 렌더링한다.
