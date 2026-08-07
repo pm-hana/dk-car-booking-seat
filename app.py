@@ -192,6 +192,9 @@ st.markdown("""
     /* 관리자 모드 종료 버튼: 패널 맨 위에서 '나가는 문'임이 바로 보이도록 같은 붉은 톤 + 전체폭 */
     .st-key-admin_exit_row button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; min-height: 42px !important; }
     .st-key-admin_exit_row button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
+    /* 관리자 잠금 해제(진입) 버튼: 일반 사용자에게는 주장이 세지 않도록 차분한 회색 톤 */
+    .st-key-admin_enter_row button { background: #1b1f27 !important; border-color: #3a3f4a !important; color: #adb5bd !important; font-weight: 700 !important; }
+    .st-key-admin_enter_row button:hover { background: #242a33 !important; border-color: #4a5160 !important; color: #e9ecef !important; }
 
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
@@ -1284,6 +1287,8 @@ TR = {
         "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 모드를 종료했습니다.",
         "admin_mode_on": "🔑 관리자 모드 사용 중 — 아래 버튼으로 종료하면 일반 화면으로 돌아갑니다.",
         "admin_exit": "🔓 관리자 모드 종료 (메인 화면으로)",
+        "admin_locked_banner": "🔒 관리자 잠금 상태입니다. 승인·백업·활동기록 등 관리 기능은 잠금을 해제해야 보입니다.",
+        "admin_unlock_btn": "🔑 관리자 잠금 해제 (PASSWORD 입력)",
         "audit_act_migrate": "예약 이관",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
@@ -1378,6 +1383,8 @@ TR = {
         "admin_lock": "🔒 Khóa quản trị", "admin_locked_toast": "🔒 Đã thoát chế độ quản trị.",
         "admin_mode_on": "🔑 Đang ở chế độ quản trị — nhấn nút bên dưới để quay lại màn hình thường.",
         "admin_exit": "🔓 Thoát chế độ quản trị (về màn hình chính)",
+        "admin_locked_banner": "🔒 Đang khóa quản trị. Các chức năng duyệt·sao lưu·nhật ký chỉ hiện sau khi mở khóa.",
+        "admin_unlock_btn": "🔑 Mở khóa quản trị (nhập PASSWORD)",
         "audit_act_migrate": "Chuyển đăng ký",
         "no_bookings": "Chưa có đăng ký xe nào.",
         "tip_from": "📍 Đi: {v}", "tip_to": "🎯 Đến: {v}",
@@ -1472,6 +1479,8 @@ TR = {
         "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Exited admin mode.",
         "admin_mode_on": "🔑 Admin mode is on — use the button below to return to the normal screen.",
         "admin_exit": "🔓 Exit admin mode (back to main)",
+        "admin_locked_banner": "🔒 Admin is locked. Approval, backup and activity log appear only after unlocking.",
+        "admin_unlock_btn": "🔑 Unlock admin (enter PASSWORD)",
         "audit_act_migrate": "Moved bookings",
         "no_bookings": "No dispatch requests yet.",
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
@@ -1903,12 +1912,11 @@ def render_car_layout(car_name, layout_type, bookings):
     seat_map = {
         "2-3-3": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, MX, R3), (7, RX, R3)],
         "2-2-3": [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, MX, R3), (6, RX, R3)],
+        # TAXI(세단형): 1행 = 운전석 + 좌석1, 2행 = 좌석 2·3·4 → 승객석 4석
+        #   [운전석][ 1 ]
+        #   [ 2 ][ 3 ][ 4 ]
+        #   2행은 차체 뒤쪽(R3)에 두고 사이에 점선을 그어 앞/뒤 열을 구분한다(실제 세단 배치와 동일).
         "2-3":   [(1, RX, R1), (2, LX, R3), (3, MX, R3), (4, RX, R3)],
-        # TAXI: 2열 × 3행(운전석 포함 6칸) → 좌/우 2줄이 3행으로 나란히, 승객석 5석
-        #   [운전석][1]
-        #   [  2  ][3]
-        #   [  4  ][5]
-        "2x3":   [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, RX, R3)],
     }
     if layout_type in seat_map:
         # 운전석 아래에 표시할 운전자 이름 — 메인 타일과 같은 CAR_INFO를 참조한다.
@@ -2029,7 +2037,7 @@ elif "car" in query_params and "seat" in query_params:
 # 4. 차량 기본 구성 데이터 명세 수립
 #   운용 차량: INNOVA / SEDONA / TAXI1 / TAXI2 (2×2 타일 한 화면에 딱 맞는 4대)
 #   · VINFAST VF5는 운용에서 제외하고 그 자리를 TAXI 한 대로 대체했다.
-#   · TAXI는 2열 × 3행(운전석 포함 6칸) 배치 → 예약 가능한 승객석은 5석.
+#   · TAXI는 1행(운전석+1) / 2행(3석) 배치 → 예약 가능한 승객석은 4석(일반 세단 택시와 동일).
 #     대수를 늘리려면 n_taxi만 올리면 된다(TAXI3… 자동 생성).
 n_taxi = 2
 cars_data = [
@@ -2037,7 +2045,7 @@ cars_data = [
     {"name": "HYUNDAI SEDONA", "layout": "2-2-3", "seats": 6},
 ]
 for _ti in range(1, n_taxi + 1):
-    cars_data.append({"name": "TAXI", "layout": "2x3", "seats": 5, "taxi_index": _ti})
+    cars_data.append({"name": "TAXI", "layout": "2-3", "seats": 4, "taxi_index": _ti})
 
 total_cars = len(cars_data)  # 고정 2종 + TAXI n대
 
@@ -2613,9 +2621,11 @@ def _restore_admin():
     st.session_state.admin_clear_ls = False   # 복원 = 로그인 상태이므로 삭제 상태 해제
     # 복원은 localStorage가 이미 '1'일 때만 발동하므로 별도 저장(admin_save_ls) 불필요
 
-def _admin_login_form():
-    """관리자 로그인 폼 — 좌석맵 팝업 안에서 표시. 입력 PIN의 해시가 Secrets의 pin_hash와 같으면 잠금 해제.
-    PIN은 저장하지 않고 매번 입력(공용 PIN 1개). 연속 실패가 ADMIN_MAX_TRIES를 넘으면 이 세션에서 잠근다."""
+def _admin_login_form(standalone=False):
+    """관리자 로그인 폼 — 입력 PIN의 해시가 Secrets의 pin_hash와 같으면 잠금 해제.
+    PIN은 저장하지 않고 매번 입력(공용 PIN 1개). 연속 실패가 ADMIN_MAX_TRIES를 넘으면 이 세션에서 잠근다.
+    standalone=False: 좌석맵 팝업 안(운전석 클릭 경로) — 성공 시 그 차량의 '좌석 신청 현황'으로 이어진다.
+    standalone=True : 메인 화면의 '관리자 잠금 해제' 배너에서 연 단독 팝업 — 차량 맥락이 없으므로 그냥 닫고 끝낸다."""
     st.markdown(f'<div class="dlg-step-title">{t("admin_title")}</div>', unsafe_allow_html=True)
     st.caption(t("admin_hint"))
     # Secrets 미설정이면 PIN이 여전히 소스 기본값으로 동작 중 → 관리자에게 그 사실을 드러낸다.
@@ -2650,8 +2660,12 @@ def _admin_login_form():
                 else:
                     st.session_state.admin_clear_ls = True    # 미체크 → localStorage 삭제(유지 상태 아님)
                     st.session_state.admin_save_ls = False
-                # 로그인 성공 → 같은 팝업 안에서 '좌석 신청 현황' 표로 전환(운전석 제외 전체 좌석)
-                st.session_state.admin_seat_status_open = True
+                if standalone:
+                    # 메인 배너에서 연 경우 — 차량 맥락이 없으니 팝업만 닫고 관리자 패널로 돌아간다
+                    st.session_state.admin_login_main_open = False
+                else:
+                    # 운전석 클릭 경로 → 같은 팝업 안에서 '좌석 신청 현황' 표로 전환(운전석 제외 전체 좌석)
+                    st.session_state.admin_seat_status_open = True
                 st.toast(t("admin_unlocked_toast"))
                 st.rerun()
             else:
@@ -2662,8 +2676,23 @@ def _admin_login_form():
         if st.button(t("btn_cancel"), key="admin_pin_cancel_btn", use_container_width=True):
             st.session_state.admin_login_open = False
             st.session_state.admin_pin_error = False
-            st.session_state.seatmap_car = None
+            if standalone:
+                st.session_state.admin_login_main_open = False
+            else:
+                st.session_state.seatmap_car = None
             st.rerun()
+
+
+def _close_admin_login_main():
+    st.session_state.admin_login_main_open = False
+    st.session_state.admin_pin_error = False
+
+
+@st.dialog(" ", on_dismiss=_close_admin_login_main)
+def admin_login_dialog():
+    """메인 화면의 '관리자 잠금 해제' 배너에서 여는 PIN 입력 팝업.
+    예전에는 INNOVA·SEDONA 운전석을 눌러야만 로그인할 수 있어, 그 사실을 모르면 들어갈 길이 없었다."""
+    _admin_login_form(standalone=True)
 
 # 좌석 신청 현황 팝업에 삽입되는 '현재 위치 지도'(무료 OpenStreetMap/Leaflet) — Google 지도 API 키 불필요.
 #   GPS 현재위치 버튼 + 주소 검색창 + 지도 클릭 마커. 타일·지오코딩(Nominatim) 모두 무료(워터마크·비용 없음).
@@ -3596,6 +3625,25 @@ if st.session_state.get("admin_unlocked"):
     _render_pending_approvals()
     _render_backup_tools()
     _render_audit_log()
+else:
+    # 잠금 상태(일반 화면)에서도 '관리자 모드로 들어가는 문'이 보여야 한다.
+    #  예전에는 INNOVA·SEDONA 운전석을 눌러야만 로그인할 수 있어, 그 방법을 모르면 들어갈 길이 없었다.
+    st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
+    st.markdown(
+        '<div style="background:rgba(255,255,255,0.04); border:1px solid #2b2f38; border-radius:8px; '
+        'padding:6px 10px; margin:0 0 6px 0; font-size:12px; color:#868e96;">'
+        f'{esc(t("admin_locked_banner"))}</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(key="admin_enter_row"):
+        if st.button(t("admin_unlock_btn"), key="admin_unlock_btn", use_container_width=True):
+            st.session_state.admin_login_main_open = True
+            st.session_state.admin_pin_error = False
+            st.rerun()
+
+# 관리자 잠금 해제 버튼이 눌렸으면 PIN 입력 팝업을 띄운다(잠금 상태에서만).
+if st.session_state.get("admin_login_main_open") and not st.session_state.get("admin_unlocked"):
+    admin_login_dialog()
 
 # 8-b. 관리자 '로그인 유지' 영속화 브릿지 — 체크 시 재접속해도 비밀번호 없이 자동 로그인.
 #   ⚠️ 핵심 원칙: localStorage 저장(setItem)은 '로그인 시 1회성 컴포넌트'에서만 한다.
