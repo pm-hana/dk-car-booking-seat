@@ -2000,17 +2000,19 @@ elif "car" in query_params and "seat" in query_params:
     # 유격 싱크가 끝났으므로 URL 주소창 파라미터는 즉시 초기화하여 다중 재호출 Rerun 현상 전면 차단
     st.query_params.clear()
 
-# 4. 차량 기본 구성 데이터 명세 수립 (TAXI는 TAXI 1 한 대, 6인승 2-3-2 고정)
-n_taxi = 1
+# 4. 차량 기본 구성 데이터 명세 수립
+#   운용 차량: INNOVA / SEDONA / TAXI1 / TAXI2 (2×2 타일 한 화면에 딱 맞는 4대)
+#   · VINFAST VF5는 운용에서 제외하고 그 자리를 TAXI 한 대로 대체했다.
+#   · TAXI는 모두 6인승 2-3-2 동일 사양. 대수를 늘리려면 n_taxi만 올리면 된다(TAXI3… 자동 생성).
+n_taxi = 2
 cars_data = [
     {"name": "TOYOTA INNOVA", "layout": "2-3-3", "seats": 7},
     {"name": "HYUNDAI SEDONA", "layout": "2-2-3", "seats": 6},
-    {"name": "VINFAST VF5", "layout": "2-3", "seats": 4},
 ]
 for _ti in range(1, n_taxi + 1):
     cars_data.append({"name": "TAXI", "layout": "2-3-2", "seats": 6, "taxi_index": _ti})
 
-total_cars = len(cars_data)  # 고정 3종 + TAXI n대
+total_cars = len(cars_data)  # 고정 2종 + TAXI n대
 
 def brand_logo(name):
     """차량명 앞에 붙는 브랜드 로고(인라인 SVG). 공식 로고 파일 대신 식별 가능한 심볼로 근사."""
@@ -2045,7 +2047,7 @@ def brand_logo(name):
 
 def _short_car_name(display_name):
     """예약 카드용 짧은 차량명: 브랜드 접두어와 '(N SEAT)' 접미어를 제거.
-    'TOYOTA INNOVA (7 SEAT)'→'INNOVA', 'VINFAST VF5 (4 SEAT)'→'VF5', 'TAXI 2 (6 SEAT)'→'TAXI 2'."""
+    'TOYOTA INNOVA (7 SEAT)'→'INNOVA', 'HYUNDAI SEDONA (6 SEAT)'→'SEDONA', 'TAXI2 (6 SEAT)'→'TAXI2'."""
     s = display_name
     if "(" in s:
         s = s[:s.rindex("(")].strip()
@@ -2125,8 +2127,9 @@ def on_seat_click(car_name, seat):
 resolved_cars = []
 for car in cars_data:
     if car["name"] == "TAXI":
+        # 1대뿐일 때도 번호를 붙인다(TAXI1, TAXI2 …) — 여러 대를 함께 쓰므로 항상 어느 차인지 구분돼야 한다
         ti = car["taxi_index"]
-        nav_label = "TAXI" if ti == 1 else f"TAXI {ti}"
+        nav_label = f"TAXI{ti}"
         prefix = nav_label
         seats_count = car["seats"]
         display_name = f"{prefix} ({seats_count} SEAT)"
