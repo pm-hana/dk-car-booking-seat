@@ -21,6 +21,8 @@ history.json
 history.json.tmp
 audit.json
 audit.json.tmp
+bookings_backup.json
+bookings_backup.json.tmp
 .version_pending
 .version_note
 _backup_*/

@@ -764,24 +764,41 @@ def load_bookings():
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                bookings = {}
-                for key, val in data.items():
-                    parts = key.split("||")
-                    if len(parts) == 2:
-                        car_name, seat_num = parts
-                        bookings[(car_name, int(seat_num))] = val
-                return bookings
+                return _decode_bookings(json.load(f))
         except Exception:
             return {}
     return {}
 
+def _decode_bookings(data):
+    """{'차량||좌석': {...}} 형태를 {(차량, 좌석번호): {...}}로 변환.
+    파일·백업·업로드 등 '외부에서 온 JSON'을 읽는 모든 경로가 이 한 곳을 쓴다.
+    형식이 어긋난 항목은 통째로 버리지 않고 그 항목만 건너뛴다(일부 손상 시 나머지는 살린다)."""
+    out = {}
+    if not isinstance(data, dict):
+        return out
+    for key, val in data.items():
+        parts = str(key).split("||")
+        if len(parts) != 2 or not isinstance(val, dict):
+            continue
+        try:
+            out[(parts[0], int(parts[1]))] = val
+        except (TypeError, ValueError):
+            continue
+    return out
+
+def _encode_bookings(bookings):
+    """{(차량, 좌석): {...}} → {'차량||좌석': {...}} (저장·백업 공통 형식)."""
+    return {f"{car_name}||{seat_num}": val for (car_name, seat_num), val in bookings.items()}
+
 def save_bookings(bookings):
+    """예약 저장. 성공하면 True.
+    ⚠️ 실패를 조용히 삼키면 사용자는 저장된 줄 안다 → 실패 시 플래그를 세워 화면에 경고를 띄운다.
+    [벤치마킹] Đào Văn Bảo "K-Pulse" — "Hiển thị cảnh báo khi có lỗi kèm nguyên nhân"(오류 시 경고 표시),
+               "Thao tác xóa không có hiệu lực"(삭제가 반영 안 되던 문제). 상세: docs/BENCHMARK.md"""
     db = _get_db()
+    desired = _encode_bookings(bookings)
     if db is not None:
         try:
-            desired = {f"{car_name}||{seat_num}": val
-                       for (car_name, seat_num), val in bookings.items()}
             col = db.collection(COLLECTION)
             existing_ids = {doc.id for doc in col.stream()}
             batch = db.batch()
@@ -792,20 +809,19 @@ def save_bookings(bookings):
             for doc_id in existing_ids - set(desired.keys()):
                 batch.delete(col.document(doc_id))
             batch.commit()
-            return
+            return True
         except Exception:
             pass  # Firestore 오류 시 아래 파일 모드로 대체 저장
     # 파일 모드(로컬 개발): 원자적 저장으로 동시 쓰기 중 파일 손상 방지
     try:
-        data = {}
-        for (car_name, seat_num), val in bookings.items():
-            data[f"{car_name}||{seat_num}"] = val
         tmp_file = DB_FILE + ".tmp"
         with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+            json.dump(desired, f, ensure_ascii=False, indent=4)
         os.replace(tmp_file, DB_FILE)
+        return True
     except Exception:
-        pass
+        st.session_state.save_failed = True   # 다음 렌더에서 화면 상단에 경고 표시
+        return False
 
 def archive_booking(car_name, seat_num, info, status="완료"):
     """완료 처리된 예약 1건을 탑승 이력 아카이브에 적재(2단계 월/일별 통계·엑셀 조회 근거).
@@ -860,6 +876,62 @@ def load_history():
         except Exception:
             return []
     return []
+
+# ─────────────────────────────────────────────────────────────
+# 💾 백업 · 복원 — 파괴적 동작 옆에는 반드시 되돌릴 길을 둔다
+#   '전체 예약 초기화'는 PIN만 통과하면 그날 전 직원 배차를 한 번에 지우는데 복구 수단이 없었다.
+#   · 초기화·복원 '직전' 상태를 스냅샷 1개로 보관 → 되돌리기 1회 제공
+#   · 관리자 화면에서 원클릭 JSON 내보내기 / 파일로 복원
+#   [벤치마킹] Hà Văn Lượng(PM Part Leader) "Concept 3D 시뮬레이션" —
+#              "Export/Import JSON giúp sao lưu toàn bộ... nút Reset khôi phục ngay trạng thái ban đầu chỉ với 1 click"
+#              (원클릭 JSON 백업/복원 + 원클릭 초기화). 상세: docs/BENCHMARK.md
+# ─────────────────────────────────────────────────────────────
+BACKUP_FILE = "bookings_backup.json"
+BACKUP_COLLECTION = "backups"
+BACKUP_DOC = "last_snapshot"
+
+def save_snapshot(bookings, reason=""):
+    """파괴적 동작 직전 상태를 스냅샷 1개로 덮어써 보관. 성공하면 True."""
+    payload = {
+        "at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
+        "reason": reason,                 # reset / import
+        "count": len(bookings),
+        "data": _encode_bookings(bookings),
+    }
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(BACKUP_COLLECTION).document(BACKUP_DOC).set(payload)
+            return True
+        except Exception:
+            pass
+    try:
+        tmp_file = BACKUP_FILE + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_file, BACKUP_FILE)
+        return True
+    except Exception:
+        return False
+
+def load_snapshot():
+    """보관된 직전 상태 스냅샷을 반환. 없으면 빈 dict."""
+    db = _get_db()
+    if db is not None:
+        try:
+            doc = db.collection(BACKUP_COLLECTION).document(BACKUP_DOC).get()
+            if doc.exists:
+                return doc.to_dict() or {}
+        except Exception:
+            pass
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
 
 # ─────────────────────────────────────────────────────────────
 # 🧾 감사 로그(Audit Log) — 누가 언제 어떤 예약을 바꿨는지 기록
@@ -1054,7 +1126,20 @@ TR = {
         "audit_act_done": "도착 완료", "audit_act_reset": "전체 초기화",
         "toast_done": "🏁 [{name}]님 좌석 {seat} 도착 완료로 처리되었습니다.",
         "btn_reset_all": "🗑️ 전체 예약 초기화",
-        "reset_warn": "⚠️ 정말 모든 예약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
+        "reset_warn": "⚠️ 지금 등록된 예약 {n}건을 모두 삭제합니다. 삭제 직전 상태는 자동 보관되어 '백업·복원'에서 되돌릴 수 있습니다.",
+        "backup_title": "💾 백업 · 복원",
+        "backup_export": "⬇️ 현재 예약 백업 내려받기 ({n}건)",
+        "backup_file": "예약 백업_{date}.json",
+        "backup_import": "백업 파일로 복원 (.json)",
+        "backup_bad_file": "백업 파일을 읽을 수 없습니다. 이 앱에서 내려받은 JSON이 맞는지 확인해 주세요.",
+        "backup_import_warn": "⚠️ 현재 예약 {cur}건이 백업 파일의 {n}건으로 교체됩니다. 교체 직전 상태는 자동 보관됩니다.",
+        "backup_import_do": "네, 복원합니다",
+        "backup_restored": "♻️ 예약 {n}건이 복원되었습니다.",
+        "backup_undo": "↩️ 마지막 초기화·복원 되돌리기",
+        "backup_snap_info": "보관된 직전 상태: {at} · {n}건",
+        "backup_no_snap": "되돌릴 수 있는 직전 상태가 없습니다.",
+        "save_failed": "⚠️ 저장에 실패했습니다. 방금 변경한 내용이 서버에 반영되지 않았을 수 있습니다. 새로고침 후 다시 확인해 주세요.",
+        "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기",
         "btn_reset_yes": "네, 전체 삭제", "toast_reset": "🧹 모든 예약이 초기화되었습니다.",
         "admin_title": "🔑 관리자 로그인", "admin_pw_label": "PASSWORD (숫자)", "admin_pw_ph": "****",
         "admin_hint": "0~9 숫자 4~8자리를 입력하세요.", "admin_ok": "확인",
@@ -1122,7 +1207,20 @@ TR = {
         "audit_act_done": "Hoàn tất chuyến", "audit_act_reset": "Xóa toàn bộ",
         "toast_done": "🏁 [{name}] ghế {seat} đã được xử lý hoàn tất.",
         "btn_reset_all": "🗑️ Xóa toàn bộ đăng ký",
-        "reset_warn": "⚠️ Bạn chắc chắn muốn xóa TẤT CẢ đăng ký? Thao tác này không thể hoàn tác.",
+        "reset_warn": "⚠️ Sẽ xóa toàn bộ {n} đăng ký hiện có. Trạng thái ngay trước khi xóa được lưu tự động và có thể hoàn tác ở mục 'Sao lưu · Khôi phục'.",
+        "backup_title": "💾 Sao lưu · Khôi phục",
+        "backup_export": "⬇️ Tải bản sao lưu hiện tại ({n} đăng ký)",
+        "backup_file": "Sao luu dat xe_{date}.json",
+        "backup_import": "Khôi phục từ file sao lưu (.json)",
+        "backup_bad_file": "Không đọc được file sao lưu. Vui lòng kiểm tra đây có đúng là file JSON tải từ ứng dụng này không.",
+        "backup_import_warn": "⚠️ {cur} đăng ký hiện tại sẽ được thay bằng {n} đăng ký trong file sao lưu. Trạng thái trước khi thay được lưu tự động.",
+        "backup_import_do": "Vâng, khôi phục",
+        "backup_restored": "♻️ Đã khôi phục {n} đăng ký.",
+        "backup_undo": "↩️ Hoàn tác lần xóa·khôi phục gần nhất",
+        "backup_snap_info": "Trạng thái đã lưu: {at} · {n} đăng ký",
+        "backup_no_snap": "Không có trạng thái nào để hoàn tác.",
+        "save_failed": "⚠️ Lưu thất bại. Thay đổi vừa rồi có thể chưa được ghi lên máy chủ. Vui lòng tải lại trang và kiểm tra.",
+        "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác",
         "btn_reset_yes": "Vâng, xóa tất cả", "toast_reset": "🧹 Toàn bộ đăng ký đã được xóa.",
         "admin_title": "🔑 Đăng nhập quản trị", "admin_pw_label": "PASSWORD (số)", "admin_pw_ph": "****",
         "admin_hint": "Nhập 4~8 chữ số (0-9).", "admin_ok": "Xác nhận",
@@ -1190,7 +1288,20 @@ TR = {
         "audit_act_done": "Arrived", "audit_act_reset": "Reset all",
         "toast_done": "🏁 [{name}] — seat {seat} marked as arrived.",
         "btn_reset_all": "🗑️ Reset all bookings",
-        "reset_warn": "⚠️ Delete ALL bookings? This cannot be undone.",
+        "reset_warn": "⚠️ This deletes all {n} current bookings. The state right before deletion is saved automatically and can be undone in 'Backup · Restore'.",
+        "backup_title": "💾 Backup · Restore",
+        "backup_export": "⬇️ Download current backup ({n} bookings)",
+        "backup_file": "Booking Backup_{date}.json",
+        "backup_import": "Restore from a backup file (.json)",
+        "backup_bad_file": "Could not read the backup file. Please check that it is a JSON file downloaded from this app.",
+        "backup_import_warn": "⚠️ The current {cur} bookings will be replaced with {n} from the backup file. The state before replacing is saved automatically.",
+        "backup_import_do": "Yes, restore",
+        "backup_restored": "♻️ {n} bookings restored.",
+        "backup_undo": "↩️ Undo the last reset / restore",
+        "backup_snap_info": "Saved state: {at} · {n} bookings",
+        "backup_no_snap": "No saved state available to undo.",
+        "save_failed": "⚠️ Save failed. Your latest change may not have reached the server. Please reload and check again.",
+        "audit_act_restore": "Restored backup", "audit_act_undo": "Undone",
         "btn_reset_yes": "Yes, delete all", "toast_reset": "🧹 All bookings have been reset.",
         "admin_title": "🔑 Admin Login", "admin_pw_label": "PASSWORD (digits)", "admin_pw_ph": "****",
         "admin_hint": "Enter 4-8 digits (0-9).", "admin_ok": "OK",
@@ -1905,6 +2016,65 @@ def owner_gate(car, seat, info):
             st.error(t("owner_err"))
     return False
 
+def _render_backup_tools():
+    """관리자 전용 백업·복원 — ① 원클릭 내보내기 ② 파일로 복원 ③ 마지막 초기화/복원 되돌리기.
+    복원·되돌리기도 파괴적이므로, 실행 직전에 현재 상태를 다시 스냅샷으로 남긴다."""
+    with st.expander(t("backup_title")):
+        cur_n = len(st.session_state.bookings)
+        # ① 내보내기 — 지금 예약 전체를 JSON 파일로
+        st.download_button(
+            t("backup_export", n=cur_n),
+            data=json.dumps({
+                "exported_at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
+                "count": cur_n,
+                "data": _encode_bookings(st.session_state.bookings),
+            }, ensure_ascii=False, indent=2).encode("utf-8"),
+            file_name=t("backup_file", date=now_vn().strftime("%Y%m%d_%H%M")),
+            mime="application/json", use_container_width=True, key="backup_export_btn",
+        )
+
+        # ② 복원 — 내려받은 백업 파일을 올려 현재 예약을 통째로 교체
+        st.divider()
+        up = st.file_uploader(t("backup_import"), type=["json"], key="backup_import_file")
+        if up is not None:
+            incoming = None
+            try:
+                raw = json.loads(up.getvalue().decode("utf-8"))
+                # 이 앱이 내보낸 형식({"data": {...}})과 예약 dict 자체 둘 다 받아준다
+                incoming = _decode_bookings(raw.get("data") if isinstance(raw, dict) and "data" in raw else raw)
+            except Exception:
+                incoming = None
+            if not incoming:
+                st.error(t("backup_bad_file"))
+            else:
+                st.warning(t("backup_import_warn", n=len(incoming), cur=cur_n))
+                if st.button(t("backup_import_do"), type="primary",
+                             key="backup_import_btn", use_container_width=True):
+                    save_snapshot(st.session_state.bookings, reason="import")   # 교체 전 상태 보관
+                    st.session_state.bookings = incoming
+                    if save_bookings(st.session_state.bookings):
+                        log_action("restore", "", 0, None, note=str(len(incoming)))
+                        st.toast(t("backup_restored", n=len(incoming)))
+                        st.rerun()
+
+        # ③ 되돌리기 — 마지막 초기화/복원 직전 상태로
+        st.divider()
+        snap = load_snapshot()
+        snap_data = snap.get("data") if isinstance(snap, dict) else None
+        if snap_data:
+            st.caption(t("backup_snap_info", at=snap.get("at", ""), n=snap.get("count", 0)))
+            if st.button(t("backup_undo"), key="backup_undo_btn", use_container_width=True):
+                restored = _decode_bookings(snap_data)
+                save_snapshot(st.session_state.bookings, reason="undo")   # 되돌리기도 되돌릴 수 있게
+                st.session_state.bookings = restored
+                if save_bookings(st.session_state.bookings):
+                    log_action("undo", "", 0, None, note=str(len(restored)))
+                    st.toast(t("backup_restored", n=len(restored)))
+                    st.rerun()
+        else:
+            st.caption(t("backup_no_snap"))
+
+
 def _render_audit_log():
     """관리자 전용 '최근 활동 기록' — 누가 언제 어떤 예약을 취소·수정·완료했는지 보여준다.
     좌석 신청 현황표(.seat-status-table)의 스타일을 그대로 재사용한다."""
@@ -1916,6 +2086,7 @@ def _render_audit_log():
         act_label = {
             "cancel": t("audit_act_cancel"), "edit": t("audit_act_edit"),
             "done": t("audit_act_done"), "reset": t("audit_act_reset"),
+            "restore": t("audit_act_restore"), "undo": t("audit_act_undo"),
         }
         body = []
         for r in rows:
@@ -2702,6 +2873,10 @@ def arrival_dialog(car, seat):
 num_bookings = len(st.session_state.bookings)
 st.write("")
 
+# 저장이 실패했으면 반드시 화면에 알린다 — 조용히 넘기면 사용자는 저장된 줄 알고 자리를 떠난다.
+if st.session_state.pop("save_failed", False):
+    st.error(t("save_failed"))
+
 search_query = ""
 # 현황판 헤더(제목 + 검색 + 예약이력 다운로드)는 예약 유무와 무관하게 항상 렌더.
 #  → 예약 신청이 없더라도 '실시간 차량 예약 현황' 제목과 '예약 이력(CSV)' 버튼이 항상 노출된다.
@@ -2908,44 +3083,52 @@ if st.session_state.bookings:
                         _render_booking_card(bc_name, bseat, binfo)
                     # 홀수 마지막 줄: 오른쪽 칸 비워 둠(같은 차량 병렬 틀 유지)
 
-    # ⚡ [관리자] 전체 예약 초기화 — INNOVA·SEDONA 운전석 관리자 로그인(admin_unlocked) 후에만 노출/동작
-    if st.session_state.get("admin_unlocked"):
-        st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
-        if not st.session_state.get("confirm_reset_all"):
-            rlc1, rlc2 = st.columns(2)
-            with rlc1:
-                if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True):
-                    st.session_state.confirm_reset_all = True
-                    st.rerun()
-            with rlc2:
-                # 관리자 재잠금(로그아웃) — 세션·유지 플래그 해제 + localStorage 1회성 클리어 예약
-                if st.button(t("admin_lock"), key="admin_lock_btn", use_container_width=True):
-                    st.session_state.admin_unlocked = False
-                    st.session_state.admin_keep = False
-                    st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
-                    st.session_state.confirm_reset_all = False
-                    st.toast(t("admin_locked_toast"))
-                    st.rerun()
-        else:
-            st.warning(t("reset_warn"))
-            rc1, rc2 = st.columns(2)
-            with rc1:
-                if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
-                    # 전량 삭제 전에 몇 건을 지웠는지 기록 — 지운 뒤에는 확인할 방법이 없다.
-                    log_action("reset", "", 0, None, note=str(len(st.session_state.bookings)))
-                    st.session_state.bookings = {}
-                    save_bookings(st.session_state.bookings)
-                    st.session_state.confirm_reset_all = False
-                    st.toast(t("toast_reset"))
-                    st.rerun()
-            with rc2:
-                if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
-                    st.session_state.confirm_reset_all = False
-                    st.rerun()
-        _render_audit_log()
 else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
+
+# ⚡ [관리자] 전체 초기화 · 백업/복원 · 활동 기록 — 관리자 로그인(admin_unlocked) 후에만 노출/동작
+#   ⚠️ 예약이 0건일 때도 반드시 보여야 한다. '초기화 직후'가 바로 되돌리기가 필요한 순간인데,
+#      이 블록이 `if 예약이 있으면:` 안에 있으면 초기화하자마자 되돌리기 버튼에 닿을 수 없다.
+#      (그래서 예약 유무와 무관하게 항상 렌더되도록 바깥으로 뺐다)
+if st.session_state.get("admin_unlocked"):
+    st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
+    if not st.session_state.get("confirm_reset_all"):
+        rlc1, rlc2 = st.columns(2)
+        with rlc1:
+            if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
+                         disabled=not st.session_state.bookings):
+                st.session_state.confirm_reset_all = True
+                st.rerun()
+        with rlc2:
+            # 관리자 재잠금(로그아웃) — 세션·유지 플래그 해제 + localStorage 1회성 클리어 예약
+            if st.button(t("admin_lock"), key="admin_lock_btn", use_container_width=True):
+                st.session_state.admin_unlocked = False
+                st.session_state.admin_keep = False
+                st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
+                st.session_state.confirm_reset_all = False
+                st.toast(t("admin_locked_toast"))
+                st.rerun()
+    else:
+        # 몇 건이 사라지는지 숫자로 보여준다(실수 방지) + 되돌릴 수 있음을 함께 안내
+        st.warning(t("reset_warn", n=len(st.session_state.bookings)))
+        rc1, rc2 = st.columns(2)
+        with rc1:
+            if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
+                # 전량 삭제 전에 ① 건수를 기록하고 ② 직전 상태를 스냅샷으로 남긴다 — 지운 뒤엔 되돌릴 근거가 없다.
+                log_action("reset", "", 0, None, note=str(len(st.session_state.bookings)))
+                save_snapshot(st.session_state.bookings, reason="reset")
+                st.session_state.bookings = {}
+                save_bookings(st.session_state.bookings)
+                st.session_state.confirm_reset_all = False
+                st.toast(t("toast_reset"))
+                st.rerun()
+        with rc2:
+            if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
+                st.session_state.confirm_reset_all = False
+                st.rerun()
+    _render_backup_tools()
+    _render_audit_log()
 
 # 8-b. 관리자 '로그인 유지' 영속화 브릿지 — 체크 시 재접속해도 비밀번호 없이 자동 로그인.
 #   ⚠️ 핵심 원칙: localStorage 저장(setItem)은 '로그인 시 1회성 컴포넌트'에서만 한다.
