@@ -580,20 +580,22 @@ st.markdown("""
        정사각형으로 줄이고 2열로 배치해 각 타일의 경계를 분명히 한다. */
     /* 웹(기본)은 4개를 가로 1열로 — 폭은 타일 4개(각 최대 240px) + 간격이 들어갈 만큼 확보.
        추후 dkvinacar.web.app로 통합될 것을 대비해 그쪽과 같은 가로 배열을 기본으로 둔다. */
-    .st-key-car_nav_grid { max-width: 1000px !important; margin: 0 auto 4px auto !important; }
+    .st-key-car_nav_grid { max-width: 1130px !important; margin: 0 auto 4px auto !important; }
     /* Streamlit의 컬럼 세로적층(flex-basis:100%)을 자식결합자 특이도(0,3,0)로 덮어써 가로 배열 강제 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 10px !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
     .car-nav-tile { margin: 0 0 10px 0 !important; }
     /* 정사각형 본체: 로고(위) + 이름(아래) 세로 스택 */
+    /* 운행 정보 글자를 50% 키운 만큼 타일도 240 → 270px로 넓혀 여백을 확보한다.
+       내용 높이(로고 51 + 이름 24 + 정보 3줄 ≈ 90 + 간격·패딩) ≈ 215px로 270px 정사각형 안에 여유 있게 들어간다. */
     .car-nav-tile .car-name-frame {
         width: 100% !important;
-        max-width: 240px !important;
+        max-width: 270px !important;
         margin: 0 auto !important;
         aspect-ratio: 1 / 1;
         flex-direction: column;
         gap: 10px;
-        padding: 12px !important;
+        padding: 14px !important;
         border-radius: 14px;
     }
     .car-nav-tile:hover .car-name-frame { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
@@ -612,12 +614,15 @@ st.markdown("""
            배경이 투명한 로고(세도나·택시)에는 시각적 영향이 없다. */
         border-radius: 6px;
     }
-    /* 이름은 타일 폭에 맞춰 줄바꿈 허용(단어 사이에서만). 이전 대비 50% 확대 */
+    /* 차량명 — 네 타일 모두 '항상 같은 크기'.
+       예전엔 clamp(18px, 2.25vw, 25px)라 창 폭에 따라 18~25px로 변해 기준이 흔들렸다.
+       모바일(?m=1)의 20px과 같은 값으로 고정해 웹·모바일 어디서나 동일하게 보이게 한다.
+       (이름 길이가 달라 길수록 작아 보이지만 글자 크기 자체는 같다 — 줄바꿈은 단어 사이에서만) */
     .car-nav-tile .car-title-text {
         white-space: normal !important;
         text-align: center;
         line-height: 1.2;
-        font-size: clamp(18px, 2.25vw, 25px) !important;
+        font-size: 20px !important;
         word-break: keep-all;
         overflow: visible;
         text-overflow: clip;
@@ -625,16 +630,17 @@ st.markdown("""
     /* 운행 정보 패널: 어두운 스크림(alpha 0.55) 위 흰 글자 — 실버·블랙·옐로우 어느 타일에서도 최저 7.0:1 */
     .car-nav-tile .car-nav-info {
         background: rgba(0, 0, 0, 0.55);
-        border-radius: 8px;
-        padding: 5px 9px;
+        border-radius: 9px;
+        padding: 7px 11px;
         text-align: center;
         color: #ffffff;
         line-height: 1.3;
         max-width: 100%;
     }
-    /* 운전자 이름은 정보 3줄 중 대표값이라 조금 크고 굵게, 번호·연락처는 한 단계 작게 */
-    .car-nav-tile .cni-driver { font-size: 14px; font-weight: 800; letter-spacing: 0.3px; }
-    .car-nav-tile .cni-line { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* 운전자 이름은 정보 3줄 중 대표값이라 조금 크고 굵게, 번호·연락처는 한 단계 작게.
+       요청에 따라 이전 대비 50% 확대: 14→21px / 12→18px (타일도 함께 키워 여백을 확보했다) */
+    .car-nav-tile .cni-driver { font-size: 21px; font-weight: 800; letter-spacing: 0.3px; }
+    .car-nav-tile .cni-line { font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
     
     /* 드래그 대상 마우스 커서 grab/grabbing 형태 지정 */
     [draggable="true"] {
@@ -705,7 +711,8 @@ st.markdown("""
         .car-nav-tile .car-nav-logo { font-size: 28px; }
         .car-nav-tile .car-nav-logo svg { width: 44px !important; height: 28px !important; }
         .car-nav-tile .car-nav-logo img { max-height: 28px !important; }
-        .car-nav-tile .car-title-text { font-size: 13px !important; }
+        /* 좁은 창의 웹도 차량명은 같은 20px — '웹에서는 창 폭과 무관하게 동일 크기' 원칙 */
+        .car-nav-tile .car-title-text { font-size: 20px !important; }
 
         /* 차량 박스: 화면 폭 88%·세로비율(160:250)로, 가운데 */
         .car-layout-container { width: 88% !important; height: auto !important; aspect-ratio: 160 / 250 !important; max-height: 62vh; margin: 2px auto 6px !important; padding: 6px !important; }

@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "PowerShell(cd \"c:\\\\Users\\\\hana\\\\OneDrive\\\\바탕 화면\\\\DK CAR BOOKING SEAT\"; python -m py_compile app.py; if \\($?\\) { \"py_compile OK\" }; \"--- 모바일 블록 차량명 크기 확인 ---\"; Select-String -Path app.py -Pattern \"car-nav-tile \\\\.car-title-text\" -Context 0,0 | ForEach-Object { \"line \" + $_.LineNumber + \": \" + $_.Line.Trim\\(\\) })",
+      "PowerShell(cd \"c:\\\\Users\\\\hana\\\\OneDrive\\\\바탕 화면\\\\DK CAR BOOKING SEAT\"; $o = \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\reg17.txt\"; \"\" | Out-File -Encoding utf8 $o; foreach \\($t in @\\(\"i18n_test\",\"smoke_test\",\"a5_b1_test\",\"e2e_test\",\"a3_b5_test\",\"a4_test\",\"b3_c1_test\",\"b4_test\",\"chart_check\",\"nav_test\",\"fleet_test\",\"info_test\",\"taxi_admin_test\",\"unlock_test\",\"tiles_test\",\"anim_test\",\"row_test\",\"logo_test\"\\)\\) { \"--- $t ---\" | Out-File -Append -Encoding utf8 $o; python \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\$t.py\" 2>&1 | Select-String \"^결과|Only one dialog\" | Out-File -Append -Encoding utf8 $o }; Get-Content $o)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
