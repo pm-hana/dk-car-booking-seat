@@ -578,8 +578,10 @@ st.markdown("""
     /* ===== 메인 차량 선택: 정사각형 타일 2×2 =====
        가로로 긴 바는 탭 영역이 화면 폭 전체라 옆 차량까지 잘못 눌리기 쉬웠다(오클릭).
        정사각형으로 줄이고 2열로 배치해 각 타일의 경계를 분명히 한다. */
-    .st-key-car_nav_grid { max-width: 520px !important; margin: 0 auto 4px auto !important; }
-    /* 모바일에서도 2열 유지 — Streamlit의 컬럼 세로적층(flex-basis:100%)을 자식결합자 특이도(0,3,0)로 덮어씀 */
+    /* 웹(기본)은 4개를 가로 1열로 — 폭은 타일 4개(각 최대 240px) + 간격이 들어갈 만큼 확보.
+       추후 dkvinacar.web.app로 통합될 것을 대비해 그쪽과 같은 가로 배열을 기본으로 둔다. */
+    .st-key-car_nav_grid { max-width: 1000px !important; margin: 0 auto 4px auto !important; }
+    /* Streamlit의 컬럼 세로적층(flex-basis:100%)을 자식결합자 특이도(0,3,0)로 덮어써 가로 배열 강제 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 10px !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
     .car-nav-tile { margin: 0 0 10px 0 !important; }
@@ -685,9 +687,10 @@ st.markdown("""
             min-width: 100% !important;
         }
 
-        /* 차량 선택 타일: 폰에서도 2열 유지하되 화면 폭을 꽉 채워 탭 영역을 키운다 */
+        /* 차량 선택 타일: 좁은 창에서는 웹의 가로 1열을 '접어서' 2열 2행으로 — 4개가 한 줄에 들어가면 너무 작다 */
         .st-key-car_nav_grid { max-width: 100% !important; }
-        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { gap: 8px !important; }
+        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 8px !important; }
+        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 4px) !important; }
         .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
         .car-nav-tile .car-nav-logo { font-size: 28px; }
         .car-nav-tile .car-nav-logo svg,
@@ -741,9 +744,11 @@ if IS_MOBILE:
     .st-key-lang_toggle div[role="radiogroup"] { gap: 8px !important; }
     .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: 13px !important; }
 
-    /* 차량 선택 타일: 폰에서도 2열 유지하되 화면 폭을 꽉 채워 탭 영역을 키운다 */
+    /* 차량 선택 타일 — 모바일(?m=1)은 간소화 버전: 웹의 가로 1열을 '접어서' 2×2로 표시하고
+       화면 폭을 꽉 채워 탭 영역을 키운다(웹은 4개 한 줄, 모바일은 2×2로 서로 다르게 간다). */
     .st-key-car_nav_grid { max-width: 100% !important; }
-    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { gap: 8px !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 8px !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 4px) !important; }
     .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
     .car-nav-tile .car-nav-logo { font-size: 42px; }
     .car-nav-tile .car-nav-logo svg,
@@ -3144,16 +3149,17 @@ def seatmap_dialog(car_rc):
 #  메인 화면엔 차량 네이밍 바만 노출하고, 바를 클릭하면 해당 차량 좌석 배치도가 팝업(seatmap_dialog)으로 뜬다.
 if "seatmap_car" not in st.session_state:
     st.session_state.seatmap_car = None
-# 차량 선택은 '정사각형 타일 2×2'. 한 줄에 2개씩 끊어 배치하고, 홀수면 마지막 줄 오른쪽 칸은 비워 둔다.
-#  (가로로 긴 바 → 오클릭 우려로 변경. 웹·앱 동일 레이아웃이며 크기만 화면 폭에 맞춰 달라진다)
+# 차량 선택 타일 배치 — Python은 '한 줄에 최대 4개'로만 끊고, 실제 열 수는 CSS가 결정한다.
+#   · 웹(루트, 넓은 창): 4개가 가로 1열로 나란히 (dkvinacar.web.app 통합 대비 동일 배열)
+#   · 모바일(?m=1)·좁은 창: 같은 줄을 CSS flex-wrap으로 접어 2×2로 표시
+#   한 줄을 CSS로 접는 방식이라 Python 분기 없이 웹/모바일 배열을 다르게 가져갈 수 있다.
+CAR_TILES_PER_ROW = 4
 with st.container(key="car_nav_grid"):
-    for _row in range(0, len(resolved_cars), 2):
-        _cols = st.columns(2)
-        for _slot in range(2):
+    for _row in range(0, len(resolved_cars), CAR_TILES_PER_ROW):
+        _group = resolved_cars[_row:_row + CAR_TILES_PER_ROW]
+        _cols = st.columns(len(_group))
+        for _slot, car_rc in enumerate(_group):
             i = _row + _slot
-            if i >= len(resolved_cars):
-                break          # 홀수 대수: 오른쪽 칸은 빈 채로 둬 2열 틀 유지
-            car_rc = resolved_cars[i]
             with _cols[_slot]:
                 # 타일 전체를 클릭 가능하게 렌더 + JS가 대신 눌러줄 숨김 버튼
                 st.markdown(
