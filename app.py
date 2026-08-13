@@ -608,6 +608,9 @@ st.markdown("""
         width: auto !important; height: auto !important;
         max-height: 51px !important; max-width: 100% !important;
         object-fit: contain !important; margin-right: 0 !important;
+        /* 토요타처럼 배경이 불투명한 로고가 날 사각형으로 보이지 않게 살짝 둥글린다.
+           배경이 투명한 로고(세도나·택시)에는 시각적 영향이 없다. */
+        border-radius: 6px;
     }
     /* 이름은 타일 폭에 맞춰 줄바꿈 허용(단어 사이에서만). 이전 대비 50% 확대 */
     .car-nav-tile .car-title-text {
@@ -1818,20 +1821,34 @@ def _load_car_image_uri():
 
 CAR_IMAGE_URI = _load_car_image_uri()
 
-@st.cache_data(show_spinner=False)
-def _load_taxi_logo_uri():
-    """TAXI 브랜드 로고 이미지(taxi_logo.png 등)를 base64 data URI로 로드. 없으면 빈 문자열."""
+def _logo_data_uri(candidates):
+    """후보 파일을 순서대로 찾아 첫 번째로 존재하는 것을 base64 data URI로 반환. 없으면 빈 문자열.
+    앞쪽에 '배경 투명 처리본', 뒤쪽에 '원본'을 두어 투명본이 없어도 최소한 로고는 보이게 한다."""
     import base64, os
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    for fn, mime in (("taxi_logo.png", "image/png"), ("taxi_logo.jpg", "image/jpeg"),
-                     ("taxi_logo.jpeg", "image/jpeg"), ("taxi_logo.webp", "image/webp")):
+    for fn, mime in candidates:
         p = os.path.join(base_dir, fn)
         if os.path.exists(p):
             b64 = base64.b64encode(open(p, "rb").read()).decode()
             return f"data:{mime};base64,{b64}"
     return ""
 
+@st.cache_data(show_spinner=False)
+def _load_taxi_logo_uri():
+    """TAXI 브랜드 로고. taxi123_logo.png는 'taxi123 car logo.png'의 흰 배경을 투명 처리한 사본이다."""
+    return _logo_data_uri((("taxi123_logo.png", "image/png"),
+                           ("taxi123 car logo.png", "image/png"),
+                           ("taxi_logo.png", "image/png")))       # 예전 로고로도 폴백
+
+@st.cache_data(show_spinner=False)
+def _load_toyota_logo_uri():
+    """TOYOTA 브랜드 로고.
+    ⚠️ 이 로고만 배경을 투명 처리하지 않는다 — 엠블럼이 '흰색'이고 빨간 배경이 로고의 일부라,
+       배경을 지우면 밝은 실버 INNOVA 타일 위에서 흰 엠블럼이 보이지 않는다."""
+    return _logo_data_uri((("toyota car logo.png", "image/png"),))
+
 TAXI_LOGO_URI = _load_taxi_logo_uri()
+TOYOTA_LOGO_URI = _load_toyota_logo_uri()
 
 @st.cache_data(show_spinner=False)
 def _load_sedona_logo_uri():
@@ -2163,7 +2180,11 @@ def brand_logo(name):
     n = name.upper()
     S = 'width="28" height="18" viewBox="0 0 28 18" style="vertical-align:middle;margin-right:7px"'
     if "TOYOTA" in n:
-        # 토요타 엠블럼: 큰 타원 + 세로 타원 + 가로 타원
+        # 토요타: 실제 로고 이미지(빨간 바탕 + 흰 엠블럼). 배경이 불투명하므로 살짝 둥글려 배지처럼 보이게 한다.
+        if TOYOTA_LOGO_URI:
+            return (f'<img src="{TOYOTA_LOGO_URI}" alt="TOYOTA" '
+                    f'style="height:16px;width:auto;vertical-align:middle;margin-right:7px;border-radius:3px"/>')
+        # 파일이 없으면 SVG 근사본으로 폴백: 큰 타원 + 세로 타원 + 가로 타원
         return (f'<svg {S}>'
                 '<ellipse cx="14" cy="9" rx="13" ry="8" fill="none" stroke="#EB0A1E" stroke-width="1.6"/>'
                 '<ellipse cx="14" cy="7.6" rx="3.2" ry="5.4" fill="none" stroke="#EB0A1E" stroke-width="1.6"/>'
