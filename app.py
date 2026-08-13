@@ -600,8 +600,15 @@ st.markdown("""
     /* 로고는 가로 바 시절의 우측 여백(inline margin-right)을 지우고 크게 — 세로 스택이라 필요 없다.
        (로고·차량명은 운행 정보보다 확실히 커야 해서 이전 대비 50% 확대: 54×34 → 81×51) */
     .car-nav-tile .car-nav-logo { display: flex; align-items: center; justify-content: center; font-size: 51px; line-height: 1; }
-    .car-nav-tile .car-nav-logo svg,
-    .car-nav-tile .car-nav-logo img { width: 81px !important; height: 51px !important; margin-right: 0 !important; }
+    /* 인라인 SVG는 viewBox(28:18 ≈ 1.56:1)에 맞춰 그려져 있어 고정 크기로 둔다 */
+    .car-nav-tile .car-nav-logo svg { width: 81px !important; height: 51px !important; margin-right: 0 !important; }
+    /* ⚠️ 이미지 로고는 가로·세로를 둘 다 고정하면 찌그러진다(택시 로고 1.02:1, 현대 엠블럼 1.93:1).
+       높이만 제한하고 폭은 비율대로 두되, 타일을 넘지 않게 max-width로 막는다. */
+    .car-nav-tile .car-nav-logo img {
+        width: auto !important; height: auto !important;
+        max-height: 51px !important; max-width: 100% !important;
+        object-fit: contain !important; margin-right: 0 !important;
+    }
     /* 이름은 타일 폭에 맞춰 줄바꿈 허용(단어 사이에서만). 이전 대비 50% 확대 */
     .car-nav-tile .car-title-text {
         white-space: normal !important;
@@ -693,8 +700,8 @@ st.markdown("""
         .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 4px) !important; }
         .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
         .car-nav-tile .car-nav-logo { font-size: 28px; }
-        .car-nav-tile .car-nav-logo svg,
-        .car-nav-tile .car-nav-logo img { width: 44px !important; height: 28px !important; }
+        .car-nav-tile .car-nav-logo svg { width: 44px !important; height: 28px !important; }
+        .car-nav-tile .car-nav-logo img { max-height: 28px !important; }
         .car-nav-tile .car-title-text { font-size: 13px !important; }
 
         /* 차량 박스: 화면 폭 88%·세로비율(160:250)로, 가운데 */
@@ -751,8 +758,8 @@ if IS_MOBILE:
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 4px) !important; }
     .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
     .car-nav-tile .car-nav-logo { font-size: 42px; }
-    .car-nav-tile .car-nav-logo svg,
-    .car-nav-tile .car-nav-logo img { width: 66px !important; height: 42px !important; }
+    .car-nav-tile .car-nav-logo svg { width: 66px !important; height: 42px !important; }
+    .car-nav-tile .car-nav-logo img { max-height: 42px !important; }
     .car-nav-tile .car-title-text { font-size: 20px !important; }
     .car-nav-tile .car-nav-info { padding: 4px 7px; border-radius: 7px; }
     .car-nav-tile .cni-driver { font-size: 12px; }
@@ -1826,6 +1833,24 @@ def _load_taxi_logo_uri():
 
 TAXI_LOGO_URI = _load_taxi_logo_uri()
 
+@st.cache_data(show_spinner=False)
+def _load_sedona_logo_uri():
+    """HYUNDAI SEDONA 브랜드 로고 이미지를 base64 data URI로 로드. 없으면 빈 문자열.
+    sedona_logo.png는 원본 'hyundai car logo.png'의 밝은 배경(228,228,228)을 투명 처리한 사본이다.
+    ⚠️ 원본을 그대로 쓰면 세도나 타일이 거의 검정이라 로고 자리에 회색 사각형이 그대로 보인다.
+       원본 파일은 손대지 않았으므로 언제든 다시 만들 수 있다."""
+    import base64, os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for fn, mime in (("sedona_logo.png", "image/png"),
+                     ("hyundai car logo.png", "image/png")):   # 투명본이 없으면 원본으로 폴백
+        p = os.path.join(base_dir, fn)
+        if os.path.exists(p):
+            b64 = base64.b64encode(open(p, "rb").read()).decode()
+            return f"data:{mime};base64,{b64}"
+    return ""
+
+SEDONA_LOGO_URI = _load_sedona_logo_uri()
+
 def render_chassis(mk=None):
     """전 차량 공통 외관: 첨부된 실사 상단뷰 사진을 배경으로 깔고,
     사진에 이미 합성돼 있던 좌석을 가리는 불투명 실내 패널을 덮는다.
@@ -2144,7 +2169,10 @@ def brand_logo(name):
                 '<ellipse cx="14" cy="7.6" rx="3.2" ry="5.4" fill="none" stroke="#EB0A1E" stroke-width="1.6"/>'
                 '<ellipse cx="14" cy="6.4" rx="7.4" ry="2.6" fill="none" stroke="#EB0A1E" stroke-width="1.6"/></svg>')
     if "HYUNDAI" in n:
-        # 현대: 타원 안 기울인 H
+        # 현대: 실제 엠블럼 이미지(배경 투명 처리본). 파일이 없으면 아래 SVG 근사본으로 폴백.
+        if SEDONA_LOGO_URI:
+            return (f'<img src="{SEDONA_LOGO_URI}" alt="HYUNDAI" '
+                    f'style="height:16px;width:auto;vertical-align:middle;margin-right:7px"/>')
         return (f'<svg {S}>'
                 '<ellipse cx="14" cy="9" rx="13" ry="8" fill="none" stroke="#9aa7b8" stroke-width="1.6"/>'
                 '<text x="14" y="13.6" font-family="Georgia,serif" font-size="14" font-style="italic" font-weight="bold" fill="#9aa7b8" text-anchor="middle">H</text></svg>')
