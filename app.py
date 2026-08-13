@@ -614,15 +614,16 @@ st.markdown("""
            배경이 투명한 로고(세도나·택시)에는 시각적 영향이 없다. */
         border-radius: 6px;
     }
-    /* 차량명 — 네 타일 모두 '항상 같은 크기'.
+    /* 차량명 — 네 타일 모두 '항상 같은 크기'로 고정.
        예전엔 clamp(18px, 2.25vw, 25px)라 창 폭에 따라 18~25px로 변해 기준이 흔들렸다.
-       모바일(?m=1)의 20px과 같은 값으로 고정해 웹·모바일 어디서나 동일하게 보이게 한다.
-       (이름 길이가 달라 길수록 작아 보이지만 글자 크기 자체는 같다 — 줄바꿈은 단어 사이에서만) */
+       24px = 운행정보 확대(운전자 21px) 후에도 '차량명 > 운전자 > 번호' 위계를 유지하는 크기.
+       (이름 길이가 달라 길수록 작아 보이지만 글자 크기 자체는 같다 — 줄바꿈은 단어 사이에서만)
+       270px 타일에서 'HYUNDAI SEDONA'가 한 줄에 들어가고, 내용 총높이 ≈216px로 여유가 있다. */
     .car-nav-tile .car-title-text {
         white-space: normal !important;
         text-align: center;
         line-height: 1.2;
-        font-size: 20px !important;
+        font-size: 24px !important;
         word-break: keep-all;
         overflow: visible;
         text-overflow: clip;
@@ -711,7 +712,8 @@ st.markdown("""
         .car-nav-tile .car-nav-logo { font-size: 28px; }
         .car-nav-tile .car-nav-logo svg { width: 44px !important; height: 28px !important; }
         .car-nav-tile .car-nav-logo img { max-height: 28px !important; }
-        /* 좁은 창의 웹도 차량명은 같은 20px — '웹에서는 창 폭과 무관하게 동일 크기' 원칙 */
+        /* 좁은 창(≤768px)에서는 타일이 화면 절반 폭으로 줄어 24px면 내용이 타일 밖으로 넘친다.
+           이 구간만 20px로 낮춘다 — 네 차량끼리는 여전히 같은 크기다. */
         .car-nav-tile .car-title-text { font-size: 20px !important; }
 
         /* 차량 박스: 화면 폭 88%·세로비율(160:250)로, 가운데 */
