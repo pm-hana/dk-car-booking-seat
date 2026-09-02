@@ -1113,6 +1113,115 @@ def load_snapshot():
     return {}
 
 # ─────────────────────────────────────────────────────────────
+# 🧾 영수증 사진 첨부 — 택시 이용 후 영수증을 찍어 예약에 붙인다
+#   ⚠️ 예약(bookings)·이력(history)과 '분리된' 저장소를 쓴다.
+#      사진을 예약 문서에 넣으면 매 저장마다 수백 KB를 다시 쓰고, 백업 JSON도 사진 때문에 거대해진다.
+#   · 키는 예약을 특정하는 '차량||좌석||신청일시' — 도착 완료로 예약이 이력으로 옮겨가도 같은 키로 찾을 수 있다.
+#   · Firestore 문서는 1MB 한도라 원본을 그대로 못 넣는다 → 서버에서 자동 축소해 저장한다.
+# ─────────────────────────────────────────────────────────────
+RECEIPT_FILE = "receipts.json"
+RECEIPT_COLLECTION = "receipts"
+RECEIPT_MAX_SIDE = 1600        # 장변 기준 축소 목표(영수증 글자가 읽히는 선)
+RECEIPT_MAX_BYTES = 700 * 1024  # Firestore 1MB 문서 한도 대비 여유
+
+def receipt_key(car, seat, info):
+    """예약 1건을 가리키는 영수증 키. 신청일시를 붙여 같은 좌석의 다른 예약과 섞이지 않게 한다."""
+    return f"{car}||{seat}||{str((info or {}).get('created_at', ''))}"
+
+def compress_receipt(raw_bytes):
+    """업로드된 사진을 Firestore에 들어갈 크기로 축소해 (data URI, 안내문) 반환. 실패 시 (None, 사유).
+    폰 사진은 보통 2~5MB라 그대로는 문서 한도를 넘는다 → 장변 1600px·JPEG로 줄이고,
+    그래도 크면 품질을 단계적으로 낮춘다."""
+    try:
+        import base64, io as _io
+        from PIL import Image, ImageOps
+    except Exception:
+        return None, "PIL_MISSING"
+    try:
+        im = Image.open(_io.BytesIO(raw_bytes))
+        im = ImageOps.exif_transpose(im)          # 폰 사진의 회전 정보 반영(눕지 않게)
+        if im.mode not in ("RGB", "L"):
+            im = im.convert("RGB")
+        im.thumbnail((RECEIPT_MAX_SIDE, RECEIPT_MAX_SIDE), Image.LANCZOS)
+        for quality in (80, 70, 60, 50, 40):
+            buf = _io.BytesIO()
+            im.save(buf, "JPEG", quality=quality, optimize=True)
+            data = buf.getvalue()
+            if len(data) <= RECEIPT_MAX_BYTES:
+                b64 = base64.b64encode(data).decode()
+                return f"data:image/jpeg;base64,{b64}", "%.0fKB" % (len(data) / 1024.0)
+        return None, "TOO_LARGE"
+    except Exception:
+        return None, "BAD_IMAGE"
+
+def save_receipt(key, data_uri, meta):
+    """영수증 1건 저장(같은 키면 덮어쓴다). 성공하면 True."""
+    rec = {"at": now_vn().strftime("%Y-%m-%d %H:%M:%S"), "by": current_actor(),
+           "size": meta, "image": data_uri}
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(RECEIPT_COLLECTION).document(_safe_doc_id(key)).set(rec)
+            return True
+        except Exception:
+            pass
+    try:
+        rows = _read_json_dict(RECEIPT_FILE)
+        rows[key] = rec
+        _write_json_atomic(RECEIPT_FILE, rows)
+        return True
+    except Exception:
+        return False
+
+def load_receipt(key):
+    """저장된 영수증 1건을 반환. 없으면 빈 dict."""
+    db = _get_db()
+    if db is not None:
+        try:
+            doc = db.collection(RECEIPT_COLLECTION).document(_safe_doc_id(key)).get()
+            if doc.exists:
+                return doc.to_dict() or {}
+        except Exception:
+            pass
+    return _read_json_dict(RECEIPT_FILE).get(key, {})
+
+def delete_receipt(key):
+    """예약이 취소될 때 딸린 영수증도 함께 지운다(남겨두면 주인 없는 사진만 쌓인다)."""
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(RECEIPT_COLLECTION).document(_safe_doc_id(key)).delete()
+        except Exception:
+            pass
+    try:
+        rows = _read_json_dict(RECEIPT_FILE)
+        if key in rows:
+            rows.pop(key, None)
+            _write_json_atomic(RECEIPT_FILE, rows)
+    except Exception:
+        pass
+
+def _safe_doc_id(key):
+    """Firestore 문서 ID에는 '/'를 쓸 수 없고 길이 제한이 있어 해시로 바꾼다."""
+    return hashlib.sha1(key.encode("utf-8")).hexdigest()
+
+def _read_json_dict(path):
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+def _write_json_atomic(path, obj):
+    tmp_file = path + ".tmp"
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False)
+    os.replace(tmp_file, path)
+
+# ─────────────────────────────────────────────────────────────
 # 🧾 감사 로그(Audit Log) — 누가 언제 어떤 예약을 바꿨는지 기록
 #   전 인원이 매일 쓰면 "내 예약이 사라졌다" 문의는 반드시 생긴다. 그때 답할 수 있는 유일한 근거다.
 #   ⚠️ 탑승 이력(history)과 '분리된' 저장소를 쓴다.
@@ -1370,6 +1479,21 @@ TR = {
         "backup_no_snap": "되돌릴 수 있는 직전 상태가 없습니다.",
         "save_failed": "⚠️ 저장에 실패했습니다. 방금 변경한 내용이 서버에 반영되지 않았을 수 있습니다. 새로고침 후 다시 확인해 주세요.",
         "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기", "audit_act_approve": "배차 승인",
+        "audit_act_receipt": "영수증 첨부", "audit_act_receipt_del": "영수증 삭제",
+        "btn_receipt": "영수증 첨부", "btn_receipt_done": "영수증 ✓",
+        "receipt_title": "🧾 영수증 첨부",
+        "receipt_desc": "{car} 좌석 {seat} · {name}",
+        "receipt_pick": "영수증 사진 선택 (폰은 카메라·앨범, PC는 파일 선택)",
+        "receipt_empty": "아직 첨부된 영수증이 없습니다. 위에서 사진을 선택해 주세요.",
+        "receipt_ready": "미리보기 · 저장 크기 {size}",
+        "receipt_save": "이 사진으로 첨부",
+        "receipt_saved": "🧾 영수증이 첨부되었습니다.",
+        "receipt_saved_at": "첨부: {at} · {by}",
+        "receipt_delete": "🗑️ 첨부한 영수증 삭제",
+        "receipt_deleted": "🗑️ 영수증을 삭제했습니다.",
+        "receipt_err_lib": "이미지 처리 모듈(Pillow)이 설치되지 않아 사진을 저장할 수 없습니다.",
+        "receipt_err_big": "사진이 너무 커서 저장할 수 없습니다. 더 작게 찍거나 잘라서 다시 올려 주세요.",
+        "receipt_err_bad": "사진을 읽을 수 없습니다. jpg·png 형식인지 확인해 주세요.",
         "status_pending": "승인 대기", "status_approved": "승인 완료",
         "status_soon": "출발 임박 · 미승인", "status_over": "출발 시각 초과 · 미승인",
         "approve_title": "✅ 승인 대기 ({n}건)", "approve_none": "승인 대기 중인 신청이 없습니다.",
@@ -1466,6 +1590,21 @@ TR = {
         "backup_no_snap": "Không có trạng thái nào để hoàn tác.",
         "save_failed": "⚠️ Lưu thất bại. Thay đổi vừa rồi có thể chưa được ghi lên máy chủ. Vui lòng tải lại trang và kiểm tra.",
         "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác", "audit_act_approve": "Duyệt xe",
+        "audit_act_receipt": "Đính kèm hóa đơn", "audit_act_receipt_del": "Xóa hóa đơn",
+        "btn_receipt": "Hóa đơn", "btn_receipt_done": "Hóa đơn ✓",
+        "receipt_title": "🧾 Đính kèm hóa đơn",
+        "receipt_desc": "{car} Ghế {seat} · {name}",
+        "receipt_pick": "Chọn ảnh hóa đơn (điện thoại: máy ảnh·thư viện, PC: chọn tệp)",
+        "receipt_empty": "Chưa có hóa đơn nào được đính kèm. Vui lòng chọn ảnh ở trên.",
+        "receipt_ready": "Xem trước · dung lượng lưu {size}",
+        "receipt_save": "Đính kèm ảnh này",
+        "receipt_saved": "🧾 Đã đính kèm hóa đơn.",
+        "receipt_saved_at": "Đã đính kèm: {at} · {by}",
+        "receipt_delete": "🗑️ Xóa hóa đơn đã đính kèm",
+        "receipt_deleted": "🗑️ Đã xóa hóa đơn.",
+        "receipt_err_lib": "Chưa cài mô-đun xử lý ảnh (Pillow) nên không thể lưu ảnh.",
+        "receipt_err_big": "Ảnh quá lớn nên không lưu được. Vui lòng chụp nhỏ hơn hoặc cắt bớt rồi tải lại.",
+        "receipt_err_bad": "Không đọc được ảnh. Vui lòng kiểm tra định dạng jpg·png.",
         "status_pending": "Chờ duyệt", "status_approved": "Đã duyệt",
         "status_soon": "Sắp khởi hành · chưa duyệt", "status_over": "Quá giờ đi · chưa duyệt",
         "approve_title": "✅ Chờ duyệt ({n})", "approve_none": "Không có đăng ký nào đang chờ duyệt.",
@@ -1562,6 +1701,21 @@ TR = {
         "backup_no_snap": "No saved state available to undo.",
         "save_failed": "⚠️ Save failed. Your latest change may not have reached the server. Please reload and check again.",
         "audit_act_restore": "Restored backup", "audit_act_undo": "Undone", "audit_act_approve": "Approved",
+        "audit_act_receipt": "Receipt attached", "audit_act_receipt_del": "Receipt removed",
+        "btn_receipt": "Receipt", "btn_receipt_done": "Receipt ✓",
+        "receipt_title": "🧾 Attach Receipt",
+        "receipt_desc": "{car} Seat {seat} · {name}",
+        "receipt_pick": "Choose a receipt photo (phone: camera/album, PC: file picker)",
+        "receipt_empty": "No receipt attached yet. Pick a photo above.",
+        "receipt_ready": "Preview · stored size {size}",
+        "receipt_save": "Attach this photo",
+        "receipt_saved": "🧾 Receipt attached.",
+        "receipt_saved_at": "Attached: {at} · {by}",
+        "receipt_delete": "🗑️ Remove attached receipt",
+        "receipt_deleted": "🗑️ Receipt removed.",
+        "receipt_err_lib": "The image library (Pillow) is not installed, so the photo cannot be saved.",
+        "receipt_err_big": "The photo is too large to store. Please take a smaller one or crop it and try again.",
+        "receipt_err_bad": "Could not read the photo. Please check it is a jpg or png file.",
         "status_pending": "Pending", "status_approved": "Approved",
         "status_soon": "Departing soon · not approved", "status_over": "Past departure · not approved",
         "approve_title": "✅ Pending approval ({n})", "approve_none": "No requests are waiting for approval.",
@@ -2564,6 +2718,7 @@ def _audit_log_body():
         "done": t("audit_act_done"), "reset": t("audit_act_reset"),
         "restore": t("audit_act_restore"), "undo": t("audit_act_undo"),
         "approve": t("audit_act_approve"), "migrate": t("audit_act_migrate"),
+        "receipt": t("audit_act_receipt"), "receipt_del": t("audit_act_receipt_del"),
     }
     body = []
     for r in rows:
@@ -3496,6 +3651,7 @@ def cancel_dialog(car, seat):
                 st.error(t("owner_err"))
                 st.stop()
             log_action("cancel", car, seat, info)      # 삭제 전에 기록 — 지운 뒤엔 근거가 남지 않는다
+            delete_receipt(receipt_key(car, seat, info))   # 주인 없는 영수증 사진이 남지 않게 함께 정리
             del st.session_state.bookings[(car, seat)]
             save_bookings(st.session_state.bookings)
             st.session_state.cancel_target = None
@@ -3505,6 +3661,61 @@ def cancel_dialog(car, seat):
         if st.button(t("btn_cancel"), use_container_width=True, key="cancel_no_btn"):
             st.session_state.cancel_target = None
             st.rerun()
+
+
+def _close_receipt():
+    st.session_state.receipt_target = None
+
+
+@st.dialog(" ", on_dismiss=_close_receipt)
+def receipt_dialog(car, seat):
+    """영수증 첨부 팝업 — 폰이면 카메라·갤러리, PC면 파일 탐색기가 열린다(st.file_uploader가 OS 선택기를 띄운다).
+    올린 사진은 서버에서 자동 축소해 Firestore(또는 로컬 receipts.json)에 보관한다."""
+    info = st.session_state.bookings.get((car, seat))
+    if not info:
+        _close_receipt()
+        return
+    st.markdown(f'<div class="dlg-step-title">{esc(t("receipt_title"))}</div>', unsafe_allow_html=True)
+    st.caption(t("receipt_desc", car=_short_car_name(car), seat=seat, name=info.get("name", "")))
+
+    key = receipt_key(car, seat, info)
+    cur = load_receipt(key)
+
+    up = st.file_uploader(t("receipt_pick"), type=["jpg", "jpeg", "png", "webp", "heic"],
+                          key=f"receipt_up_{car}_{seat}")
+    if up is not None:
+        data_uri, meta = compress_receipt(up.getvalue())
+        if data_uri is None:
+            st.error({"PIL_MISSING": t("receipt_err_lib"),
+                      "TOO_LARGE": t("receipt_err_big"),
+                      "BAD_IMAGE": t("receipt_err_bad")}.get(meta, t("receipt_err_bad")))
+        else:
+            st.image(data_uri, use_container_width=True)
+            st.caption(t("receipt_ready", size=meta))
+            if st.button(t("receipt_save"), type="primary", use_container_width=True,
+                         key="receipt_save_btn"):
+                if save_receipt(key, data_uri, meta):
+                    log_action("receipt", car, seat, info, note=meta)
+                    st.session_state.receipt_target = None
+                    st.toast(t("receipt_saved"))
+                    st.rerun()
+                else:
+                    st.error(t("save_failed"))
+    elif cur.get("image"):
+        # 이미 붙여 둔 영수증이 있으면 그대로 보여주고, 다시 올리거나 삭제할 수 있게 한다
+        st.image(cur["image"], use_container_width=True)
+        st.caption(t("receipt_saved_at", at=cur.get("at", ""), by=cur.get("by", "") or t("audit_unknown")))
+        if st.button(t("receipt_delete"), use_container_width=True, key="receipt_del_btn"):
+            delete_receipt(key)
+            log_action("receipt_del", car, seat, info)
+            st.toast(t("receipt_deleted"))
+            st.rerun()
+    else:
+        st.info(t("receipt_empty"))
+
+    if st.button(t("btn_close"), use_container_width=True, key="receipt_close_btn"):
+        st.session_state.receipt_target = None
+        st.rerun()
 
 
 def _close_arrival():
@@ -3601,6 +3812,11 @@ if st.session_state.get("arrive_target") and _claim_dialog():
 if st.session_state.get("cancel_target") and _claim_dialog():
     _ct_car, _ct_seat = st.session_state.cancel_target
     cancel_dialog(_ct_car, _ct_seat)
+
+# 영수증 첨부 버튼이 눌렸으면 사진 업로드 팝업을 띄운다(택시 전용).
+if st.session_state.get("receipt_target") and _claim_dialog():
+    _rc_car, _rc_seat = st.session_state.receipt_target
+    receipt_dialog(_rc_car, _rc_seat)
 
 if st.session_state.bookings:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)
@@ -3712,6 +3928,14 @@ if st.session_state.bookings:
                 st.session_state.arrive_input_tick = datetime.time(_dh, _dm)
                 st.rerun()
 
+        def _btn_receipt():
+            # 택시만 노출 — 영수증 정산이 필요한 차량이다. 이미 붙여 뒀으면 라벨에 체크를 붙여 상태를 보여준다.
+            has = bool(load_receipt(receipt_key(bc_name, bseat, binfo)).get("image"))
+            if st.button(t("btn_receipt_done") if has else t("btn_receipt"),
+                         key=f"receipt_btn_{bc_name}_{bseat}", use_container_width=True):
+                st.session_state.receipt_target = (bc_name, bseat)
+                st.rerun()
+
         # 카드 전체(정보 + 버튼)를 감싸는 컨테이너에 차량색 배경을 입힌다(키별 1회성 스타일 주입).
         st.markdown(
             f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
@@ -3721,14 +3945,12 @@ if st.session_state.bookings:
         with st.container(key=cardkey):
             st.markdown(header_html, unsafe_allow_html=True)
             st.markdown(info_grid, unsafe_allow_html=True)          # 정보 2열 그리드(위)
-            # 버튼 3개(예약수정/취소/도착완료)는 정보 아래 '가로 3분할'로 배치 → 카드 높이를 대폭 축소.
-            bcol1, bcol2, bcol3 = st.columns(3)
-            with bcol1:
-                _btn_edit()
-            with bcol2:
-                _btn_cancel()
-            with bcol3:
-                _btn_done()
+            # 버튼은 정보 아래 가로 분할 — 택시는 '영수증 첨부'가 하나 더 붙어 4분할, 나머지는 3분할.
+            _is_taxi = "TAXI" in str(bc_name).upper()
+            _btns = [_btn_edit, _btn_cancel, _btn_done] + ([_btn_receipt] if _is_taxi else [])
+            for _col, _fn in zip(st.columns(len(_btns)), _btns):
+                with _col:
+                    _fn()
 
     # 배차 예약 카드를 '한 줄에 2개(가로 2열)'로 배치하되, '같은 차량끼리만' 짝을 짓는다.
     #  → 서로 다른 차량이 한 줄에 섞이지 않는다. 한 차량 카드가 홀수면 그 차량 마지막 줄 오른쪽 칸은 비워 둔다.

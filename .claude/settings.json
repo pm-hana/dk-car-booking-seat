@@ -3,7 +3,24 @@
     "allow": [
       "PowerShell(cd \"c:\\\\Users\\\\hana\\\\OneDrive\\\\바탕 화면\\\\DK CAR BOOKING SEAT\"; python -m py_compile app.py; if \\($?\\) { \"py_compile OK\" }; \"--- 모바일 블록 차량명 크기 확인 ---\"; Select-String -Path app.py -Pattern \"car-nav-tile \\\\.car-title-text\" -Context 0,0 | ForEach-Object { \"line \" + $_.LineNumber + \": \" + $_.Line.Trim\\(\\) })",
       "PowerShell(cd \"c:\\\\Users\\\\hana\\\\OneDrive\\\\바탕 화면\\\\DK CAR BOOKING SEAT\"; $o = \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\reg17.txt\"; \"\" | Out-File -Encoding utf8 $o; foreach \\($t in @\\(\"i18n_test\",\"smoke_test\",\"a5_b1_test\",\"e2e_test\",\"a3_b5_test\",\"a4_test\",\"b3_c1_test\",\"b4_test\",\"chart_check\",\"nav_test\",\"fleet_test\",\"info_test\",\"taxi_admin_test\",\"unlock_test\",\"tiles_test\",\"anim_test\",\"row_test\",\"logo_test\"\\)\\) { \"--- $t ---\" | Out-File -Append -Encoding utf8 $o; python \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\$t.py\" 2>&1 | Select-String \"^결과|Only one dialog\" | Out-File -Append -Encoding utf8 $o }; Get-Content $o)",
-      "PowerShell(cd \"c:\\\\Users\\\\hana\\\\OneDrive\\\\바탕 화면\\\\DK CAR BOOKING SEAT\"; $o = \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\reg18.txt\"; \"\" | Out-File -Encoding utf8 $o; foreach \\($t in @\\(\"i18n_test\",\"smoke_test\",\"a5_b1_test\",\"e2e_test\",\"a3_b5_test\",\"a4_test\",\"b3_c1_test\",\"b4_test\",\"chart_check\",\"nav_test\",\"fleet_test\",\"info_test\",\"taxi_admin_test\",\"unlock_test\",\"tiles_test\",\"anim_test\",\"row_test\",\"logo_test\"\\)\\) { \"--- $t ---\" | Out-File -Append -Encoding utf8 $o; python \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\$t.py\" 2>&1 | Select-String \"^결과|Only one dialog\" | Out-File -Append -Encoding utf8 $o }; Get-Content $o)"
+      "PowerShell(cd \"c:\\\\Users\\\\hana\\\\OneDrive\\\\바탕 화면\\\\DK CAR BOOKING SEAT\"; $o = \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\reg18.txt\"; \"\" | Out-File -Encoding utf8 $o; foreach \\($t in @\\(\"i18n_test\",\"smoke_test\",\"a5_b1_test\",\"e2e_test\",\"a3_b5_test\",\"a4_test\",\"b3_c1_test\",\"b4_test\",\"chart_check\",\"nav_test\",\"fleet_test\",\"info_test\",\"taxi_admin_test\",\"unlock_test\",\"tiles_test\",\"anim_test\",\"row_test\",\"logo_test\"\\)\\) { \"--- $t ---\" | Out-File -Append -Encoding utf8 $o; python \"C:\\\\Users\\\\hana\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-hana-OneDrive-------DK-CAR-BOOKING-SEAT\\\\fe6ce9d9-b238-4a6f-a3fe-232bac2dedc4\\\\scratchpad\\\\$t.py\" 2>&1 | Select-String \"^결과|Only one dialog\" | Out-File -Append -Encoding utf8 $o }; Get-Content $o)",
+      "WebFetch(domain:thi.laixeanninh.vn)",
+      "Bash(curl -sL \"https://thi.laixeanninh.vn/600-cau-hoi-ly-thuyet-thi-lai-xe-hang-b-2026\" -o page.html)",
+      "Bash(curl -sL \"https://thi.laixeanninh.vn/api/questions-by-type-b?question_type=van_hoa\" -H \"Referer: https://thi.laixeanninh.vn/600-cau-hoi-ly-thuyet-thi-lai-xe-hang-b-2026\" -o vanhoa.json)",
+      "Bash(python -c ' *)",
+      "WebSearch",
+      "Bash(python t_critical.py)",
+      "Bash(python -)",
+      "Bash(mkdir -p \"/c/Users/hana/OneDrive/바탕 화면/베트남운전면허/img\")",
+      "Bash(python t_kythuat.py)",
+      "Bash(python -c *)",
+      "Bash(python t_bienbao.py)",
+      "Bash(cd \"/c/Users/hana/OneDrive/바탕 화면/베트남운전면허\" && ls -la . 모바일 | head -30 && echo \"--- img count ---\" && ls img | wc -l)",
+      "Read(//c/Users/hana/OneDrive/바탕 화면/베트남운전면허/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\hana\\OneDrive\\바탕 화면\\베트남운전면허",
+      "C:\\Users\\hana\\OneDrive\\바탕 화면\\베트남운전면허\\모바일"
     ]
   },
   "hooks": {
