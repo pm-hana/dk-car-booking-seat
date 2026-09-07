@@ -595,22 +595,38 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
-    /* 좌석맵 팝업의 TAXI 제목: 누르면 인승 선택으로 되돌아간다(항목2). 눌러도 되는 곳임을 손모양으로 알린다. */
-    .taxi-title-click { cursor: pointer !important; }
+    /* 좌석맵 팝업의 TAXI 제목: 누르면 인승 선택으로 되돌아간다. 눌러도 되는 곳임을 손모양으로 알린다.
+       ⚠️ .car-header-center가 flex라 이 래퍼는 그냥 두면 내용 크기로 줄어들고,
+          그 안의 .car-name-frame(width:80%)이 함께 쪼그라들어 제목이 '...' 로 깨진다.
+          → 래퍼가 부모 폭을 그대로 차지하게 못박는다. */
+    .taxi-title-click { cursor: pointer !important; display: block !important; width: 100% !important; }
     .taxi-title-click .car-name-frame { transition: transform 0.08s ease, box-shadow 0.08s ease; }
     .taxi-title-click:hover .car-name-frame { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
 
     /* 팝업 닫기(✕ 닫기) — 오른쪽 위 작은 텍스트 버튼.
-       모든 팝업이 dismissible=False라 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫힌다(항목3). */
-    div[class*="st-key-dlgx_"] {
-        display: flex !important;
-        justify-content: flex-end !important;
-        margin: -10px 0 2px 0 !important;
-    }
+       모든 팝업이 dismissible=False라 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫힌다.
+       왼쪽 빈 칸(3) + 버튼 칸(1) 구조 — 팝업 공통 CSS가 컬럼을 1:1로 만들어 버리므로 여기서 되돌린다. */
+    div[class*="st-key-dlgx_"] { margin: -10px 0 2px 0 !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
     div[class*="st-key-dlgx_"] button {
         min-height: 26px !important; height: 26px !important;
         padding: 0 10px !important; font-size: 12px !important;
         border-radius: 6px !important;
+    }
+
+    /* 택시 인승·택시 선택 배너: 고정 폭 안에서 개수가 늘수록 각 칸이 자동으로 좁아진다(가로 병렬).
+       라벨이 길어 한 줄에 안 들어가면 줄바꿈해 버튼 높이로 흡수한다(가로 스크롤·잘림 방지). */
+    div[class*="st-key-taxirow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    div[class*="st-key-taxirow_"] button {
+        width: 100% !important;
+        min-height: 46px !important;
+        padding: 4px 6px !important;
+        font-size: 12px !important; font-weight: 700 !important;
+        line-height: 1.25 !important;
+        white-space: normal !important;
+        word-break: keep-all !important;
+        overflow-wrap: anywhere !important;
     }
 
     /* 앱: 클릭 가능한 차량 이름 바(로고+이름 프레임 전체가 버튼처럼). 바 사이 세로 간격 확보(앱·웹 동일). */
@@ -1517,15 +1533,14 @@ TR = {
         "badge_seats": "{n}인승", "taxi_4": "4인승", "taxi_7": "7인승", "taxi_count": "TAXI 대수",
         "seats_left": "{n}자리 있음",
         # TAXI 통합(메인 타일 1개) — 인승 선택 → 택시 선택 → 좌석 선택 3단계 문구
-        "taxi_cap_title": "🚕 차량 인승 선택",
-        "taxi_cap_hint": "인승을 고르면 그 인승의 택시 목록이 나옵니다.",
+        "taxi_cap_hint": "차량 인승을 선택하면 택시 목록이 나옵니다.",
         "taxi_cap_5": "5인승 · 4자리 있음",
         "taxi_cap_7": "7인승 · 6자리 있음",
         "taxi_pick_title": "🚕 택시 선택 · {p}인승",
-        "taxi_pick_hint": "빈자리가 있는 택시를 고르거나, 새 택시를 부르면 번호가 자동으로 붙습니다.",
-        "taxi_new": "➕ 새 택시 부르기 (TAXI{n})",
+        "taxi_pick_hint": "차량 인승을 선택하면 택시 목록이 나옵니다.",
+        "taxi_new": "➕ 새 택시 (TAXI{n})",
         "taxi_full": "만차",
-        "taxi_none": "아직 부른 택시가 없습니다. 새 택시를 불러 주세요.",
+        "taxi_none": "아직 부른 택시가 없습니다. 새 택시를 선택 해 주세요.",
         "taxi_title_hint": "위 TAXI를 누르면 인승부터 다시 고를 수 있습니다.",
         # 팝업 공통 닫기 — 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫는다
         "dlg_close": "✕ 닫기",
@@ -1652,15 +1667,14 @@ TR = {
         "seat_driver": "Ghế lái", "seat_n": "Ghế {n}",
         "badge_seats": "{n} chỗ", "taxi_4": "4 chỗ", "taxi_7": "7 chỗ", "taxi_count": "Số xe TAXI",
         "seats_left": "Còn {n} chỗ",
-        "taxi_cap_title": "🚕 Chọn số chỗ xe",
-        "taxi_cap_hint": "Chọn số chỗ để xem danh sách taxi tương ứng.",
+        "taxi_cap_hint": "Chọn số chỗ xe để xem danh sách taxi.",
         "taxi_cap_5": "5 chỗ · còn 4 ghế",
         "taxi_cap_7": "7 chỗ · còn 6 ghế",
         "taxi_pick_title": "🚕 Chọn taxi · {p} chỗ",
-        "taxi_pick_hint": "Chọn taxi còn chỗ, hoặc gọi taxi mới để được cấp số tự động.",
-        "taxi_new": "➕ Gọi taxi mới (TAXI{n})",
+        "taxi_pick_hint": "Chọn số chỗ xe để xem danh sách taxi.",
+        "taxi_new": "➕ Taxi mới (TAXI{n})",
         "taxi_full": "Hết chỗ",
-        "taxi_none": "Chưa có taxi nào. Vui lòng gọi taxi mới.",
+        "taxi_none": "Chưa có taxi nào. Vui lòng chọn taxi mới.",
         "taxi_title_hint": "Nhấn TAXI ở trên để chọn lại số chỗ.",
         "dlg_close": "✕ Đóng",
         "board_active": "🚙 Đang chạy · {n}",
@@ -1784,15 +1798,14 @@ TR = {
         "seat_driver": "Driver", "seat_n": "Seat {n}",
         "badge_seats": "{n}-seater", "taxi_4": "4-Seat", "taxi_7": "7-Seat", "taxi_count": "TAXI count",
         "seats_left": "{n} SEAT LEFT",
-        "taxi_cap_title": "🚕 Select taxi capacity",
-        "taxi_cap_hint": "Pick a capacity to see the taxis of that size.",
+        "taxi_cap_hint": "Select a capacity to see the taxi list.",
         "taxi_cap_5": "5-seater · 4 seats",
         "taxi_cap_7": "7-seater · 6 seats",
         "taxi_pick_title": "🚕 Select taxi · {p}-seater",
-        "taxi_pick_hint": "Pick a taxi with free seats, or call a new one — its number is assigned automatically.",
-        "taxi_new": "➕ Call a new taxi (TAXI{n})",
+        "taxi_pick_hint": "Select a capacity to see the taxi list.",
+        "taxi_new": "➕ New taxi (TAXI{n})",
         "taxi_full": "Full",
-        "taxi_none": "No taxi called yet. Please call a new one.",
+        "taxi_none": "No taxi called yet. Please select a new taxi.",
         "taxi_title_hint": "Tap TAXI above to choose the capacity again.",
         "dlg_close": "✕ Close",
         "board_active": "🚙 In progress · {n}",
@@ -3066,10 +3079,14 @@ def _dlg_close_btn(name, on_close=None):
     — 입력 도중 화면 아무 데나 잘못 눌러 작성 내용이 통째로 날아가던 문제를 막는다.
     (dismissible=False면 Streamlit 기본 X가 사라지므로 직접 그린다. 팝업 안 st.rerun()은 팝업을 닫는다.)"""
     with st.container(key=f"dlgx_{name}"):
-        if st.button(t("dlg_close"), key=f"dlgxbtn_{name}"):
-            if on_close is not None:
-                on_close()
-            st.rerun()
+        # 팝업 안에서는 컬럼이 1:1로 강제되므로(공통 CSS), 아래 스코프 규칙으로 3:1을 되살려
+        # 버튼이 오른쪽 끝에 붙게 한다. flex 정렬만으로는 Streamlit 요소 폭(100%)에 눌려 왼쪽에 남는다.
+        _sp, _bt = st.columns([3, 1])
+        with _bt:
+            if st.button(t("dlg_close"), key=f"dlgxbtn_{name}", use_container_width=True):
+                if on_close is not None:
+                    on_close()
+                st.rerun()
 
 
 def _close_admin_panel():
@@ -3751,30 +3768,39 @@ def _taxi_picker_view():
         f'{car_title_frame("taxi4", brand_logo("TAXI") + "TAXI")}</div>',
         unsafe_allow_html=True,
     )
+    # 배너는 세로로 쌓지 않고 '한 줄 가로 병렬'로 놓는다 — 고정된 팝업 폭을 개수로 나눠 쓰므로
+    # 택시가 늘어날수록 각 칸이 자동으로 좁아지고, 목록이 길어져도 아래로 흘러내리지 않는다.
     stage = st.session_state.get("taxi_stage") or "cap"
     if stage == "cap":
-        st.markdown(f'<div class="dlg-step-title">{t("taxi_cap_title")}</div>', unsafe_allow_html=True)
         st.caption(t("taxi_cap_hint"))
-        for _cap, _key in ((4, "taxi_cap_5"), (6, "taxi_cap_7")):
-            st.button(t(_key), key=f"taxicap_{_cap}", use_container_width=True,
-                      on_click=_taxi_pick_cap, args=(_cap,))
+        with st.container(key="taxirow_cap"):
+            _caps = ((4, "taxi_cap_5"), (6, "taxi_cap_7"))
+            for _col, (_cap, _key) in zip(st.columns(len(_caps)), _caps):
+                with _col:
+                    st.button(t(_key), key=f"taxicap_{_cap}", use_container_width=True,
+                              on_click=_taxi_pick_cap, args=(_cap,))
         return
     # ② 택시 선택 — 고른 인승의 택시만 보여주고, 남은 자리를 라벨에 함께 적는다.
     cap = int(st.session_state.get("taxi_cap") or 4)
     st.markdown(f'<div class="dlg-step-title">{t("taxi_pick_title", p=(cap + 1))}</div>', unsafe_allow_html=True)
-    st.caption(t("taxi_pick_hint"))
     same_cap = [(i, sc) for i, sc in taxi_fleet().items() if sc == cap]
-    if not same_cap:
-        st.caption(t("taxi_none"))
-    for _idx, _sc in same_cap:
-        _dn = taxi_display_name(_idx, _sc)
-        _left = _sc - len(_taxi_seats_taken(_dn))
-        _label = f"TAXI{_idx} · " + (t("seats_left", n=_left) if _left > 0 else t("taxi_full"))
-        st.button(_label, key=f"taxipick_{_idx}", use_container_width=True, disabled=(_left <= 0),
-                  on_click=_taxi_pick_car, args=(_dn,))
+    # 아직 부른 택시가 없을 때와 있을 때 안내 문구가 다르다.
+    st.caption(t("taxi_pick_hint") if same_cap else t("taxi_none"))
     _new_idx = next_taxi_index()
-    st.button(t("taxi_new", n=_new_idx), key=f"taxinew_{cap}", use_container_width=True, type="primary",
-              on_click=_taxi_call_new, args=(_new_idx, cap))
+    with st.container(key="taxirow_pick"):
+        # [택시1][택시2]…[새 택시] 를 한 줄에 — 칸 수 = 택시 수 + 1
+        _cols = st.columns(len(same_cap) + 1)
+        for _col, (_idx, _sc) in zip(_cols, same_cap):
+            with _col:
+                _dn = taxi_display_name(_idx, _sc)
+                _left = _sc - len(_taxi_seats_taken(_dn))
+                # 버튼 라벨의 \n은 마크다운에서 줄바꿈으로 보장되지 않는다 → 한 줄로 두고 CSS 자동 줄바꿈에 맡긴다
+                _label = f"TAXI{_idx} · " + (t("seats_left", n=_left) if _left > 0 else t("taxi_full"))
+                st.button(_label, key=f"taxipick_{_idx}", use_container_width=True, disabled=(_left <= 0),
+                          on_click=_taxi_pick_car, args=(_dn,))
+        with _cols[-1]:
+            st.button(t("taxi_new", n=_new_idx), key=f"taxinew_{cap}", use_container_width=True,
+                      type="primary", on_click=_taxi_call_new, args=(_new_idx, cap))
 
 @st.dialog(" ", dismissible=False, on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):

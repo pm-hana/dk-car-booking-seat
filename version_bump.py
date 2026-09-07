@@ -159,11 +159,16 @@ def append_version_log(display_date, count, now):
 def git(*args, timeout=60):
     """BASE_DIR에서 git 명령 실행. (returncode, stdout+stderr) 반환. 실패해도 예외 안 냄."""
     try:
+        # encoding을 UTF-8로 못박는다. 기본값(로케일=cp1252)으로 두면 git이 돌려주는
+        # 한글 커밋 메시지를 읽다가 UnicodeDecodeError가 나고, 그 커맨드는 실패로 처리돼
+        # 커밋은 됐는데 push는 건너뛰는 일이 생긴다(0907 ver.1에서 실제로 겪음).
         p = subprocess.run(
             ["git", *args],
             cwd=BASE_DIR,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
         )
         return p.returncode, (p.stdout or "") + (p.stderr or "")
