@@ -361,10 +361,21 @@ st.markdown("""
     .st-key-hdr_right div[data-testid="stVerticalBlock"] { gap: 2px !important; }
     .st-key-hdr_right [data-testid="stElementContainer"] { margin: 0 !important; }
     .st-key-hdr_right .st-key-lang_toggle { margin: 0 !important; padding: 0 !important; }
-    /* 예약 이력 버튼: TAXI 박스(width 80% 가운데정렬)와 동일 끝선·폭으로 → 박스 바로 아래 한 줄 정렬 */
-    .st-key-csv_inset { padding: 0 10% !important; }
-    /* 예약 이력 버튼 높이를 기존(약 38px) 대비 2배로 — 현황판에서 가장 자주 누르는 버튼이라 탭 영역을 키운다 */
-    .st-key-csv_inset button { min-height: 76px !important; font-size: 15px !important; font-weight: 700 !important; }
+    /* 예약 이력 버튼: 오른쪽 끝선을 아래 현황판(도착 완료 열) 오른쪽 라인과 맞춘다 → 좌우 여백 없이 칸을 꽉 채운다 */
+    .st-key-csv_inset { padding: 0 !important; }
+    /* 검색창과 예약 이력 버튼은 '같은 높이'로 나란히 선다. 창 폭에 따라 함께 커지고 작아진다. */
+    .st-key-csv_inset button {
+        min-height: clamp(46px, 5.2vw, 76px) !important;
+        height: clamp(46px, 5.2vw, 76px) !important;
+        font-size: clamp(12px, 1.1vw, 15px) !important; font-weight: 700 !important;
+    }
+    .st-key-booking_search_query div[data-baseweb="input"],
+    .st-key-booking_search_query div[data-baseweb="base-input"],
+    .st-key-booking_search_query input {
+        min-height: clamp(46px, 5.2vw, 76px) !important;
+        height: clamp(46px, 5.2vw, 76px) !important;
+        font-size: clamp(12px, 1.1vw, 15px) !important;
+    }
     /* 엑셀 내보내기 팝업의 다운로드 버튼: 엑셀 그린 풀폭 버튼 */
     .st-key-export_dl button { background: #21a366 !important; border-color: #21a366 !important; color: #ffffff !important; font-weight: 700 !important; min-height: 46px !important; }
     .st-key-export_dl button:hover { background: #1a8551 !important; border-color: #1a8551 !important; color: #ffffff !important; }
@@ -373,11 +384,13 @@ st.markdown("""
     .st-key-booking_board { overflow-x: hidden !important; max-width: 100% !important; }
     /* 현황판 2열 제목(진행 중 / 도착 완료) — 어느 쪽이 무엇인지 열 맨 위에 한 줄로 못박는다(항목5) */
     .board-col-title {
-        font-size: 13px; font-weight: 700; color: #c7ccd6;
+        font-size: 19px; font-weight: 700; color: #c7ccd6;
         background: rgba(255,255,255,0.04); border: 1px solid #2b2f38;
         border-radius: 6px; padding: 4px 8px; margin: 0 0 6px 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* 같은 font-size라도 숫자는 한글보다 작아 보인다(글자 높이 차이) → 숫자만 조금 키워 눈으로 크기를 맞춘다. */
+    .dk-num { font-size: 1.15em; font-weight: inherit; letter-spacing: 0.02em; }
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
     /* (0,3,0) → Streamlit 모바일 적층(컬럼 flex-basis:100%)을 확실히 덮어씀.
        바깥 2열은 50%씩(2개가 화면에 딱), 안쪽 버튼 3열은 1/3씩 (같은 규칙으로 각 레벨 균등 분배). */
@@ -427,8 +440,9 @@ st.markdown("""
         margin-bottom: 20px;
     }
     /* 예약 현황판 제목(expander 제거 후 헤더 행에서 사용) */
+    /* 현황판 제목·열 제목·승인 대기 배너는 화면에서 가장 먼저 읽어야 하는 줄이라 1.5배로 키웠다. */
     .board-title {
-        font-size: 15px;
+        font-size: 22px;
         font-weight: bold;
         color: #fafafa;
         /* 상하 0 → 오른쪽 '예약 이력' 버튼과 수직 중심선 일치. 왼쪽 5% → INNOVA 박스(80%가운데) 왼쪽 끝선 정렬 */
@@ -661,7 +675,8 @@ st.markdown("""
         max-width: 100% !important;
         margin: 0 auto 4px auto !important;
         /* 그룹(차량) 사이의 기준 간격 B. 창이 넓어지면 같이 벌어지고 좁아지면 함께 좁아진다.
-           타이틀↔자기 배치도 간격(A·C)은 아래에서 이 값의 3배가 되도록 추가 여백을 준다. */
+           타이틀↔자기 배치도 간격(A·C)은 이 값의 0.75배 — 짝(타이틀+배치도)은 붙이고 차량 사이는 띄워
+           '한 대가 한 덩어리'로 읽히게 한다. 기본 gap이 B이므로 타이틀 칸에 -0.25B를 줘 0.75B로 좁힌다. */
         --dk-gap-b: clamp(4px, 0.55vw, 12px);
     }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] {
@@ -811,7 +826,7 @@ st.markdown("""
         .car-title-text { font-size: 16px !important; }
         .car-header-center { min-height: 26px !important; }
         /* 모바일에선 PC용 좌/우 인셋(제목 5%·버튼 10%) 해제 → 전체폭 기준 */
-        .board-title { font-size: 14px !important; padding-left: 0 !important; }
+        .board-title { font-size: 21px !important; padding-left: 0 !important; }
         .st-key-csv_inset { padding: 0 !important; }
     }
     </style>
@@ -890,7 +905,7 @@ if IS_MOBILE:
     .car-header-center { min-height: 26px !important; }
 
     /* 예약 현황판 제목·카드 폰트 소폭 축소 + PC용 좌/우 인셋 해제 */
-    .board-title { font-size: 14px !important; padding-left: 0 !important; }
+    .board-title { font-size: 21px !important; padding-left: 0 !important; }
     .st-key-csv_inset { padding: 0 !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -2942,6 +2957,12 @@ STATUS_CHIP_STYLE = {
 STATUS_CHIP_STYLE["taxi7"] = STATUS_CHIP_STYLE["taxi4"]
 
 
+def _num_up(html_text):
+    """제목 문자열 안의 숫자만 <span class="dk-num">으로 감싸 살짝 키운다.
+    한글과 숫자를 같은 font-size로 두면 숫자가 작아 보여 '4건'의 4가 묻힌다."""
+    return re.sub(r"(\d+)", r'<span class="dk-num">\1</span>', html_text)
+
+
 def _status_chip(info, mk="innova"):
     """예약 카드 헤더에 붙는 승인 상태 배지 HTML — 차량 배경색의 보색으로 칠해 항상 눈에 띄게 한다.
     상태: 출발 시각 초과 / 출발 임박(30분 이내) / 승인 대기 / 승인 완료."""
@@ -3933,7 +3954,7 @@ if not IS_MOBILE:
     if _tile_nth:
         st.markdown(
             "<style>@media (min-width: 900px) {"
-            f"{_tile_nth} {{ margin-right: calc(var(--dk-gap-b) * 2) !important; }}"
+            f"{_tile_nth} {{ margin-right: calc(var(--dk-gap-b) * -0.25) !important; }}"
             "}</style>",
             unsafe_allow_html=True,
         )
@@ -4344,7 +4365,7 @@ search_query = ""
 #  → 예약 신청이 없더라도 '실시간 차량 예약 현황' 제목과 '예약 이력(CSV)' 버튼이 항상 노출된다.
 h_title, h_search, h_csv = st.columns([2, 1, 1], vertical_alignment="center")
 with h_title:
-    st.markdown(f'<div class="board-title">{t("list_title", n=num_bookings)}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="board-title">{_num_up(esc(t("list_title", n=num_bookings)))}</div>', unsafe_allow_html=True)
 with h_search:
     # 검색창은 예약이 있을 때만 노출(빈 상태에서 빈 검색창 방지). CSV 위치는 컬럼으로 고정 유지.
     if st.session_state.bookings:
@@ -4371,8 +4392,8 @@ if _pend:
     _pb_txt = t("pending_banner_urgent", n=len(_pend), u=_urgent) if _urgent else t("pending_banner", n=len(_pend))
     st.markdown(
         f'<div style="background:{_pb_bg}; border:1px solid {_pb_fg}; color:{_pb_fg}; '
-        f'border-radius:8px; padding:6px 10px; margin:2px 0 8px 0; font-size:12px; font-weight:700;">'
-        f'{esc(_pb_txt)}</div>',
+        f'border-radius:8px; padding:6px 10px; margin:2px 0 8px 0; font-size:18px; font-weight:700;">'
+        f'{_num_up(esc(_pb_txt))}</div>',
         unsafe_allow_html=True,
     )
 
@@ -4443,13 +4464,32 @@ if st.session_state.bookings or _done_today:
     #  구조: 차량색 배경 컨테이너 안에 헤더(차량명+좌석배지) + 3열×3행 그리드.
     #        · 1열: 신청자 / 출발지 / 목적지   · 2열: 출발날짜 / 출발시간 / 도착시간   · 3열: 예약수정 / 예약취소 / 도착완료 버튼
     #        3열 모두 동일 폭(1:1:1), 각 행 높이도 버튼과 맞춰 가로 정렬.
+    def _card_key(bc_name, bseat):
+        """카드별 고유 컨테이너 키 — 배경/테두리를 카드 전체(정보+버튼 포함)에 입히는 데 쓴다."""
+        mk = _model_key(bc_name)
+        _safe = "".join(ch for ch in f"{bc_name}{bseat}" if ch.isalnum())
+        return mk, f"bkcard_{mk}_{_safe}"
+
+    def _booking_cards_css(items):
+        """예약 카드들의 배경 CSS를 '한 덩어리'로 만든다.
+        ⚠️ 예전에는 카드마다 st.markdown('<style>…')을 호출했다. 이 요소는 눈에 보이지 않지만
+           Streamlit 세로 블록의 자식으로 남아 카드 사이마다 여백을 하나씩 더 만들었고,
+           그래서 왼쪽(진행 중) 열의 첫 카드가 오른쪽(도착 완료) 열보다 아래에서 시작했다.
+           스타일을 두 열 바깥에서 한 번만 내보내 양쪽 열의 요소 구성을 똑같이 맞춘다."""
+        out = []
+        for (bc_name, bseat), _info in items:
+            mk, ck = _card_key(bc_name, bseat)
+            c_bg, _c_fg, c_bd = CAR_CARD_STYLE.get(mk, CAR_CARD_STYLE["innova"])
+            out.append(
+                f".st-key-{ck}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
+                f"border-radius:8px !important; padding:7px 8px !important; margin-bottom:5px !important;}}"
+            )
+        return "".join(out)
+
     def _render_booking_card(bc_name, bseat, binfo):
         # 카드 배경·글자색 = 해당 차량 색. INNOVA는 밝은 실버(어두운 글자), 그 외는 어두운 틴트(밝은 글자).
-        mk = _model_key(bc_name)
+        mk, cardkey = _card_key(bc_name, bseat)
         c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(mk, CAR_CARD_STYLE["innova"])
-        # 카드별 고유 컨테이너 키 → 배경/테두리를 카드 전체(정보+버튼 포함)에 입힌다.
-        _safe = "".join(ch for ch in f"{bc_name}{bseat}" if ch.isalnum())
-        cardkey = f"bkcard_{mk}_{_safe}"
 
         # 헤더: 차량 로고 + 짧은 차량명(INNOVA/SEDONA/VF5/TAXI n) + 좌석 배지 + 구분선. 카드 상단 전체폭.
         car_logo = brand_logo(bc_name)          # 브랜드 인라인 SVG/이미지 로고
@@ -4518,12 +4558,7 @@ if st.session_state.bookings or _done_today:
                 st.session_state.receipt_target = (bc_name, bseat)
                 st.rerun()
 
-        # 카드 전체(정보 + 버튼)를 감싸는 컨테이너에 차량색 배경을 입힌다(키별 1회성 스타일 주입).
-        st.markdown(
-            f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
-            f"border-radius:8px !important; padding:7px 8px !important; margin-bottom:5px !important;}}</style>",
-            unsafe_allow_html=True,
-        )
+        # 카드 배경 CSS는 _booking_cards_css()가 두 열 바깥에서 한 번에 내보낸다(여기서 주입하지 않는다).
         with st.container(key=cardkey):
             st.markdown(header_html, unsafe_allow_html=True)
             st.markdown(info_grid, unsafe_allow_html=True)          # 정보 2열 그리드(위)
@@ -4606,16 +4641,22 @@ if st.session_state.bookings or _done_today:
             ]).lower()
         ]
 
+        # 카드 배경 CSS는 열을 만들기 전에 한 번만 — 양쪽 열이 똑같이 '제목 + 카드들'만 갖게 되어
+        # 두 열의 첫 배너가 같은 높이에서 시작한다.
+        _cards_css = _booking_cards_css(active_items)
+        if _cards_css:
+            st.markdown(f"<style>{_cards_css}</style>", unsafe_allow_html=True)
+
         col_l, col_r = st.columns(2)
         with col_l:
-            st.markdown(f'<div class="board-col-title">{t("board_active", n=len(active_items))}</div>',
+            st.markdown(f'<div class="board-col-title">{_num_up(esc(t("board_active", n=len(active_items))))}</div>',
                         unsafe_allow_html=True)
             if not active_items:
                 st.caption(t("board_active_none"))
             for (bc_name, bseat), binfo in active_items:
                 _render_booking_card(bc_name, bseat, binfo)
         with col_r:
-            st.markdown(f'<div class="board-col-title">{t("board_done", n=len(done_rows))}</div>',
+            st.markdown(f'<div class="board-col-title">{_num_up(esc(t("board_done", n=len(done_rows))))}</div>',
                         unsafe_allow_html=True)
             if not done_rows:
                 st.caption(t("board_done_none"))
