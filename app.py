@@ -201,8 +201,12 @@ st.markdown("""
         font-weight: 700 !important;
         color: #ffffff !important;
         line-height: 1.2 !important;
-        margin: -44px 0 12px 0 !important;   /* 빈 크롬 헤더 높이만큼 끌어올려 X와 같은 줄에 정렬 */
-        padding-right: 40px !important;       /* 우측 X 버튼과 겹치지 않도록 여백 */
+        text-align: center !important;        /* 팝업 안 문구는 모두 가운데 정렬 */
+        /* ⚠️ 예전에는 -44px로 끌어올려 크롬 X와 같은 줄에 맞췄다. 지금은 팝업이 dismissible=False라
+           크롬 X가 없고 우리가 그린 '✕ 닫기'가 한 줄을 차지한다 → 그대로 두면 제목이 그 위로 올라타
+           차량 제목 바와 겹쳐 보인다(실제 화면에서 확인). 끌어올림을 없앤다. */
+        margin: 0 0 10px 0 !important;
+        padding-right: 0 !important;
     }
 
     /* 관리자 '좌석 신청 현황' 표 — 운전석 제외 전체 좌석(빈 좌석 포함) 신청 현황 */
@@ -603,6 +607,10 @@ st.markdown("""
     .taxi-title-click .car-name-frame { transition: transform 0.08s ease, box-shadow 0.08s ease; }
     .taxi-title-click:hover .car-name-frame { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
 
+    /* 팝업 안의 안내 문구(캡션)도 모두 가운데 정렬 — 제목·차량 프레임과 축을 맞춘다. */
+    [role="dialog"] [data-testid="stCaptionContainer"],
+    [role="dialog"] [data-testid="stCaptionContainer"] p { text-align: center !important; }
+
     /* 팝업 닫기(✕ 닫기) — 오른쪽 위 작은 텍스트 버튼.
        모든 팝업이 dismissible=False라 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫힌다.
        왼쪽 빈 칸(3) + 버튼 칸(1) 구조 — 팝업 공통 CSS가 컬럼을 1:1로 만들어 버리므로 여기서 되돌린다. */
@@ -641,7 +649,12 @@ st.markdown("""
        정사각형으로 줄이고 2열로 배치해 각 타일의 경계를 분명히 한다. */
     /* 웹(기본)은 4개를 가로 1열로 — 폭은 타일 4개(각 최대 240px) + 간격이 들어갈 만큼 확보.
        추후 dkvinacar.web.app로 통합될 것을 대비해 그쪽과 같은 가로 배열을 기본으로 둔다. */
-    .st-key-car_nav_grid { max-width: 1130px !important; margin: 0 auto 4px auto !important; }
+    /* 타일 + 배치도가 한 줄에 늘어서므로 폭을 넉넉히 쓰고 가운데 정렬한다.
+       칸 수가 늘어도(택시 추가) 각 칸이 flex:1로 균등 분배돼 간격이 자동으로 조절된다. */
+    .st-key-car_nav_grid { max-width: 100% !important; margin: 0 auto 4px auto !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { justify-content: center !important; align-items: flex-start !important; }
+    /* 메인 화면 배치도: 타일과 나란히 서도록 여백을 줄이고 폭을 칸에 꽉 채운다. */
+    .st-key-car_nav_grid .car-layout-container { width: 100% !important; margin: 0 !important; padding: 6px !important; }
     /* Streamlit의 컬럼 세로적층(flex-basis:100%)을 자식결합자 특이도(0,3,0)로 덮어써 가로 배열 강제 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 10px !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
@@ -2841,6 +2854,11 @@ def _render_car_body(car_rc, show_name=True):
     else:
         st.error(t("full"))
     # ⚡ SVG 빈 좌석 클릭 시 JS가 대신 눌러줄 숨김 버튼(soft rerun)
+    #   ⚠️ 같은 차량의 좌석맵 팝업이 열려 있으면 그 팝업이 이미 같은 key·같은 라벨의 버튼을 그린다.
+    #      여기서 또 그리면 위젯 키가 중복돼 앱이 멈추고, JS 브릿지도 어느 버튼을 눌러야 할지 모른다.
+    #      → 팝업이 그 차량을 잡고 있는 동안에는 메인 화면 쪽 숨김 버튼을 건너뛴다.
+    if st.session_state.get("seatmap_car") == car_rc["display_name"]:
+        return
     for seat in range(1, car_rc["seats"] + 1):
         if f"좌석 {seat}" in available_seats:
             st.button(
@@ -3782,7 +3800,6 @@ def _taxi_picker_view():
         return
     # ② 택시 선택 — 고른 인승의 택시만 보여주고, 남은 자리를 라벨에 함께 적는다.
     cap = int(st.session_state.get("taxi_cap") or 4)
-    st.markdown(f'<div class="dlg-step-title">{t("taxi_pick_title", p=(cap + 1))}</div>', unsafe_allow_html=True)
     same_cap = [(i, sc) for i, sc in taxi_fleet().items() if sc == cap]
     # 아직 부른 택시가 없을 때와 있을 때 안내 문구가 다르다.
     st.caption(t("taxi_pick_hint") if same_cap else t("taxi_none"))
@@ -3876,13 +3893,24 @@ if "seatmap_car" not in st.session_state:
 #   · 모바일(?m=1)·좁은 창: 같은 줄을 CSS flex-wrap으로 접어 2×2로 표시
 #   한 줄을 CSS로 접는 방식이라 Python 분기 없이 웹/모바일 배열을 다르게 가져갈 수 있다.
 CAR_TILES_PER_ROW = 4
+# 배열: [INNOVA 타일][INNOVA 배치도] [SEDONA 타일][SEDONA 배치도] [TAXI 타일][TAXI1 배치도][TAXI2 배치도]…
+#  · 타이틀 바로 옆에 그 차의 배치도가 붙어, 빈자리를 보려고 팝업을 열지 않아도 된다.
+#  · 칸 수만큼 전체 폭을 나눠 쓰므로(각 칸 flex:1) 택시를 더 부를수록 칸이 늘고 간격이 자동으로 조절된다.
+#  · TAXI는 타일 하나만 두고(메인 타일 통합), 배치도는 실제로 부른 택시 수만큼 붙는다.
+_main_cells = []
+for _rc in nav_cars:
+    _main_cells.append(("tile", _rc))
+    if not _rc["is_taxi"]:
+        _main_cells.append(("map", _rc))          # 자사 차량은 타일 바로 옆에 자기 배치도
+for _rc in resolved_cars:
+    if _rc["is_taxi"]:
+        _main_cells.append(("map", _rc))          # 부른 택시들의 배치도를 TAXI 타일 뒤에 이어 붙인다
+
 with st.container(key="car_nav_grid"):
-    for _row in range(0, len(nav_cars), CAR_TILES_PER_ROW):
-        _group = nav_cars[_row:_row + CAR_TILES_PER_ROW]
-        _cols = st.columns(len(_group))
-        for _slot, car_rc in enumerate(_group):
-            i = _row + _slot
-            with _cols[_slot]:
+    _cols = st.columns(len(_main_cells))
+    for i, (_kind, car_rc) in enumerate(_main_cells):
+        with _cols[i]:
+            if _kind == "tile":
                 # 타일 전체를 클릭 가능하게 렌더 + JS가 대신 눌러줄 숨김 버튼
                 st.markdown(
                     car_nav_tile(car_rc["mk"], car_rc["logo_html"], car_rc["nav_label"], i),
@@ -3891,6 +3919,9 @@ with st.container(key="car_nav_grid"):
                 # on_click 콜백으로 즉시 상태 세팅 → 단일 rerun에 바로 팝업 오픈(클릭 후 바로 열림)
                 st.button(f"CARNAV::{i}", key=f"carnavclick_{i}",
                           on_click=_open_seatmap, args=(car_rc["display_name"],))
+            else:
+                # 배치도만(제목은 왼쪽 타일이 이미 보여준다). 빈 좌석을 누르면 바로 신청 폼이 열린다.
+                _render_car_body(car_rc, show_name=False)
 # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
 if st.session_state.get("seatmap_car"):
     _tgt = car_rc_for(st.session_state.seatmap_car)
@@ -4408,9 +4439,11 @@ if st.session_state.bookings or _done_today:
         #  중첩 Streamlit 컬럼을 쓰지 않아 열 겹침·가로 오버플로우가 없다. 높이 축소를 위해 인라인·압축 배치.
         #  왼쪽열=신청자·출발지·목적지 / 오른쪽열=출발날짜·출발시간·도착시간 → 행 순서대로 좌우 번갈아 채움.
         #  value는 신청자가 입력한 값(이름·출발지·목적지) → esc()로 감싸 태그가 실행되지 않게 한다.
+        # 제목과 값을 같은 줄에 나란히 둔다('신청자: 홍길동'). 제목만 한 줄, 값이 아랫줄로 내려가면
+        # 카드 높이가 두 배가 되고 한 화면에 보이는 배차 수가 절반으로 줄어든다.
         def _cell(label, value):
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
-                    f'<strong>{label}</strong><br>{esc(value)}</div>')
+                    f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
             f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:5px;">'
@@ -4494,9 +4527,11 @@ if st.session_state.bookings or _done_today:
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
 
+        # 제목과 값을 같은 줄에 나란히 둔다('신청자: 홍길동'). 제목만 한 줄, 값이 아랫줄로 내려가면
+        # 카드 높이가 두 배가 되고 한 화면에 보이는 배차 수가 절반으로 줄어든다.
         def _cell(label, value):
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
-                    f'<strong>{label}</strong><br>{esc(value)}</div>')
+                    f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
             f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:2px;">'
