@@ -237,17 +237,23 @@ st.markdown("""
     .st-key-admin_status_logout_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
     /* ===== 헤더 관리자 배너 2종(항목4) — 언어 토글 바로 아래, 토글 3개와 같은 폭·1줄 높이 =====
        화면 맨 아래에 있던 버튼을 위로 올려, 지금 관리자 모드인지와 나가는 길이 한눈에 보이게 한다. */
+    /* 언어 토글 3개가 차지하는 폭을 배너의 '최대 폭'으로 삼고, 창이 좁아지면 둘 다 같이 줄어든다. */
     .st-key-hdr_right .st-key-lang_toggle,
-    .st-key-hdr_right .st-key-hdr_admin { width: 100% !important; max-width: 340px !important; }
+    .st-key-hdr_right .st-key-hdr_admin { width: 100% !important; max-width: min(100%, 340px) !important; }
+    /* 언어 라벨도 창 폭을 따라 줄어든다 → 토글 폭이 줄면 그 아래 배너도 같은 폭으로 따라 줄어든다 */
+    .st-key-hdr_right .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: clamp(11px, 1.05vw, 16px) !important; }
     /* 토글 3개를 그 폭에 고르게 펼쳐 배너 좌우 끝선과 정확히 맞춘다 */
     .st-key-hdr_right .st-key-lang_toggle div[role="radiogroup"] { width: 100% !important; justify-content: space-between !important; }
     .st-key-hdr_admin { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-top: 4px !important; }
     .st-key-hdr_admin [data-testid="stVerticalBlock"] { gap: 4px !important; }
+    /* 배너 크기도 고정값이 아니라 창 폭에 맞춰 자동 조절 — 좁아지면 글자가 잘리는 대신 함께 작아진다. */
     .st-key-hdr_admin button {
         width: 100% !important;
-        min-height: 28px !important; height: 28px !important;
-        padding: 0 8px !important;
-        font-size: 12px !important; font-weight: 700 !important;
+        min-height: clamp(22px, 2.1vw, 30px) !important;
+        height: clamp(22px, 2.1vw, 30px) !important;
+        padding: 0 clamp(3px, 0.5vw, 8px) !important;
+        font-size: clamp(9px, 0.85vw, 13px) !important; font-weight: 700 !important;
+        line-height: 1.1 !important;
         white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
         border-radius: 6px !important;
     }
@@ -651,12 +657,22 @@ st.markdown("""
        추후 dkvinacar.web.app로 통합될 것을 대비해 그쪽과 같은 가로 배열을 기본으로 둔다. */
     /* 타일 + 배치도가 한 줄에 늘어서므로 폭을 넉넉히 쓰고 가운데 정렬한다.
        칸 수가 늘어도(택시 추가) 각 칸이 flex:1로 균등 분배돼 간격이 자동으로 조절된다. */
-    .st-key-car_nav_grid { max-width: 100% !important; margin: 0 auto 4px auto !important; }
-    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { justify-content: center !important; align-items: flex-start !important; }
+    .st-key-car_nav_grid {
+        max-width: 100% !important;
+        margin: 0 auto 4px auto !important;
+        /* 그룹(차량) 사이의 기준 간격 B. 창이 넓어지면 같이 벌어지고 좁아지면 함께 좁아진다.
+           타이틀↔자기 배치도 간격(A·C)은 아래에서 이 값의 3배가 되도록 추가 여백을 준다. */
+        --dk-gap-b: clamp(4px, 0.55vw, 12px);
+    }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] {
+        justify-content: center !important;
+        align-items: flex-start !important;
+        gap: var(--dk-gap-b) !important;
+    }
     /* 메인 화면 배치도: 타일과 나란히 서도록 여백을 줄이고 폭을 칸에 꽉 채운다. */
     .st-key-car_nav_grid .car-layout-container { width: 100% !important; margin: 0 !important; padding: 6px !important; }
     /* Streamlit의 컬럼 세로적층(flex-basis:100%)을 자식결합자 특이도(0,3,0)로 덮어써 가로 배열 강제 */
-    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 10px !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
     .car-nav-tile { margin: 0 0 10px 0 !important; }
     /* 정사각형 본체: 로고(위) + 이름(아래) 세로 스택 */
@@ -3906,6 +3922,22 @@ for _rc in resolved_cars:
     if _rc["is_taxi"]:
         _main_cells.append(("map", _rc))          # 부른 택시들의 배치도를 TAXI 타일 뒤에 이어 붙인다
 
+# 타이틀 칸 뒤의 간격만 3배(A·C)로 벌린다 — 기본 gap이 B이므로 추가 여백 2B를 더한다.
+#  차량 한 대가 [타이틀][배치도] 한 덩어리로 읽히도록 묶음 안쪽을 넓게 잡는 배치다.
+#  ⚠️ 모바일(?m=1)·좁은 화면은 2칸씩 줄바꿈하므로 이 여백을 적용하지 않는다(줄바꿈이 깨진다).
+if not IS_MOBILE:
+    _tile_nth = ", ".join(
+        f'.st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({i + 1})'
+        for i, (_k, _r) in enumerate(_main_cells) if _k == "tile"
+    )
+    if _tile_nth:
+        st.markdown(
+            "<style>@media (min-width: 900px) {"
+            f"{_tile_nth} {{ margin-right: calc(var(--dk-gap-b) * 2) !important; }}"
+            "}</style>",
+            unsafe_allow_html=True,
+        )
+
 with st.container(key="car_nav_grid"):
     _cols = st.columns(len(_main_cells))
     for i, (_kind, car_rc) in enumerate(_main_cells):
@@ -4503,13 +4535,16 @@ if st.session_state.bookings or _done_today:
                     _fn()
 
     # 도착 완료 카드 1장(읽기 전용) — 이미 끝난 탑승이라 수정·취소·완료 버튼이 없다.
-    #  차량색은 그대로 쓰되 살짝 가라앉혀(투명도) 왼쪽의 '진행 중' 카드와 한눈에 구분되게 한다.
+    #  ⚠️ 카드 전체를 '하나의 HTML 블록'으로 그린다. 예전에는 st.container 안에 markdown을 두 번 넣고
+    #     컨테이너에 배경을 입혔는데, 컨테이너 높이가 안쪽 내용보다 짧게 잡혀 마지막 줄(목적지·도착시간)이
+    #     상자 아래로 삐져나왔다. 한 덩어리 div면 높이가 내용에 맞춰지므로 잘림이 생기지 않는다.
+    #  배경색은 차량색을 쓰지 않고 전부 같은 무채색(그래파이트)으로 통일한다 —
+    #  실버(INNOVA)·블랙(SEDONA)·옐로우(TAXI) 어느 차량 색과도 겹치지 않아 '끝난 건'으로 한눈에 묶여 읽힌다.
+    DONE_CARD_BG, DONE_CARD_FG, DONE_CARD_BD = "#32353b", "#e9ecef", "#4c515a"
+
     def _render_done_card(rec):
         dc_name = str(rec.get("car", ""))
-        mk = _model_key(dc_name)
-        c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(mk, CAR_CARD_STYLE["innova"])
-        _safe = "".join(ch for ch in f"{dc_name}{rec.get('seat', '')}{rec.get('completed_at', '')}" if ch.isalnum())
-        cardkey = f"dncard_{mk}_{_safe}"
+        c_fg, c_bd = DONE_CARD_FG, DONE_CARD_BD
         header_html = (
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
             f'<span style="color: {c_fg}; font-weight: bold; font-size: 15px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
@@ -4534,7 +4569,7 @@ if st.session_state.bookings or _done_today:
                     f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
-            f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:2px;">'
+            f'font-size:12px; color:{c_fg}; line-height:1.35;">'
             + _cell(t('c_applicant'), rec.get('name', ''))
             + _cell(t('c_date'), rec.get('date', ''))
             + _cell(t('c_departure'), rec.get('departure', ''))
@@ -4544,13 +4579,11 @@ if st.session_state.bookings or _done_today:
             + '</div>'
         )
         st.markdown(
-            f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
-            f"border-radius:8px !important; padding:7px 8px !important; margin-bottom:5px !important; opacity:0.88 !important;}}</style>",
+            f'<div style="background:{DONE_CARD_BG}; border:1px solid {c_bd}; border-radius:8px; '
+            f'padding:7px 8px 9px 8px; margin-bottom:5px; box-sizing:border-box; overflow:visible;">'
+            f'{header_html}{info_grid}</div>',
             unsafe_allow_html=True,
         )
-        with st.container(key=cardkey):
-            st.markdown(header_html, unsafe_allow_html=True)
-            st.markdown(info_grid, unsafe_allow_html=True)
 
     # 현황판 2열(항목5) — 왼쪽엔 아직 안 끝난 배차가, 오른쪽엔 도착 완료가 각각 누적된다.
     #  · 왼쪽: 승인 대기 → 승인 완료 순, 같은 상태 안에서는 출발이 급한 순(놓치면 안 되는 건이 위로).
