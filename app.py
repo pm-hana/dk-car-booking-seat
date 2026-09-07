@@ -231,9 +231,28 @@ st.markdown("""
     /* 로그아웃 버튼: 눈에 띄되 과하지 않게(붉은 톤) */
     .st-key-admin_status_logout_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; }
     .st-key-admin_status_logout_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
-    /* 관리자 모드 종료 버튼: 패널 맨 위에서 '나가는 문'임이 바로 보이도록 같은 붉은 톤 + 전체폭 */
-    .st-key-admin_exit_row button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; font-weight: 700 !important; min-height: 42px !important; }
-    .st-key-admin_exit_row button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
+    /* ===== 헤더 관리자 배너 2종(항목4) — 언어 토글 바로 아래, 토글 3개와 같은 폭·1줄 높이 =====
+       화면 맨 아래에 있던 버튼을 위로 올려, 지금 관리자 모드인지와 나가는 길이 한눈에 보이게 한다. */
+    .st-key-hdr_right .st-key-lang_toggle,
+    .st-key-hdr_right .st-key-hdr_admin { width: 100% !important; max-width: 340px !important; }
+    /* 토글 3개를 그 폭에 고르게 펼쳐 배너 좌우 끝선과 정확히 맞춘다 */
+    .st-key-hdr_right .st-key-lang_toggle div[role="radiogroup"] { width: 100% !important; justify-content: space-between !important; }
+    .st-key-hdr_admin { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-top: 4px !important; }
+    .st-key-hdr_admin [data-testid="stVerticalBlock"] { gap: 4px !important; }
+    .st-key-hdr_admin button {
+        width: 100% !important;
+        min-height: 28px !important; height: 28px !important;
+        padding: 0 8px !important;
+        font-size: 12px !important; font-weight: 700 !important;
+        white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
+        border-radius: 6px !important;
+    }
+    /* 관리자 모드 종료: '나가는 문'임이 바로 보이도록 붉은 톤 */
+    .st-key-admin_lock_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; }
+    .st-key-admin_lock_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
+    /* 전체 예약 초기화: 되돌리기 어려운 동작이라 경고 톤(노랑) */
+    .st-key-reset_all_btn button { background: #3a3016 !important; border-color: #8a6d00 !important; color: #ffe08a !important; }
+    .st-key-reset_all_btn button:hover { background: #4d4020 !important; border-color: #b08c00 !important; color: #ffffff !important; }
     /* ===== 관리자 기능 타일: 차량 선택 타일과 같은 정사각형, 가로 한 줄에 3개 =====
        펼침 목록(expander) 3개가 세로로 길게 늘어지던 것을 타일+팝업으로 바꿔 관리자 영역 높이를 줄였다. */
     .st-key-admin_tiles { max-width: 520px !important; margin: 4px auto 0 auto !important; }
@@ -264,8 +283,8 @@ st.markdown("""
     .st-key-admin_tiles button * { white-space: normal !important; word-break: keep-all !important; }
     .st-key-admin_tiles button:hover { background: #242a33 !important; border-color: #4a5160 !important; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
     /* 관리자 잠금 해제(진입) 버튼: 일반 사용자에게는 주장이 세지 않도록 차분한 회색 톤 */
-    .st-key-admin_enter_row button { background: #1b1f27 !important; border-color: #3a3f4a !important; color: #adb5bd !important; font-weight: 700 !important; }
-    .st-key-admin_enter_row button:hover { background: #242a33 !important; border-color: #4a5160 !important; color: #e9ecef !important; }
+    .st-key-admin_unlock_btn button { background: #1b1f27 !important; border-color: #3a3f4a !important; color: #adb5bd !important; font-weight: 700 !important; }
+    .st-key-admin_unlock_btn button:hover { background: #242a33 !important; border-color: #4a5160 !important; color: #e9ecef !important; }
 
     /* 타이틀을 화면 최상단부터 시작 — 메인 컨테이너 상단 여백 축소 */
     [data-testid="stMainBlockContainer"],
@@ -342,6 +361,13 @@ st.markdown("""
     /* 예약 현황 카드: 한 줄에 '항상 2개'. Streamlit의 모바일 컬럼 세로적층을 이기기 위해
        자식결합자(>)로 선택자 특이도를 (0,3,0)까지 올려 nowrap + 균등분배를 강제한다. + 가로 스크롤 차단. */
     .st-key-booking_board { overflow-x: hidden !important; max-width: 100% !important; }
+    /* 현황판 2열 제목(진행 중 / 도착 완료) — 어느 쪽이 무엇인지 열 맨 위에 한 줄로 못박는다(항목5) */
+    .board-col-title {
+        font-size: 13px; font-weight: 700; color: #c7ccd6;
+        background: rgba(255,255,255,0.04); border: 1px solid #2b2f38;
+        border-radius: 6px; padding: 4px 8px; margin: 0 0 6px 0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
     /* (0,3,0) → Streamlit 모바일 적층(컬럼 flex-basis:100%)을 확실히 덮어씀.
        바깥 2열은 50%씩(2개가 화면에 딱), 안쪽 버튼 3열은 1/3씩 (같은 규칙으로 각 레벨 균등 분배). */
@@ -558,6 +584,7 @@ st.markdown("""
     div[class*="st-key-seatsel_"],
     div[class*="st-key-adminlogin_"],
     div[class*="st-key-restore_admin"],
+    div[class*="st-key-taxititle_"],
     div[class*="st-key-carnavclick_"] {
         position: fixed !important;
         left: -9999px !important;
@@ -568,6 +595,24 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
+    /* 좌석맵 팝업의 TAXI 제목: 누르면 인승 선택으로 되돌아간다(항목2). 눌러도 되는 곳임을 손모양으로 알린다. */
+    .taxi-title-click { cursor: pointer !important; }
+    .taxi-title-click .car-name-frame { transition: transform 0.08s ease, box-shadow 0.08s ease; }
+    .taxi-title-click:hover .car-name-frame { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+
+    /* 팝업 닫기(✕ 닫기) — 오른쪽 위 작은 텍스트 버튼.
+       모든 팝업이 dismissible=False라 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫힌다(항목3). */
+    div[class*="st-key-dlgx_"] {
+        display: flex !important;
+        justify-content: flex-end !important;
+        margin: -10px 0 2px 0 !important;
+    }
+    div[class*="st-key-dlgx_"] button {
+        min-height: 26px !important; height: 26px !important;
+        padding: 0 10px !important; font-size: 12px !important;
+        border-radius: 6px !important;
+    }
+
     /* 앱: 클릭 가능한 차량 이름 바(로고+이름 프레임 전체가 버튼처럼). 바 사이 세로 간격 확보(앱·웹 동일). */
     .car-nav-click { cursor: pointer !important; margin: 6px 0 !important; }
     .car-nav-click .car-name-frame { width: 100% !important; transition: transform 0.08s ease, box-shadow 0.08s ease; }
@@ -1018,10 +1063,18 @@ def archive_booking(car_name, seat_num, info, status="완료"):
         "status": status,
         "completed_at": now_vn().strftime("%Y-%m-%d %H:%M:%S"),
     }
+    def _invalidate():
+        # 현황판 오른쪽(도착 완료) 열이 방금 완료된 건을 바로 보여주도록 캐시를 비운다.
+        try:
+            load_history_cached.clear()
+        except Exception:
+            pass
+
     db = _get_db()
     if db is not None:
         try:
             db.collection(HISTORY_COLLECTION).add(record)
+            _invalidate()
             return
         except Exception:
             pass  # Firestore 오류 시 파일 폴백
@@ -1036,8 +1089,30 @@ def archive_booking(car_name, seat_num, info, status="완료"):
         with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(history, f, ensure_ascii=False, indent=4)
         os.replace(tmp_file, HISTORY_FILE)
+        _invalidate()
     except Exception:
         pass
+
+@st.cache_data(ttl=15, show_spinner=False)
+def load_history_cached():
+    """현황판 오른쪽(도착 완료) 열이 매 리런마다 Firestore를 왕복하지 않도록 15초만 캐시한다.
+    도착 완료를 누른 직후에는 archive_booking이 이 캐시를 비워 즉시 반영된다."""
+    return load_history()
+
+
+def today_completed():
+    """오늘(베트남 기준) 도착 완료된 탑승 — 도착 시간이 빠른 순(항목5).
+    도착 시간이 비어 있으면 맨 뒤로 보내고, 그 안에서는 완료 처리 시각 순으로 세운다."""
+    today = now_vn().strftime("%Y-%m-%d")
+    rows = [r for r in load_history_cached()
+            if str(r.get("date", "")) == today and str(r.get("status", "")) == "완료"]
+
+    def _key(r):
+        a = str(r.get("arrive", "")).strip()
+        return (0, a) if (a and a != "00:00") else (1, str(r.get("completed_at", "")))
+
+    return sorted(rows, key=_key)
+
 
 def load_history():
     """탑승 이력 아카이브 전체를 리스트로 반환(월/일별 통계·엑셀 조회용). Firestore 우선, 실패 시 history.json."""
@@ -1340,6 +1415,25 @@ def pending_urgency(info):
         return "soon"
     return ""
 
+# 출발 시각 전후 이 시간(분) 안에 있는 배차는 '지금 움직여야 하는 건'으로 보고 강제 알림을 띄운다.
+DEPART_ALERT_MINUTES = 5
+
+
+def departing_now():
+    """지금이 출발 5분 전 ~ 5분 후 구간인 배차 — 출발이 빠른 순(항목6).
+    도착 완료된 건은 예약에서 빠지므로 자연히 대상에서 제외된다."""
+    now = now_vn()
+    out = []
+    for (c_name, s_id), info in st.session_state.bookings.items():
+        dep = _departure_dt(info)
+        if dep is None:
+            continue
+        diff = (dep - now).total_seconds() / 60.0
+        if -DEPART_ALERT_MINUTES <= diff <= DEPART_ALERT_MINUTES:
+            out.append(((c_name, s_id), info))
+    return sorted(out, key=lambda kv: (str(kv[1].get("date", "")), str(kv[1].get("time", "")), kv[0][1]))
+
+
 def pending_bookings():
     """승인 대기 예약을 출발이 급한 순(날짜·시간 오름차순)으로 반환."""
     items = [(k, v) for k, v in st.session_state.bookings.items()
@@ -1422,6 +1516,30 @@ TR = {
         "seat_driver": "운전석", "seat_n": "좌석 {n}",
         "badge_seats": "{n}인승", "taxi_4": "4인승", "taxi_7": "7인승", "taxi_count": "TAXI 대수",
         "seats_left": "{n}자리 있음",
+        # TAXI 통합(메인 타일 1개) — 인승 선택 → 택시 선택 → 좌석 선택 3단계 문구
+        "taxi_cap_title": "🚕 차량 인승 선택",
+        "taxi_cap_hint": "인승을 고르면 그 인승의 택시 목록이 나옵니다.",
+        "taxi_cap_5": "5인승 · 4자리 있음",
+        "taxi_cap_7": "7인승 · 6자리 있음",
+        "taxi_pick_title": "🚕 택시 선택 · {p}인승",
+        "taxi_pick_hint": "빈자리가 있는 택시를 고르거나, 새 택시를 부르면 번호가 자동으로 붙습니다.",
+        "taxi_new": "➕ 새 택시 부르기 (TAXI{n})",
+        "taxi_full": "만차",
+        "taxi_none": "아직 부른 택시가 없습니다. 새 택시를 불러 주세요.",
+        "taxi_title_hint": "위 TAXI를 누르면 인승부터 다시 고를 수 있습니다.",
+        # 팝업 공통 닫기 — 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫는다
+        "dlg_close": "✕ 닫기",
+        # 현황판 2열(왼쪽=진행 중 / 오른쪽=도착 완료)
+        "board_active": "🚙 진행 중 · {n}건",
+        "board_done": "🏁 도착 완료 · {n}건",
+        "board_active_none": "진행 중인 배차가 없습니다.",
+        "board_done_none": "오늘 도착 완료된 배차가 없습니다.",
+        "done_at": "도착 {v}",
+        # 출발 5분 전~5분 후 강제 알림 팝업
+        "alert_title": "🚨 출발 시간 알림",
+        "alert_desc": "출발 5분 전 ~ 5분 후 구간의 배차입니다. 탑승·출발 상태를 확인해 주세요.",
+        "alert_dep": "출발 {v}",
+        "reset_title": "🗑️ 전체 예약 초기화",
         "select_ph": "-- 선택 --", "seat_select": "{car} 좌석 선택", "full": "❌ 만차 (잔여 좌석 없음)",
         "seatmap_title": "🚗 좌석 선택", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
         "dialog_title": "📝 차량 신청 정보 입력", "form_step_title": "📝 신청 정보 입력",
@@ -1516,6 +1634,7 @@ TR = {
         "admin_exit": "🔓 관리자 모드 종료 (메인 화면으로)",
         "admin_locked_banner": "🔒 관리자 잠금 상태입니다. 승인·백업·활동기록 등 관리 기능은 잠금을 해제해야 보입니다.",
         "admin_unlock_btn": "🔑 관리자 잠금 해제 (PASSWORD 입력)",
+        "admin_exit_short": "🔓 관리자 모드 종료", "admin_unlock_short": "🔑 관리자 모드",
         "audit_act_migrate": "예약 이관",
         "no_bookings": "접수된 배차 신청 내역이 없습니다.",
         "tip_from": "📍 출발: {v}", "tip_to": "🎯 목적지: {v}",
@@ -1533,6 +1652,26 @@ TR = {
         "seat_driver": "Ghế lái", "seat_n": "Ghế {n}",
         "badge_seats": "{n} chỗ", "taxi_4": "4 chỗ", "taxi_7": "7 chỗ", "taxi_count": "Số xe TAXI",
         "seats_left": "Còn {n} chỗ",
+        "taxi_cap_title": "🚕 Chọn số chỗ xe",
+        "taxi_cap_hint": "Chọn số chỗ để xem danh sách taxi tương ứng.",
+        "taxi_cap_5": "5 chỗ · còn 4 ghế",
+        "taxi_cap_7": "7 chỗ · còn 6 ghế",
+        "taxi_pick_title": "🚕 Chọn taxi · {p} chỗ",
+        "taxi_pick_hint": "Chọn taxi còn chỗ, hoặc gọi taxi mới để được cấp số tự động.",
+        "taxi_new": "➕ Gọi taxi mới (TAXI{n})",
+        "taxi_full": "Hết chỗ",
+        "taxi_none": "Chưa có taxi nào. Vui lòng gọi taxi mới.",
+        "taxi_title_hint": "Nhấn TAXI ở trên để chọn lại số chỗ.",
+        "dlg_close": "✕ Đóng",
+        "board_active": "🚙 Đang chạy · {n}",
+        "board_done": "🏁 Đã đến nơi · {n}",
+        "board_active_none": "Không có chuyến đang chạy.",
+        "board_done_none": "Hôm nay chưa có chuyến đã đến nơi.",
+        "done_at": "Đến {v}",
+        "alert_title": "🚨 Thông báo giờ khởi hành",
+        "alert_desc": "Chuyến trong khoảng 5 phút trước ~ 5 phút sau giờ khởi hành. Vui lòng kiểm tra.",
+        "alert_dep": "Khởi hành {v}",
+        "reset_title": "🗑️ Xoá toàn bộ đặt chỗ",
         "select_ph": "-- Chọn --", "seat_select": "Chọn ghế {car}", "full": "❌ Hết chỗ",
         "seatmap_title": "🚗 Chọn ghế", "seatmap_hint": "Nhấn vào ghế trống để mở form đăng ký xe.",
         "dialog_title": "📝 Nhập thông tin đăng ký xe", "form_step_title": "📝 Nhập thông tin",
@@ -1627,6 +1766,7 @@ TR = {
         "admin_exit": "🔓 Thoát chế độ quản trị (về màn hình chính)",
         "admin_locked_banner": "🔒 Đang khóa quản trị. Các chức năng duyệt·sao lưu·nhật ký chỉ hiện sau khi mở khóa.",
         "admin_unlock_btn": "🔑 Mở khóa quản trị (nhập PASSWORD)",
+        "admin_exit_short": "🔓 Thoát quản trị", "admin_unlock_short": "🔑 Quản trị",
         "audit_act_migrate": "Chuyển đăng ký",
         "no_bookings": "Chưa có đăng ký xe nào.",
         "tip_from": "📍 Đi: {v}", "tip_to": "🎯 Đến: {v}",
@@ -1644,6 +1784,26 @@ TR = {
         "seat_driver": "Driver", "seat_n": "Seat {n}",
         "badge_seats": "{n}-seater", "taxi_4": "4-Seat", "taxi_7": "7-Seat", "taxi_count": "TAXI count",
         "seats_left": "{n} SEAT LEFT",
+        "taxi_cap_title": "🚕 Select taxi capacity",
+        "taxi_cap_hint": "Pick a capacity to see the taxis of that size.",
+        "taxi_cap_5": "5-seater · 4 seats",
+        "taxi_cap_7": "7-seater · 6 seats",
+        "taxi_pick_title": "🚕 Select taxi · {p}-seater",
+        "taxi_pick_hint": "Pick a taxi with free seats, or call a new one — its number is assigned automatically.",
+        "taxi_new": "➕ Call a new taxi (TAXI{n})",
+        "taxi_full": "Full",
+        "taxi_none": "No taxi called yet. Please call a new one.",
+        "taxi_title_hint": "Tap TAXI above to choose the capacity again.",
+        "dlg_close": "✕ Close",
+        "board_active": "🚙 In progress · {n}",
+        "board_done": "🏁 Arrived · {n}",
+        "board_active_none": "No rides in progress.",
+        "board_done_none": "No rides completed today.",
+        "done_at": "Arrived {v}",
+        "alert_title": "🚨 Departure time alert",
+        "alert_desc": "These rides are within 5 minutes before/after their departure time. Please check them.",
+        "alert_dep": "Departs {v}",
+        "reset_title": "🗑️ Reset all bookings",
         "select_ph": "-- Select --", "seat_select": "{car} seat select", "full": "❌ Full (no seats left)",
         "seatmap_title": "🚗 Select Seat", "seatmap_hint": "Click an empty seat to open the request form.",
         "dialog_title": "📝 Vehicle Request", "form_step_title": "📝 Request Info",
@@ -1738,6 +1898,7 @@ TR = {
         "admin_exit": "🔓 Exit admin mode (back to main)",
         "admin_locked_banner": "🔒 Admin is locked. Approval, backup and activity log appear only after unlocking.",
         "admin_unlock_btn": "🔑 Unlock admin (enter PASSWORD)",
+        "admin_exit_short": "🔓 Exit admin", "admin_unlock_short": "🔑 Admin mode",
         "audit_act_migrate": "Moved bookings",
         "no_bookings": "No dispatch requests yet.",
         "tip_from": "📍 From: {v}", "tip_to": "🎯 To: {v}",
@@ -1801,6 +1962,29 @@ with _bn_r:
         st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
         st.radio("Language", list(LANG_OPTIONS.keys()), key="lang_toggle",
                  horizontal=True, label_visibility="collapsed")
+        # 관리자 배너 2종(항목4) — 언어 토글 바로 아래, 폭은 토글 3개를 합친 폭, 높이는 1줄.
+        #  화면 맨 아래에 있던 때는 '지금 관리자 모드인지', '어디서 빠져나가는지'를 스크롤해야 알 수 있었다.
+        #  전체 초기화는 되돌리기가 어려운 동작이라 확인 절차는 팝업(reset_confirm_dialog)으로 뺀다.
+        with st.container(key="hdr_admin"):
+            if st.session_state.get("admin_unlocked"):
+                # ⚠️ key는 admin_lock_btn을 유지해야 한다. JS 브릿지가 이 키로 로그아웃 클릭을 감지해
+                #    localStorage를 즉시 비운다(.st-key-admin_lock_btn button).
+                if st.button(t("admin_exit_short"), key="admin_lock_btn", use_container_width=True):
+                    st.session_state.admin_unlocked = False
+                    st.session_state.admin_keep = False
+                    st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
+                    st.session_state.confirm_reset_all = False
+                    st.toast(t("admin_locked_toast"))
+                    st.rerun()
+                if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
+                             disabled=not st.session_state.bookings):
+                    st.session_state.confirm_reset_all = True
+                    st.rerun()
+            else:
+                if st.button(t("admin_unlock_short"), key="admin_unlock_btn", use_container_width=True):
+                    st.session_state.admin_login_main_open = True
+                    st.session_state.admin_pin_error = False
+                    st.rerun()
 
 st.markdown(f'<div class="sub-title">{t("subtitle")}</div>', unsafe_allow_html=True)
 
@@ -1949,8 +2133,11 @@ def _model_key(car_name):
     if "VF5" in n or "VINFAST" in n:
         return "vf5"
     if "TAXI" in n:
-        # 6·7인승은 MPV형(taxi7), 그 외(4인승)는 세단형(taxi4)
-        return "taxi7" if ("7" in n or "6" in n) else "taxi4"
+        # 승객석 6석 이상은 MPV형(taxi7), 그 외(4석)는 세단형(taxi4).
+        #  ⚠️ 표시명 전체에서 숫자를 찾으면 'TAXI6 (4 SEAT)'의 차량 번호를 인승으로 오인한다.
+        #     → 괄호 안의 '(N SEAT)'만 보고 판정한다.
+        _m = re.search(r"\((\d+)\s*SEAT", n)
+        return "taxi7" if (int(_m.group(1)) if _m else 4) >= 6 else "taxi4"
     return "innova"
 
 def _body_path(x0, y0, x1, y1, rf, rr):
@@ -2324,19 +2511,55 @@ elif "car" in query_params and "seat" in query_params:
     st.query_params.clear()
 
 # 4. 차량 기본 구성 데이터 명세 수립
-#   운용 차량: INNOVA / SEDONA / TAXI1 / TAXI2 (2×2 타일 한 화면에 딱 맞는 4대)
-#   · VINFAST VF5는 운용에서 제외하고 그 자리를 TAXI 한 대로 대체했다.
-#   · TAXI는 1행(운전석+1) / 2행(3석) 배치 → 예약 가능한 승객석은 4석(일반 세단 택시와 동일).
-#     대수를 늘리려면 n_taxi만 올리면 된다(TAXI3… 자동 생성).
-n_taxi = 2
+#   고정 운용 차량: INNOVA / SEDONA (자사 차량 — 대수가 정해져 있다)
+#   · VINFAST VF5는 운용에서 제외했다.
+#   · TAXI는 '몇 대'로 미리 정하지 않는다 — 부르는 만큼 늘어나는 외부 차량이기 때문이다.
+#     메인 화면에는 TAXI 타일 하나만 두고, 신청할 때 인승(5인승=4자리 / 7인승=6자리)을 고른 뒤
+#     이미 부른 택시의 빈자리를 쓰거나 새 택시를 부르면 TAXI1·TAXI2… 번호가 자동으로 붙는다.
+#     → 실제 택시 목록은 아래 taxi_fleet()이 '예약이 있는 택시'에서 되짚어 만든다.
+TAXI_CAPS = {4: "2-3", 6: "2-2-3"}   # 승객석 수 → 좌석 배치 (4석=5인승 세단 / 6석=7인승 MPV)
+TAXI_CAP_ORDER = [4, 6]              # 인승 선택 버튼에 보여줄 순서
 cars_data = [
     {"name": "TOYOTA INNOVA", "layout": "2-3-3", "seats": 7},
     {"name": "HYUNDAI SEDONA", "layout": "2-2-3", "seats": 6},
 ]
-for _ti in range(1, n_taxi + 1):
-    cars_data.append({"name": "TAXI", "layout": "2-3", "seats": 4, "taxi_index": _ti})
 
-total_cars = len(cars_data)  # 고정 2종 + TAXI n대
+# 표시명 'TAXI2 (6 SEAT)' → (번호 2, 승객석 6). 번호가 없던 옛 이름도 아래에서 1호차로 받는다.
+TAXI_NAME_RE = re.compile(r"^TAXI(\d+)\s*\((\d+)\s*SEAT\)$", re.I)
+
+def taxi_display_name(idx, seats):
+    """택시 표시명 — 다른 차량과 같은 '이름 (N SEAT)' 규칙을 그대로 따른다."""
+    return f"TAXI{idx} ({seats} SEAT)"
+
+def _norm_cap(seats):
+    """정의되지 않은 인승(옛 데이터 등)은 가장 가까운 운용 인승으로 맞춘다."""
+    return seats if seats in TAXI_CAPS else (6 if seats >= 6 else 4)
+
+def taxi_fleet():
+    """지금 운용 중인 택시 {번호: 승객석 수}. 예약이 한 건이라도 있는 택시를 표시명에서 되짚는다.
+    · 번호가 없던 옛 이름('TAXI (4 SEAT)')은 1호차로 승계한다.
+    · 아직 예약이 없는 '방금 부른 택시'(taxi_draft)도 포함해야 배치도를 그릴 수 있다."""
+    fleet = {}
+    for (c_name, _seat) in st.session_state.bookings.keys():
+        nm = str(c_name).strip().upper()
+        if not nm.startswith("TAXI"):
+            continue
+        m = TAXI_NAME_RE.match(nm)
+        if m:
+            idx, seats = int(m.group(1)), int(m.group(2))
+        else:
+            m2 = re.search(r"\((\d+)\s*SEAT", nm)
+            idx, seats = 1, (int(m2.group(1)) if m2 else 4)
+        fleet[idx] = max(fleet.get(idx, 0), _norm_cap(seats))
+    draft = st.session_state.get("taxi_draft")
+    if draft:
+        fleet.setdefault(int(draft[0]), _norm_cap(int(draft[1])))
+    return dict(sorted(fleet.items()))
+
+def next_taxi_index():
+    """새로 부를 택시의 번호 — 지금 편성의 최대 번호 + 1(번호 재사용 없음)."""
+    fleet = taxi_fleet()
+    return (max(fleet) + 1) if fleet else 1
 
 def brand_logo(name):
     """차량명 앞에 붙는 브랜드 로고(인라인 SVG). 공식 로고 파일 대신 식별 가능한 심볼로 근사."""
@@ -2407,6 +2630,9 @@ CAR_INFO = {
     "HYUNDAI SEDONA": {"driver": "SON",  "plate": "99A 667 46", "phone": "0977956965"},
     "TAXI1":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
     "TAXI2":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
+    # 택시는 신청할 때마다 TAXI3·TAXI4…가 자동으로 늘어난다 → 번호별 항목이 없어도
+    # 이 공통 항목(가장 짧은 키라 마지막에 검사됨)이 운행 정보를 대신 돌려준다.
+    "TAXI":           {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
 }
 
 def car_info(name):
@@ -2491,27 +2717,61 @@ def on_seat_click(car_name, seat):
 
 # ── 전 차량 상태(표시명·인승·모델키·로고) 계산 (배치도 렌더와 분리) ──
 #  resolved_cars는 아래 예약 현황판 컬럼에서도 쓰이므로 앱/웹 모드와 무관하게 항상 전 차량을 채운다.
+# 좌석맵 팝업이 닫혀 있는데 draft가 남아 있으면, 아무도 타지 않은 유령 택시가 편성에 계속 남는다.
+#  → 팝업이 닫힌 시점(=신청 완료 또는 취소)에 버린다. 예약이 생겼다면 이미 편성에 정식으로 잡힌다.
+if not st.session_state.get("seatmap_car"):
+    st.session_state.taxi_draft = None
+
+def _taxi_rc(idx, seats):
+    """택시 1대의 화면 표시 정보(표시명·배치·로고 등)를 만든다."""
+    seats = _norm_cap(seats)
+    display_name = taxi_display_name(idx, seats)
+    return {
+        "display_name": display_name, "layout": TAXI_CAPS[seats], "seats": seats,
+        "is_taxi": True, "taxi_index": idx, "nav_label": f"TAXI{idx}",
+        "mk": _model_key(display_name), "logo_html": brand_logo("TAXI"),
+    }
+
 resolved_cars = []
 for car in cars_data:
-    if car["name"] == "TAXI":
-        # 1대뿐일 때도 번호를 붙인다(TAXI1, TAXI2 …) — 여러 대를 함께 쓰므로 항상 어느 차인지 구분돼야 한다
-        ti = car["taxi_index"]
-        nav_label = f"TAXI{ti}"
-        prefix = nav_label
-        seats_count = car["seats"]
-        display_name = f"{prefix} ({seats_count} SEAT)"
-        mk, logo_html = "taxi7", brand_logo("TAXI")
-    else:
-        nav_label = car["name"]
-        seats_count = car["seats"]
-        display_name = f"{car['name']} ({seats_count} SEAT)"
-        mk, logo_html = _model_key(car["name"]), brand_logo(car["name"])
-    st.session_state.selected_seat_state.setdefault(display_name, "-- 선택 --")
+    nav_label = car["name"]
+    seats_count = car["seats"]
+    display_name = f"{car['name']} ({seats_count} SEAT)"
+    mk, logo_html = _model_key(car["name"]), brand_logo(car["name"])
     resolved_cars.append({
         "display_name": display_name, "layout": car["layout"], "seats": seats_count,
-        "is_taxi": car["name"] == "TAXI", "taxi_index": car.get("taxi_index"),
+        "is_taxi": False, "taxi_index": None,
         "nav_label": nav_label, "mk": mk, "logo_html": logo_html,
     })
+# 지금 부른 택시들(예약에서 되짚음)을 뒤에 붙인다 — 현황판·배치도·이관이 모두 이 목록을 본다.
+for _idx, _seats in taxi_fleet().items():
+    resolved_cars.append(_taxi_rc(_idx, _seats))
+for _rc in resolved_cars:
+    st.session_state.selected_seat_state.setdefault(_rc["display_name"], "-- 선택 --")
+
+# 메인 화면 차량 타일 — TAXI는 몇 대를 불렀든 '한 칸'으로만 보여준다(항목1).
+#  타일을 누르면 인승 선택 → 택시 선택 → 좌석 선택 순으로 같은 팝업 안에서 진행된다.
+TAXI_NAV_RC = {
+    "display_name": "TAXI", "layout": None, "seats": 0, "is_taxi": True,
+    "taxi_index": None, "nav_label": "TAXI", "mk": "taxi4", "logo_html": brand_logo("TAXI"),
+}
+nav_cars = [c for c in resolved_cars if not c["is_taxi"]] + [TAXI_NAV_RC]
+
+def car_rc_for(display_name):
+    """표시명으로 차량 표시 정보를 되찾는다. 택시는 목록에 없어도(방금 부른 새 차) 즉석에서 만든다.
+    ⚠️ 팝업(dialog=fragment)은 다시 그릴 때 바깥 스크립트를 재실행하지 않으므로,
+       팝업 안에서 차량이 바뀌면 인자로 받은 값 대신 이 함수로 현재 대상을 다시 구해야 한다."""
+    if not display_name:
+        return None
+    if display_name == "TAXI":
+        return TAXI_NAV_RC
+    for c in resolved_cars:
+        if c["display_name"] == display_name:
+            return c
+    m = TAXI_NAME_RE.match(str(display_name).strip().upper())
+    if m:
+        return _taxi_rc(int(m.group(1)), int(m.group(2)))
+    return None
 
 def migrate_renamed_car_bookings():
     """차량 구성 변경으로 표시명이 바뀌었을 때, 기존 예약을 새 표시명으로 옮긴다.
@@ -2598,21 +2858,59 @@ def owner_gate(car, seat, info):
             st.error(t("owner_err"))
     return False
 
-def _status_chip(info):
-    """예약 카드 헤더에 붙는 승인 상태 배지 HTML.
-    대기=호박색, 임박(30분 이내)=주황, 출발시각 지남=빨강, 승인=초록."""
+# 상태 배지 색 — 차량 카드 배경색의 '보색' 계열로 채운 solid 배지(항목6).
+#   왜 바꿨나: 예전에는 반투명 틴트(알파 0.18~0.22)에 같은 색 글자였다. 그래서 INNOVA(밝은 실버) 카드에서는
+#   주황·호박색 배지가 배경에 묻혀 글자가 거의 읽히지 않았다(실제 화면에서 확인된 문제).
+#   어떻게 골랐나: 차량 배경의 반대편 색상환에서 고르되, '초과=가장 강한 경고'라는 의미는 차량과 무관하게 유지한다.
+#     · INNOVA(밝은 실버·무채색) → 어두운 고채도 + 흰 글자
+#     · SEDONA(어두운 회색)     → 밝은 고채도 + 어두운 글자
+#     · TAXI(노랑)              → 노랑의 보색인 청·보라 계열 + 흰 글자
+#   상태 구분이 색에만 의존하지 않도록 배지 글자(문구) 자체가 상태를 그대로 말해 준다.
+STATUS_CHIP_STYLE = {
+    "innova": {   # 밝은 실버 배경 → 어두운 색 + 흰 글자
+        "over":     ("#b0121f", "#ffffff"),   # 진한 레드
+        "soon":     ("#c2410c", "#ffffff"),   # 진한 오렌지
+        "pending":  ("#3b3199", "#ffffff"),   # 실버(무채색)의 보색 방향 — 진한 남보라
+        "approved": ("#1f6f34", "#ffffff"),   # 진한 초록
+    },
+    "sedona": {   # 어두운 회색 배경 → 밝은 색 + 어두운 글자
+        "over":     ("#ff4d4f", "#2b0505"),
+        "soon":     ("#ffa94d", "#2b1400"),
+        "pending":  ("#22d3ee", "#04252b"),   # 어두운 무채색의 보색 방향 — 밝은 시안
+        "approved": ("#69db7c", "#04240f"),
+    },
+    "vf5": {      # 레드 배경 → 청록 계열이 보색
+        "over":     ("#ffe066", "#2b1d00"),
+        "soon":     ("#ffa94d", "#2b1400"),
+        "pending":  ("#14b8a6", "#012a26"),
+        "approved": ("#69db7c", "#04240f"),
+    },
+    "taxi4": {    # 노랑 배경 → 청·보라가 보색
+        "over":     ("#e11d48", "#ffffff"),   # 노랑 위에서도 가장 강하게 튀는 경고색
+        "soon":     ("#6d28d9", "#ffffff"),   # 보라
+        "pending":  ("#1d4ed8", "#ffffff"),   # 파랑
+        "approved": ("#0f766e", "#ffffff"),   # 청록
+    },
+}
+STATUS_CHIP_STYLE["taxi7"] = STATUS_CHIP_STYLE["taxi4"]
+
+
+def _status_chip(info, mk="innova"):
+    """예약 카드 헤더에 붙는 승인 상태 배지 HTML — 차량 배경색의 보색으로 칠해 항상 눈에 띄게 한다.
+    상태: 출발 시각 초과 / 출발 임박(30분 이내) / 승인 대기 / 승인 완료."""
     urg = pending_urgency(info)
     if booking_status(info) == STATUS_APPROVED:
-        bg, fg, label = "rgba(64,192,87,0.18)", "#63b365", t("status_approved")
+        state, label = "approved", t("status_approved")
     elif urg == "over":
-        bg, fg, label = "rgba(224,49,49,0.22)", "#ff8787", t("status_over")
+        state, label = "over", t("status_over")
     elif urg == "soon":
-        bg, fg, label = "rgba(253,126,20,0.22)", "#ffa94d", t("status_soon")
+        state, label = "soon", t("status_soon")
     else:
-        bg, fg, label = "rgba(250,176,5,0.18)", "#fab005", t("status_pending")
+        state, label = "pending", t("status_pending")
+    bg, fg = STATUS_CHIP_STYLE.get(mk, STATUS_CHIP_STYLE["innova"])[state]
     return (f'<div style="margin-top:3px;"><span style="display:inline-block; background:{bg}; '
-            f'color:{fg}; border:1px solid {fg}; border-radius:4px; padding:0 5px; '
-            f'font-size:10px; font-weight:700; white-space:nowrap;">{esc(label)}</span></div>')
+            f'color:{fg}; border:1px solid {bg}; border-radius:4px; padding:1px 6px; '
+            f'font-size:11px; font-weight:800; letter-spacing:0.2px; white-space:nowrap;">{esc(label)}</span></div>')
 
 
 def _pending_approvals_body():
@@ -2762,16 +3060,29 @@ def _claim_dialog():
     return True
 
 
+def _dlg_close_btn(name, on_close=None):
+    """팝업 오른쪽 위 '✕ 닫기' 버튼(항목3).
+    모든 팝업을 dismissible=False로 열어 바깥 클릭·ESC로는 닫히지 않게 했으므로 닫는 길은 이 버튼 하나뿐이다
+    — 입력 도중 화면 아무 데나 잘못 눌러 작성 내용이 통째로 날아가던 문제를 막는다.
+    (dismissible=False면 Streamlit 기본 X가 사라지므로 직접 그린다. 팝업 안 st.rerun()은 팝업을 닫는다.)"""
+    with st.container(key=f"dlgx_{name}"):
+        if st.button(t("dlg_close"), key=f"dlgxbtn_{name}"):
+            if on_close is not None:
+                on_close()
+            st.rerun()
+
+
 def _close_admin_panel():
     st.session_state.admin_panel_open = None
 
 
-@st.dialog(" ", on_dismiss=_close_admin_panel)
+@st.dialog(" ", dismissible=False, on_dismiss=_close_admin_panel)
 def admin_panel_dialog():
     """관리자 타일(승인 대기 / 백업·복원 / 최근 활동 기록)을 누르면 뜨는 공용 팝업.
     타일이 정사각형이라 내용을 안에 담을 수 없으므로 팝업으로 연다.
     ⚠️ 팝업을 3개로 나누지 않고 '하나의 팝업 안에서 내용 전환'으로 처리한다 —
        Streamlit은 한 rerun에 dialog A → dialog B 전환을 못 한다(0709 ver.8에서 겪은 제약)."""
+    _dlg_close_btn("admin_panel_dialog", _close_admin_panel)
     which = st.session_state.get("admin_panel_open")
     title = {"approve": t("approve_title", n=len(pending_bookings())),
              "backup": t("backup_title"), "audit": t("audit_title")}.get(which, "")
@@ -2955,10 +3266,43 @@ def _close_seatmap():
     st.session_state.admin_pin_error = False
     st.session_state.admin_seat_status_open = False  # 좌석 신청 현황 표도 함께 닫힘
     st.session_state.seatmap_car = None
+    # 택시 3단계(인승→택시→좌석) 상태도 함께 초기화 — 다음에 열 때 인승부터 다시 고른다
+    st.session_state.taxi_stage = None
+    st.session_state.taxi_cap = None
+    st.session_state.taxi_draft = None
 
 def _open_seatmap(display_name):
     # on_click 콜백 → 위젯 생성 전에 상태 세팅 → 단일 rerun에서 바로 팝업 오픈(이중 rerun 제거로 반응 속도 개선)
     st.session_state.seatmap_car = display_name
+    if display_name == "TAXI":
+        # 통합 TAXI 타일 → 인승 선택부터 시작
+        st.session_state.taxi_stage = "cap"
+        st.session_state.taxi_cap = None
+        st.session_state.taxi_draft = None
+
+# ── 택시 3단계 선택 콜백 ────────────────────────────
+#  ⚠️ 여기서는 st.rerun()을 쓰면 안 된다 — 팝업(dialog) 안에서 st.rerun()은 팝업을 닫아 버린다.
+#     on_click 콜백으로 상태만 바꾸면 팝업(fragment)이 다시 그려지며 다음 단계가 이어진다.
+def _taxi_pick_cap(cap):
+    st.session_state.taxi_cap = cap
+    st.session_state.taxi_stage = "pick"
+
+def _taxi_pick_car(display_name):
+    st.session_state.seatmap_car = display_name
+    st.session_state.taxi_stage = None
+
+def _taxi_call_new(idx, cap):
+    # 새 택시 = 번호 자동 부여(TAXI1, TAXI2 …). 좌석을 실제로 신청해야 편성에 남는다.
+    st.session_state.taxi_draft = (idx, cap)
+    st.session_state.seatmap_car = taxi_display_name(idx, cap)
+    st.session_state.taxi_stage = None
+
+def _taxi_back_to_cap():
+    # 좌석맵 팝업의 TAXI 제목 클릭 → 인승 선택으로 되돌아간다(아직 신청 안 한 새 택시는 버린다).
+    st.session_state.seatmap_car = "TAXI"
+    st.session_state.taxi_stage = "cap"
+    st.session_state.taxi_cap = None
+    st.session_state.taxi_draft = None
 
 def _open_admin_login():
     # INNOVA·SEDONA 운전석 클릭 콜백.
@@ -3046,10 +3390,97 @@ def _close_admin_login_main():
     st.session_state.admin_pin_error = False
 
 
-@st.dialog(" ", on_dismiss=_close_admin_login_main)
+def _close_depart_alert():
+    # 이번 '분'의 알림은 확인한 것으로 표시 — 다음 1분이 되면 대상이 남아 있는 한 다시 뜬다.
+    st.session_state.depart_alert_ack = st.session_state.get("depart_alert_minute")
+    st.session_state.depart_alert_open = False
+
+
+@st.dialog(" ", dismissible=False, on_dismiss=_close_depart_alert)
+def depart_alert_dialog():
+    """출발 5분 전 ~ 5분 후 배차를 알리는 강제 팝업(항목6).
+    · 알림 전용 — 여기서 예약을 바꾸지는 않는다(닫고 해당 카드에서 처리).
+    · 닫아도 다음 1분에 대상이 남아 있으면 다시 뜬다. 출발 시각을 놓치면 차가 그냥 떠나기 때문이다."""
+    _dlg_close_btn("depart_alert", _close_depart_alert)
+    st.markdown(f'<div class="dlg-step-title">{t("alert_title")}</div>', unsafe_allow_html=True)
+    st.caption(t("alert_desc"))
+    rows = departing_now()
+    if not rows:
+        _close_depart_alert()
+        st.rerun()
+    for (ac_name, aseat), ainfo in rows:
+        _mk = _model_key(ac_name)
+        _bg, _fg, _bd = CAR_CARD_STYLE.get(_mk, CAR_CARD_STYLE["innova"])
+        st.markdown(
+            f'<div style="background:{_bg}; border:1px solid {_bd}; border-radius:8px; '
+            f'padding:7px 9px; margin-bottom:6px; color:{_fg}; font-size:12px; line-height:1.5;">'
+            f'<div style="font-weight:800; font-size:14px;">'
+            f'{esc(_short_car_name(ac_name))} · {esc(t("seat_n", n=aseat))}</div>'
+            f'{_status_chip(ainfo, _mk)}'
+            f'<div style="margin-top:4px;"><strong>{esc(t("c_applicant"))}</strong> {esc(ainfo.get("name", ""))}'
+            f' · <strong>{esc(t("alert_dep", v=ainfo.get("time", "")))}</strong></div>'
+            f'<div><strong>{esc(t("c_destination"))}</strong> {esc(ainfo.get("destination", ""))}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+
+@st.fragment(run_every="20s")
+def _depart_alert_watch():
+    """1분 단위 감시 — 출발 구간에 든 배차가 있으면 앱 전체를 다시 실행해 알림 팝업을 띄운다.
+    ⚠️ 팝업(dialog)은 프래그먼트 안에서 못 연다 → 여기서는 상태만 세우고 scope='app'으로 전체 리런한다.
+       20초마다 확인하므로 '분'이 바뀐 뒤 늦어도 20초 안에 알림이 뜬다."""
+    minute = now_vn().strftime("%Y-%m-%d %H:%M")
+    if st.session_state.get("depart_alert_ack") == minute:
+        return                                   # 이번 분은 이미 확인함
+    if st.session_state.get("depart_alert_open"):
+        return                                   # 이미 떠 있음
+    # ⚠️ 다른 팝업이 열려 있으면 건너뛴다. scope='app' 리런은 열려 있던 팝업을 닫아버리므로,
+    #    신청 정보를 입력하던 중에 알림이 끼어들면 작성하던 내용이 통째로 사라진다.
+    #    (알림은 그 팝업을 닫는 즉시 다음 확인에서 뜬다 — 구간이 5분이라 놓치지 않는다)
+    if any(st.session_state.get(k) for k in (
+            "seatmap_car", "editing_booking", "cancel_target", "arrive_target", "receipt_target",
+            "export_open", "admin_panel_open", "admin_login_main_open", "confirm_reset_all")):
+        return
+    if not departing_now():
+        return
+    st.session_state.depart_alert_minute = minute
+    st.session_state.depart_alert_open = True
+    st.rerun(scope="app")
+
+
+def _close_reset_confirm():
+    st.session_state.confirm_reset_all = False
+
+
+@st.dialog(t("reset_title"), dismissible=False, on_dismiss=_close_reset_confirm)
+def reset_confirm_dialog():
+    """전체 예약 초기화 확인 팝업. 몇 건이 사라지는지 숫자로 보여주고(실수 방지),
+    지우기 직전에 스냅샷을 남겨 관리자 타일의 '백업·복원'으로 되돌릴 수 있게 한다."""
+    _dlg_close_btn("reset_confirm", _close_reset_confirm)
+    st.warning(t("reset_warn", n=len(st.session_state.bookings)))
+    rc1, rc2 = st.columns(2)
+    with rc1:
+        if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
+            # 전량 삭제 전에 ① 건수를 기록하고 ② 직전 상태를 스냅샷으로 남긴다 — 지운 뒤엔 되돌릴 근거가 없다.
+            log_action("reset", "", 0, None, note=str(len(st.session_state.bookings)))
+            save_snapshot(st.session_state.bookings, reason="reset")
+            st.session_state.bookings = {}
+            save_bookings(st.session_state.bookings)
+            st.session_state.confirm_reset_all = False
+            st.toast(t("toast_reset"))
+            st.rerun()
+    with rc2:
+        if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
+            st.session_state.confirm_reset_all = False
+            st.rerun()
+
+
+@st.dialog(" ", dismissible=False, on_dismiss=_close_admin_login_main)
 def admin_login_dialog():
     """메인 화면의 '관리자 잠금 해제' 배너에서 여는 PIN 입력 팝업.
     예전에는 INNOVA·SEDONA 운전석을 눌러야만 로그인할 수 있어, 그 사실을 모르면 들어갈 길이 없었다."""
+    _dlg_close_btn("admin_login_dialog", _close_admin_login_main)
     _admin_login_form(standalone=True)
 
 # 좌석 신청 현황 팝업에 삽입되는 '현재 위치 지도'(무료 OpenStreetMap/Leaflet) — Google 지도 API 키 불필요.
@@ -3308,11 +3739,56 @@ def _admin_seat_status_view(car_rc):
                 st.toast(t("admin_locked_toast"))
                 st.rerun()
 
-@st.dialog(" ", on_dismiss=_close_seatmap)
+def _taxi_seats_taken(display_name):
+    """그 택시에 이미 신청된 좌석 번호들."""
+    return {s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == display_name}
+
+def _taxi_picker_view():
+    """TAXI 타일 전용 앞단계 — ① 인승 선택 → ② 택시 선택(빈자리 있는 차 또는 새 택시).
+    고르고 나면 seatmap_car가 그 택시로 바뀌며 같은 팝업이 좌석 배치도로 이어진다."""
+    st.markdown(
+        f'<div class="car-header-center" style="margin-top:0!important;">'
+        f'{car_title_frame("taxi4", brand_logo("TAXI") + "TAXI")}</div>',
+        unsafe_allow_html=True,
+    )
+    stage = st.session_state.get("taxi_stage") or "cap"
+    if stage == "cap":
+        st.markdown(f'<div class="dlg-step-title">{t("taxi_cap_title")}</div>', unsafe_allow_html=True)
+        st.caption(t("taxi_cap_hint"))
+        for _cap, _key in ((4, "taxi_cap_5"), (6, "taxi_cap_7")):
+            st.button(t(_key), key=f"taxicap_{_cap}", use_container_width=True,
+                      on_click=_taxi_pick_cap, args=(_cap,))
+        return
+    # ② 택시 선택 — 고른 인승의 택시만 보여주고, 남은 자리를 라벨에 함께 적는다.
+    cap = int(st.session_state.get("taxi_cap") or 4)
+    st.markdown(f'<div class="dlg-step-title">{t("taxi_pick_title", p=(cap + 1))}</div>', unsafe_allow_html=True)
+    st.caption(t("taxi_pick_hint"))
+    same_cap = [(i, sc) for i, sc in taxi_fleet().items() if sc == cap]
+    if not same_cap:
+        st.caption(t("taxi_none"))
+    for _idx, _sc in same_cap:
+        _dn = taxi_display_name(_idx, _sc)
+        _left = _sc - len(_taxi_seats_taken(_dn))
+        _label = f"TAXI{_idx} · " + (t("seats_left", n=_left) if _left > 0 else t("taxi_full"))
+        st.button(_label, key=f"taxipick_{_idx}", use_container_width=True, disabled=(_left <= 0),
+                  on_click=_taxi_pick_car, args=(_dn,))
+    _new_idx = next_taxi_index()
+    st.button(t("taxi_new", n=_new_idx), key=f"taxinew_{cap}", use_container_width=True, type="primary",
+              on_click=_taxi_call_new, args=(_new_idx, cap))
+
+@st.dialog(" ", dismissible=False, on_dismiss=_close_seatmap)
 def seatmap_dialog(car_rc):
     """차량 이름 클릭 시 뜨는 팝업. 좌석 미선택이면 '🚗 좌석 선택'(배치도), 좌석 클릭 시 같은 팝업 안에서
     '📝 신청 정보 입력' 폼으로 전환된다. @st.dialog 크롬 title은 열린 중 못 바꾸므로 공백(' ')으로 두고
-    단계별 제목을 본문 최상단(.dlg-step-title)에 직접 그려 단계별로 구분한다."""
+    단계별 제목을 본문 최상단(.dlg-step-title)에 직접 그려 단계별로 구분한다.
+    TAXI는 그 앞에 인승 선택 → 택시 선택 두 단계가 더 붙는다(항목2)."""
+    # 팝업 안에서 대상 차량이 바뀔 수 있으므로(택시 선택) 인자 대신 현재 상태로 다시 구한다.
+    car_rc = car_rc_for(st.session_state.get("seatmap_car")) or car_rc
+    _dlg_close_btn("seatmap", _close_seatmap)
+    # 통합 TAXI 타일을 눌렀거나 제목을 다시 눌러 되돌아온 상태 → 인승/택시 선택 화면
+    if car_rc.get("taxi_index") is None and car_rc.get("nav_label") == "TAXI":
+        _taxi_picker_view()
+        return
     car = car_rc["display_name"]
     # 관리자 로그인 성공 상태면 → 좌석맵 대신 '좌석 신청 현황' 표 표시(같은 팝업 안)
     if st.session_state.get("admin_seat_status_open"):
@@ -3339,7 +3815,14 @@ def seatmap_dialog(car_rc):
         _booking_form(car, seat_num)
         return
     # 아직 미선택 → 좌석 배치도 + 빈좌석 SEATSEL 숨김버튼(클릭 시 on_seat_click이 좌석 선택 → 폼으로 전환)
-    st.markdown(f'<div class="car-header-center" style="margin-top:0!important;">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
+    # 택시 제목은 클릭 가능 — 누르면 인승 선택으로 되돌아간다(JS가 숨김 TAXITITLE 버튼을 대신 누른다).
+    _title_html = car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])
+    if car_rc.get("is_taxi"):
+        _title_html = f'<div class="taxi-title-click">{_title_html}</div>'
+    st.markdown(f'<div class="car-header-center" style="margin-top:0!important;">{_title_html}</div>', unsafe_allow_html=True)
+    if car_rc.get("is_taxi"):
+        st.caption(t("taxi_title_hint"))
+        st.button("TAXITITLE", key="taxititle_back", on_click=_taxi_back_to_cap)
     st.markdown(f'<div class="car-layout-container" style="width:100%!important;">{render_car_layout(car, car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
     available = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked]
     if not available:
@@ -3368,8 +3851,8 @@ if "seatmap_car" not in st.session_state:
 #   한 줄을 CSS로 접는 방식이라 Python 분기 없이 웹/모바일 배열을 다르게 가져갈 수 있다.
 CAR_TILES_PER_ROW = 4
 with st.container(key="car_nav_grid"):
-    for _row in range(0, len(resolved_cars), CAR_TILES_PER_ROW):
-        _group = resolved_cars[_row:_row + CAR_TILES_PER_ROW]
+    for _row in range(0, len(nav_cars), CAR_TILES_PER_ROW):
+        _group = nav_cars[_row:_row + CAR_TILES_PER_ROW]
         _cols = st.columns(len(_group))
         for _slot, car_rc in enumerate(_group):
             i = _row + _slot
@@ -3384,7 +3867,7 @@ with st.container(key="car_nav_grid"):
                           on_click=_open_seatmap, args=(car_rc["display_name"],))
 # 이름 클릭 상태면 해당 차량 좌석맵 팝업을 띄운다
 if st.session_state.get("seatmap_car"):
-    _tgt = next((c for c in resolved_cars if c["display_name"] == st.session_state.seatmap_car), None)
+    _tgt = car_rc_for(st.session_state.seatmap_car)
     if _tgt and _claim_dialog():
         seatmap_dialog(_tgt)
     else:
@@ -3400,8 +3883,9 @@ def _reset_booking_selection():
     st.session_state.editing_booking = None
     st.session_state.duplicate_error_msg = None
 
-@st.dialog(t("form_step_title"), on_dismiss=_reset_booking_selection)
+@st.dialog(t("form_step_title"), dismissible=False, on_dismiss=_reset_booking_selection)
 def booking_dialog(car_target, seat_target):
+    _dlg_close_btn("booking_dialog", _reset_booking_selection)
     # 신청/수정 팝업('📝 신청 정보 입력') — 공용 폼(_booking_form)을 그대로 사용
     _booking_form(car_target, seat_target)
 
@@ -3565,8 +4049,9 @@ def _close_export():
     st.session_state.export_open = False
 
 
-@st.dialog(t("export_title"), on_dismiss=_close_export)
+@st.dialog(t("export_title"), dismissible=False, on_dismiss=_close_export)
 def excel_export_dialog():
+    _dlg_close_btn("excel_export_dialog", _close_export)
     history = load_history()
 
     def _ymd(r):
@@ -3629,10 +4114,11 @@ def _close_cancel():
     st.session_state.cancel_target = None
 
 
-@st.dialog(t("cancel_title"), on_dismiss=_close_cancel)
+@st.dialog(t("cancel_title"), dismissible=False, on_dismiss=_close_cancel)
 def cancel_dialog(car, seat):
     """예약 취소 확인 팝업. 예전에는 버튼 한 번에 즉시 삭제돼 오터치로 남의 배차가 사라질 수 있었다.
     남의 예약이면 본인 확인을 먼저 통과해야 하고, 삭제 직전에 권한을 한 번 더 검사한다."""
+    _dlg_close_btn("cancel_dialog", _close_cancel)
     info = st.session_state.bookings.get((car, seat))
     if not info:
         _close_cancel()
@@ -3667,10 +4153,11 @@ def _close_receipt():
     st.session_state.receipt_target = None
 
 
-@st.dialog(" ", on_dismiss=_close_receipt)
+@st.dialog(" ", dismissible=False, on_dismiss=_close_receipt)
 def receipt_dialog(car, seat):
     """영수증 첨부 팝업 — 폰이면 카메라·갤러리, PC면 파일 탐색기가 열린다(st.file_uploader가 OS 선택기를 띄운다).
     올린 사진은 서버에서 자동 축소해 Firestore(또는 로컬 receipts.json)에 보관한다."""
+    _dlg_close_btn("receipt_dialog", _close_receipt)
     info = st.session_state.bookings.get((car, seat))
     if not info:
         _close_receipt()
@@ -3722,9 +4209,10 @@ def _close_arrival():
     st.session_state.arrive_target = None
 
 
-@st.dialog(t("arrive_title"), on_dismiss=_close_arrival)
+@st.dialog(t("arrive_title"), dismissible=False, on_dismiss=_close_arrival)
 def arrival_dialog(car, seat):
     """도착 완료 시 '도착 시간만' 설정하는 팝업. 완료 누르면 그 시간으로 탑승 이력에 기록 + 좌석 해제."""
+    _dlg_close_btn("arrival_dialog", _close_arrival)
     info = st.session_state.bookings.get((car, seat))
     if not info:
         _close_arrival()
@@ -3818,7 +4306,10 @@ if st.session_state.get("receipt_target") and _claim_dialog():
     _rc_car, _rc_seat = st.session_state.receipt_target
     receipt_dialog(_rc_car, _rc_seat)
 
-if st.session_state.bookings:
+# 오늘 도착 완료된 탑승 — 현황판 오른쪽 열에 쌓인다. 예약이 0건이어도 이 목록이 있으면 현황판을 그린다.
+_done_today = today_completed()
+
+if st.session_state.bookings or _done_today:
     # 검색어에 매칭되는 예약만 필터링 (대소문자 무시, 여러 필드 대상)
     q = (search_query or "").strip().lower()
     filtered_items = []
@@ -3883,7 +4374,7 @@ if st.session_state.bookings:
             f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
-            f'{_status_chip(binfo)}'
+            f'{_status_chip(binfo, mk)}'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
 
@@ -3952,48 +4443,90 @@ if st.session_state.bookings:
                 with _col:
                     _fn()
 
-    # 배차 예약 카드를 '한 줄에 2개(가로 2열)'로 배치하되, '같은 차량끼리만' 짝을 짓는다.
-    #  → 서로 다른 차량이 한 줄에 섞이지 않는다. 한 차량 카드가 홀수면 그 차량 마지막 줄 오른쪽 칸은 비워 둔다.
-    #    (예: VF5가 1대면 [VF5][빈칸], 다음 줄부터 TAXI 시작)
-    with st.container(key="booking_board"):
-        # 차량 순으로 그룹을 만든다(각 그룹 = 같은 차량의 좌석번호순 예약 목록).
-        car_groups = []
-        shown = set()
-        for rcar in resolved_cars:
-            car_items = sorted(
-                [it for it in filtered_items if it[0][0] == rcar["display_name"]],
-                key=lambda kv: kv[0][1]
-            )
-            if car_items:
-                car_groups.append(car_items)
-                for key_, _binfo in car_items:
-                    shown.add(key_)
-        # 현재 차량 구성에 없는(4/7 설정 변경·삭제된 차량 등) 예약: 표시명별로 묶어 뒤에 추가.
-        leftover_names = []
-        leftover_map = {}
-        for key_, binfo in filtered_items:
-            if key_ in shown:
-                continue
-            nm = key_[0]
-            if nm not in leftover_map:
-                leftover_map[nm] = []
-                leftover_names.append(nm)
-            leftover_map[nm].append((key_, binfo))
-        for nm in leftover_names:
-            car_groups.append(leftover_map[nm])
+    # 도착 완료 카드 1장(읽기 전용) — 이미 끝난 탑승이라 수정·취소·완료 버튼이 없다.
+    #  차량색은 그대로 쓰되 살짝 가라앉혀(투명도) 왼쪽의 '진행 중' 카드와 한눈에 구분되게 한다.
+    def _render_done_card(rec):
+        dc_name = str(rec.get("car", ""))
+        mk = _model_key(dc_name)
+        c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(mk, CAR_CARD_STYLE["innova"])
+        _safe = "".join(ch for ch in f"{dc_name}{rec.get('seat', '')}{rec.get('completed_at', '')}" if ch.isalnum())
+        cardkey = f"dncard_{mk}_{_safe}"
+        header_html = (
+            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: 15px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
+            f'{brand_logo(dc_name)}'
+            f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{esc(_short_car_name(dc_name))}</span>'
+            '</span>'
+            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; '
+            f'padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">'
+            f'{t("seat_n", n=rec.get("seat", ""))}</span>'
+            '</div>'
+            # 도착 완료 배지 — 초록 실선 톤으로 '끝난 건'임을 분명히 한다.
+            f'<div style="margin-top:3px;"><span style="display:inline-block; background:#1b5e20; color:#ffffff; '
+            f'border:1px solid #2e7d32; border-radius:4px; padding:0 5px; font-size:10px; font-weight:700; '
+            f'white-space:nowrap;">{esc(t("done_at", v=rec.get("arrive", "") or "--:--"))}</span></div>'
+            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
+        )
 
-        # 각 차량 그룹을 2개씩 한 줄로 렌더. 오른쪽 칸이 없으면(홀수) 빈 컬럼으로 남겨 '2열' 틀 유지.
-        for group in car_groups:
-            for i in range(0, len(group), 2):
-                col_l, col_r = st.columns(2)
-                with col_l:
-                    (bc_name, bseat), binfo = group[i]
-                    _render_booking_card(bc_name, bseat, binfo)
-                with col_r:
-                    if i + 1 < len(group):
-                        (bc_name, bseat), binfo = group[i + 1]
-                        _render_booking_card(bc_name, bseat, binfo)
-                    # 홀수 마지막 줄: 오른쪽 칸 비워 둠(같은 차량 병렬 틀 유지)
+        def _cell(label, value):
+            return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
+                    f'<strong>{label}</strong><br>{esc(value)}</div>')
+        info_grid = (
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
+            f'font-size:12px; color:{c_fg}; line-height:1.2; margin-bottom:2px;">'
+            + _cell(t('c_applicant'), rec.get('name', ''))
+            + _cell(t('c_date'), rec.get('date', ''))
+            + _cell(t('c_departure'), rec.get('departure', ''))
+            + _cell(t('c_time'), rec.get('time', ''))
+            + _cell(t('c_destination'), rec.get('destination', ''))
+            + _cell(t('c_arrive'), rec.get('arrive', ''))
+            + '</div>'
+        )
+        st.markdown(
+            f"<style>.st-key-{cardkey}{{background:{c_bg} !important; border:1px solid {c_bd} !important; "
+            f"border-radius:8px !important; padding:7px 8px !important; margin-bottom:5px !important; opacity:0.88 !important;}}</style>",
+            unsafe_allow_html=True,
+        )
+        with st.container(key=cardkey):
+            st.markdown(header_html, unsafe_allow_html=True)
+            st.markdown(info_grid, unsafe_allow_html=True)
+
+    # 현황판 2열(항목5) — 왼쪽엔 아직 안 끝난 배차가, 오른쪽엔 도착 완료가 각각 누적된다.
+    #  · 왼쪽: 승인 대기 → 승인 완료 순, 같은 상태 안에서는 출발이 급한 순(놓치면 안 되는 건이 위로).
+    #  · 오른쪽: 도착 시간이 빠른 순 — 그날 운행이 끝난 순서대로 위에서 아래로 읽힌다.
+    #  차량별로 짝지어 2열로 깔던 이전 방식은 '무엇이 남았고 무엇이 끝났는지'가 섞여 보이지 않았다.
+    with st.container(key="booking_board"):
+        def _active_sort_key(kv):
+            (c_name, s_id), inf = kv
+            return (0 if booking_status(inf) == STATUS_PENDING else 1,
+                    str(inf.get("date", "")), str(inf.get("time", "")), c_name, s_id)
+
+        active_items = sorted(filtered_items, key=_active_sort_key)
+        # 도착 완료도 같은 검색어로 거른다(왼쪽만 걸러지면 검색 결과가 반쪽이 된다).
+        _q = (search_query or "").strip().lower()
+        done_rows = [
+            r for r in _done_today
+            if not _q or _q in " ".join([
+                str(r.get("car", "")), str(r.get("name", "")), str(r.get("destination", "")),
+                str(r.get("departure", "")), str(r.get("date", "")),
+            ]).lower()
+        ]
+
+        col_l, col_r = st.columns(2)
+        with col_l:
+            st.markdown(f'<div class="board-col-title">{t("board_active", n=len(active_items))}</div>',
+                        unsafe_allow_html=True)
+            if not active_items:
+                st.caption(t("board_active_none"))
+            for (bc_name, bseat), binfo in active_items:
+                _render_booking_card(bc_name, bseat, binfo)
+        with col_r:
+            st.markdown(f'<div class="board-col-title">{t("board_done", n=len(done_rows))}</div>',
+                        unsafe_allow_html=True)
+            if not done_rows:
+                st.caption(t("board_done_none"))
+            for _rec in done_rows:
+                _render_done_card(_rec)
 
 else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
@@ -4003,67 +4536,24 @@ else:
 #   ⚠️ 예약이 0건일 때도 반드시 보여야 한다. '초기화 직후'가 바로 되돌리기가 필요한 순간인데,
 #      이 블록이 `if 예약이 있으면:` 안에 있으면 초기화하자마자 되돌리기 버튼에 닿을 수 없다.
 #      (그래서 예약 유무와 무관하게 항상 렌더되도록 바깥으로 뺐다)
+#   · 관리자 모드 종료 / 전체 예약 초기화 버튼은 헤더(언어 토글 아래)로 옮겼다(항목4).
+#     여기에는 관리 기능 타일(승인 대기 / 백업·복원 / 활동 기록)만 남는다.
 if st.session_state.get("admin_unlocked"):
     st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
-    # 지금이 관리자 모드라는 사실과 '나가는 방법'을 패널 맨 위에 먼저 보여준다.
-    #  이전에는 나가는 버튼이 '전체 예약 초기화' 옆에 작게 있었고 라벨('관리자 잠금')이 상태 표시처럼 읽혀,
-    #  들어온 뒤 어떻게 빠져나가는지 알기 어려웠다.
-    st.markdown(
-        '<div style="display:flex; align-items:center; gap:8px; background:rgba(250,176,5,0.12); '
-        'border:1px solid #fab005; border-radius:8px; padding:6px 10px; margin:0 0 8px 0; '
-        f'font-size:12px; font-weight:700; color:#fab005;">{esc(t("admin_mode_on"))}</div>',
-        unsafe_allow_html=True,
-    )
-    with st.container(key="admin_exit_row"):
-        # 관리자 모드 종료(로그아웃) — 세션·유지 플래그 해제 + localStorage 1회성 클리어 예약
-        #  ⚠️ key는 admin_lock_btn을 유지해야 한다. JS 브릿지가 이 키로 로그아웃 클릭을 감지해
-        #     localStorage를 즉시 비운다(.st-key-admin_lock_btn button).
-        if st.button(t("admin_exit"), key="admin_lock_btn", use_container_width=True):
-            st.session_state.admin_unlocked = False
-            st.session_state.admin_keep = False
-            st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
-            st.session_state.confirm_reset_all = False
-            st.toast(t("admin_locked_toast"))
-            st.rerun()
-    if not st.session_state.get("confirm_reset_all"):
-        if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
-                     disabled=not st.session_state.bookings):
-            st.session_state.confirm_reset_all = True
-            st.rerun()
-    else:
-        # 몇 건이 사라지는지 숫자로 보여준다(실수 방지) + 되돌릴 수 있음을 함께 안내
-        st.warning(t("reset_warn", n=len(st.session_state.bookings)))
-        rc1, rc2 = st.columns(2)
-        with rc1:
-            if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
-                # 전량 삭제 전에 ① 건수를 기록하고 ② 직전 상태를 스냅샷으로 남긴다 — 지운 뒤엔 되돌릴 근거가 없다.
-                log_action("reset", "", 0, None, note=str(len(st.session_state.bookings)))
-                save_snapshot(st.session_state.bookings, reason="reset")
-                st.session_state.bookings = {}
-                save_bookings(st.session_state.bookings)
-                st.session_state.confirm_reset_all = False
-                st.toast(t("toast_reset"))
-                st.rerun()
-        with rc2:
-            if st.button(t("btn_cancel"), key="reset_all_cancel_btn", use_container_width=True):
-                st.session_state.confirm_reset_all = False
-                st.rerun()
     _render_admin_tiles()
-else:
-    # 잠금 상태(일반 화면)에서도 '관리자 모드로 들어가는 문'이 보여야 한다.
-    #  예전에는 INNOVA·SEDONA 운전석을 눌러야만 로그인할 수 있어, 그 방법을 모르면 들어갈 길이 없었다.
-    st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
-    st.markdown(
-        '<div style="background:rgba(255,255,255,0.04); border:1px solid #2b2f38; border-radius:8px; '
-        'padding:6px 10px; margin:0 0 6px 0; font-size:12px; color:#868e96;">'
-        f'{esc(t("admin_locked_banner"))}</div>',
-        unsafe_allow_html=True,
-    )
-    with st.container(key="admin_enter_row"):
-        if st.button(t("admin_unlock_btn"), key="admin_unlock_btn", use_container_width=True):
-            st.session_state.admin_login_main_open = True
-            st.session_state.admin_pin_error = False
-            st.rerun()
+
+# 출발 임박 강제 알림(항목6) — 1분 단위 감시를 켜 두고, 구간에 든 배차가 있으면 팝업을 띄운다.
+_depart_alert_watch()
+if st.session_state.get("depart_alert_open") and _claim_dialog():
+    if departing_now():
+        depart_alert_dialog()
+    else:
+        st.session_state.depart_alert_open = False
+
+# 전체 초기화 확인 — 되돌리기 어려운 동작이라 팝업으로 한 번 더 막는다(헤더 버튼은 1줄이라 확인 UI를 담을 수 없다).
+if (st.session_state.get("confirm_reset_all") and st.session_state.get("admin_unlocked")
+        and _claim_dialog()):
+    reset_confirm_dialog()
 
 # 관리자 잠금 해제 버튼이 눌렸으면 PIN 입력 팝업을 띄운다(잠금 상태에서만).
 if (st.session_state.get("admin_login_main_open") and not st.session_state.get("admin_unlocked")
@@ -4116,11 +4606,12 @@ components.html("""
 //    (초기화는 스크립트 로드당 1회뿐 → initDragDrop의 setTimeout 루프에선 재초기화 안 되므로 중복 바인딩 없음)
 try {
     window.parent.document
-        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound]')
+        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound]')
         .forEach(el => {
             el.removeAttribute('data-nav-bound'); el.removeAttribute('data-admin-bound');
             el.removeAttribute('data-click-bound'); el.removeAttribute('data-drag-bound');
             el.removeAttribute('data-drop-bound'); el.removeAttribute('data-logout-bound');
+            el.removeAttribute('data-taxi-bound');
         });
 } catch (e) {}
 
@@ -4131,6 +4622,7 @@ const initDragDrop = () => {
     const clickables = parentDoc.querySelectorAll('.seat-clickable');
     const carnavs = parentDoc.querySelectorAll('.car-nav-click');
     const adminseats = parentDoc.querySelectorAll('.admin-login-seat');
+    const taxititles = parentDoc.querySelectorAll('.taxi-title-click');
 
     // 요소가 렌더링되지 않았을 경우 대기
     if (draggables.length === 0 && droptargets.length === 0 && clickables.length === 0 && carnavs.length === 0 && adminseats.length === 0) {
@@ -4214,6 +4706,18 @@ const initDragDrop = () => {
             const btns = parentDoc.querySelectorAll('button');
             for (const b of btns) {
                 if ((b.innerText || b.textContent || '').trim() === token) { b.click(); return; }
+            }
+        });
+    });
+
+    // ⚡ 좌석맵 팝업의 TAXI 제목 클릭 → 숨김 TAXITITLE 버튼을 대신 눌러 '인승 선택'으로 되돌아간다
+    taxititles.forEach(el => {
+        if (el.getAttribute('data-taxi-bound') === 'true') return;
+        el.setAttribute('data-taxi-bound', 'true');
+        el.addEventListener('click', () => {
+            const btns = parentDoc.querySelectorAll('button');
+            for (const b of btns) {
+                if ((b.innerText || b.textContent || '').trim() === 'TAXITITLE') { b.click(); return; }
             }
         });
     });

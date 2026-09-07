@@ -39,7 +39,8 @@ def load_counter():
 
 
 def max_backup_count(display_date):
-    """VER/{mmdd} 폴더의 app_ver_N.py 중 가장 큰 N(없으면 0).
+    """VER/{mmdd} 폴더의 app_ver_{mmdd}_N.py 중 가장 큰 N(없으면 0).
+    구 규칙(app_ver_N.py)으로 만들어진 백업도 함께 인식해 차수가 끊기지 않게 한다.
     JSON이 유실·손상돼도 실제 백업에서 차수를 복구해 번호 재사용을 막는다."""
     try:
         d = os.path.join(VER_DIR, display_date)
@@ -47,7 +48,7 @@ def max_backup_count(display_date):
             return 0
         mx = 0
         for fn in os.listdir(d):
-            m = re.match(r"app_ver_(\d+)\.py$", fn)
+            m = re.match(r"app_ver_(?:\d{4}_)?(\d+)\.py$", fn)
             if m:
                 mx = max(mx, int(m.group(1)))
         return mx
@@ -215,12 +216,12 @@ def main():
     except Exception:
         pass
 
-    # VER/[mmdd]/app_ver_N.py 백업 (count가 항상 최대+1이라 덮어쓰기 없음)
+    # VER/[mmdd]/app_ver_[mmdd]_N.py 백업 (count가 항상 최대+1이라 덮어쓰기 없음)
     try:
         backup_dir = os.path.join(VER_DIR, display_date)
         os.makedirs(backup_dir, exist_ok=True)
         if os.path.exists(APP_FILE):
-            shutil.copy2(APP_FILE, os.path.join(backup_dir, f"app_ver_{count}.py"))
+            shutil.copy2(APP_FILE, os.path.join(backup_dir, f"app_ver_{display_date}_{count}.py"))
     except Exception:
         pass
 
