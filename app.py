@@ -239,7 +239,11 @@ st.markdown("""
        화면 맨 아래에 있던 버튼을 위로 올려, 지금 관리자 모드인지와 나가는 길이 한눈에 보이게 한다. */
     /* 언어 토글 3개가 차지하는 폭을 배너의 '최대 폭'으로 삼고, 창이 좁아지면 둘 다 같이 줄어든다. */
     .st-key-hdr_right .st-key-lang_toggle,
-    .st-key-hdr_right .st-key-hdr_admin { width: 100% !important; max-width: min(100%, 340px) !important; }
+    .st-key-hdr_right .st-key-hdr_admin {
+        width: 100% !important; max-width: min(100%, 340px) !important;
+        margin-left: auto !important; margin-right: 0 !important;  /* 언어 토글과 같은 오른쪽 끝선 */
+        align-self: flex-end !important;
+    }
     /* 언어 라벨도 창 폭을 따라 줄어든다 → 토글 폭이 줄면 그 아래 배너도 같은 폭으로 따라 줄어든다 */
     .st-key-hdr_right .st-key-lang_toggle div[data-testid="stRadio"] label { font-size: clamp(11px, 1.05vw, 16px) !important; }
     /* 토글 3개를 그 폭에 고르게 펼쳐 배너 좌우 끝선과 정확히 맞춘다 */
@@ -389,6 +393,16 @@ st.markdown("""
         border-radius: 6px; padding: 4px 8px; margin: 0 0 6px 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* 예약 카드 '상태 배지 + 탑승 버튼' 줄: 배지(2) : 버튼(1). 현황판 공통 1:1 강제 규칙을 되돌린다. */
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 2 1 0% !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
+    div[class*="st-key-chiprow_"] button {
+        min-height: 26px !important; height: 26px !important;
+        padding: 0 6px !important; font-size: 11px !important; font-weight: 700 !important;
+        border-radius: 5px !important; white-space: nowrap !important;
+    }
+
     /* 같은 font-size라도 숫자는 한글보다 작아 보인다(글자 높이 차이) → 숫자만 조금 키워 눈으로 크기를 맞춘다. */
     .dk-num { font-size: 1.15em; font-weight: inherit; letter-spacing: 0.02em; }
     .st-key-booking_board [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; flex-direction: row !important; gap: 6px !important; }
@@ -1671,8 +1685,9 @@ TR = {
         "receipt_err_lib": "이미지 처리 모듈(Pillow)이 설치되지 않아 사진을 저장할 수 없습니다.",
         "receipt_err_big": "사진이 너무 커서 저장할 수 없습니다. 더 작게 찍거나 잘라서 다시 올려 주세요.",
         "receipt_err_bad": "사진을 읽을 수 없습니다. jpg·png 형식인지 확인해 주세요.",
-        "status_pending": "승인 대기", "status_approved": "승인 완료",
-        "status_soon": "출발 임박 · 미승인", "status_over": "출발 시각 초과 · 미승인",
+        "status_pending": "승인 대기", "status_approved": "탑승 완료",
+        "status_soon": "출발 임박 · 미탑승", "status_over": "출발 시각 초과 · 미탑승",
+        "btn_board": "🙋 탑승",
         "approve_title": "✅ 승인 대기 ({n}건)", "approve_none": "승인 대기 중인 신청이 없습니다.",
         "approve_btn": "승인",
         "toast_approved": "✅ [{name}]님 좌석 {seat} 배차가 승인되었습니다.",
@@ -1802,8 +1817,9 @@ TR = {
         "receipt_err_lib": "Chưa cài mô-đun xử lý ảnh (Pillow) nên không thể lưu ảnh.",
         "receipt_err_big": "Ảnh quá lớn nên không lưu được. Vui lòng chụp nhỏ hơn hoặc cắt bớt rồi tải lại.",
         "receipt_err_bad": "Không đọc được ảnh. Vui lòng kiểm tra định dạng jpg·png.",
-        "status_pending": "Chờ duyệt", "status_approved": "Đã duyệt",
-        "status_soon": "Sắp khởi hành · chưa duyệt", "status_over": "Quá giờ đi · chưa duyệt",
+        "status_pending": "Chờ duyệt", "status_approved": "Đã lên xe",
+        "status_soon": "Sắp khởi hành · chưa lên xe", "status_over": "Quá giờ đi · chưa lên xe",
+        "btn_board": "🙋 Lên xe",
         "approve_title": "✅ Chờ duyệt ({n})", "approve_none": "Không có đăng ký nào đang chờ duyệt.",
         "approve_btn": "Duyệt",
         "toast_approved": "✅ Đã duyệt xe ghế {seat} cho [{name}].",
@@ -1933,8 +1949,9 @@ TR = {
         "receipt_err_lib": "The image library (Pillow) is not installed, so the photo cannot be saved.",
         "receipt_err_big": "The photo is too large to store. Please take a smaller one or crop it and try again.",
         "receipt_err_bad": "Could not read the photo. Please check it is a jpg or png file.",
-        "status_pending": "Pending", "status_approved": "Approved",
-        "status_soon": "Departing soon · not approved", "status_over": "Past departure · not approved",
+        "status_pending": "Pending", "status_approved": "Boarded",
+        "status_soon": "Departing soon · not boarded", "status_over": "Past departure · not boarded",
+        "btn_board": "🙋 Board",
         "approve_title": "✅ Pending approval ({n})", "approve_none": "No requests are waiting for approval.",
         "approve_btn": "Approve",
         "toast_approved": "✅ [{name}]'s seat {seat} has been approved.",
@@ -4365,7 +4382,9 @@ search_query = ""
 #  → 예약 신청이 없더라도 '실시간 차량 예약 현황' 제목과 '예약 이력(CSV)' 버튼이 항상 노출된다.
 h_title, h_search, h_csv = st.columns([2, 1, 1], vertical_alignment="center")
 with h_title:
-    st.markdown(f'<div class="board-title">{_num_up(esc(t("list_title", n=num_bookings)))}</div>', unsafe_allow_html=True)
+    # 현황판 제목은 표시하지 않는다 — 바로 아래 '진행 중 / 도착 완료' 열 제목이 같은 내용을 더 정확히 말해 준다.
+    #  (컬럼 자체는 남겨 둔다. 지우면 검색창·예약 이력 버튼의 가로 위치가 함께 밀린다)
+    pass
 with h_search:
     # 검색창은 예약이 있을 때만 노출(빈 상태에서 빈 검색창 방지). CSV 위치는 컬럼으로 고정 유지.
     if st.session_state.bookings:
@@ -4503,9 +4522,8 @@ if st.session_state.bookings or _done_today:
             f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
-            f'{_status_chip(binfo, mk)}'
-            f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
+        hr_html = f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">' 
 
         # 카드가 화면 절반 폭(좁음)이라 정보를 'CSS 2열 그리드'로 배열(제목 + 값 한 줄, 길면 자동 줄바꿈).
         #  중첩 Streamlit 컬럼을 쓰지 않아 열 겹침·가로 오버플로우가 없다. 높이 축소를 위해 인라인·압축 배치.
@@ -4561,6 +4579,25 @@ if st.session_state.bookings or _done_today:
         # 카드 배경 CSS는 _booking_cards_css()가 두 열 바깥에서 한 번에 내보낸다(여기서 주입하지 않는다).
         with st.container(key=cardkey):
             st.markdown(header_html, unsafe_allow_html=True)
+            # 좌석 배지 아래 줄: 왼쪽=상태 배지, 오른쪽='탑승' 버튼.
+            #  탑승은 관리자 패널의 '승인'과 완전히 같은 동작이다 — 다만 타는 사람이 카드에서 바로 누를 수 있게
+            #  했다. 관리자가 대신 눌러 주기를 기다리느라 상태가 '미탑승'으로 남던 문제를 없앤다.
+            with st.container(key=f"chiprow_{cardkey}"):
+                _chip_c, _board_c = st.columns([2, 1], vertical_alignment="center")
+                with _chip_c:
+                    st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
+                with _board_c:
+                    if booking_status(binfo) == STATUS_PENDING:
+                        if st.button(t("btn_board"), key=f"board_btn_{bc_name}_{bseat}",
+                                     type="primary", use_container_width=True):
+                            cur = st.session_state.bookings.get((bc_name, bseat))
+                            if cur:   # 누르는 사이 취소·완료됐을 수 있으니 직전에 다시 확인
+                                cur["status"] = STATUS_APPROVED
+                                if save_bookings(st.session_state.bookings):
+                                    log_action("approve", bc_name, bseat, cur)
+                                    st.toast(t("toast_approved", name=cur.get("name", ""), seat=bseat))
+                            st.rerun()
+            st.markdown(hr_html, unsafe_allow_html=True)
             st.markdown(info_grid, unsafe_allow_html=True)          # 정보 2열 그리드(위)
             # 버튼은 정보 아래 가로 분할 — 택시는 '영수증 첨부'가 하나 더 붙어 4분할, 나머지는 3분할.
             _is_taxi = "TAXI" in str(bc_name).upper()
@@ -4573,9 +4610,11 @@ if st.session_state.bookings or _done_today:
     #  ⚠️ 카드 전체를 '하나의 HTML 블록'으로 그린다. 예전에는 st.container 안에 markdown을 두 번 넣고
     #     컨테이너에 배경을 입혔는데, 컨테이너 높이가 안쪽 내용보다 짧게 잡혀 마지막 줄(목적지·도착시간)이
     #     상자 아래로 삐져나왔다. 한 덩어리 div면 높이가 내용에 맞춰지므로 잘림이 생기지 않는다.
-    #  배경색은 차량색을 쓰지 않고 전부 같은 무채색(그래파이트)으로 통일한다 —
-    #  실버(INNOVA)·블랙(SEDONA)·옐로우(TAXI) 어느 차량 색과도 겹치지 않아 '끝난 건'으로 한눈에 묶여 읽힌다.
-    DONE_CARD_BG, DONE_CARD_FG, DONE_CARD_BD = "#32353b", "#e9ecef", "#4c515a"
+    #  배경색은 차량색을 쓰지 않고 전부 같은 색으로 통일한다.
+    #  무채색 그래파이트(#32353b)를 먼저 썼으나 SEDONA 카드(어두운 회색 틴트)와 구분이 잘 안 됐다.
+    #  → 채도가 있는 청록으로 올린다. 실버·블랙·옐로우·레드 어느 차량색과도, 빈자리 파랑과도 겹치지 않고
+    #    '완료'라는 뜻이 색으로도 읽힌다.
+    DONE_CARD_BG, DONE_CARD_FG, DONE_CARD_BD = "#0f6e63", "#ffffff", "#19a08f"
 
     def _render_done_card(rec):
         dc_name = str(rec.get("car", ""))
@@ -4586,13 +4625,13 @@ if st.session_state.bookings or _done_today:
             f'{brand_logo(dc_name)}'
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{esc(_short_car_name(dc_name))}</span>'
             '</span>'
-            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; '
+            f'<span style="flex: 0 0 auto; background: rgba(0,0,0,0.32); border: 1px solid rgba(255,255,255,0.55); color: #ffffff; '
             f'padding: 1px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">'
             f'{t("seat_n", n=rec.get("seat", ""))}</span>'
             '</div>'
-            # 도착 완료 배지 — 초록 실선 톤으로 '끝난 건'임을 분명히 한다.
-            f'<div style="margin-top:3px;"><span style="display:inline-block; background:#1b5e20; color:#ffffff; '
-            f'border:1px solid #2e7d32; border-radius:4px; padding:0 5px; font-size:10px; font-weight:700; '
+            # 도착 시각 배지 — 청록 배경 위에서 읽히도록 어두운 청록 + 흰 글자.
+            f'<div style="margin-top:3px;"><span style="display:inline-block; background:#06443c; color:#ffffff; '
+            f'border:1px solid #19a08f; border-radius:4px; padding:0 5px; font-size:10px; font-weight:700; '
             f'white-space:nowrap;">{esc(t("done_at", v=rec.get("arrive", "") or "--:--"))}</span></div>'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
