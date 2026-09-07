@@ -261,9 +261,16 @@ st.markdown("""
         white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
         border-radius: 6px !important;
     }
+    /* 헤더 한 줄: 왼쪽(브랜드·타이틀·안내 문구·범례)과 오른쪽(시계·언어·배너) 칸의 높이를 같게 늘린다.
+       이래야 오른쪽 맨 아래 배너의 아래 선을 왼쪽 범례의 아래 선에 맞출 수 있다. */
+    .st-key-hdr_row [data-testid="stHorizontalBlock"] { align-items: stretch !important; }
+    .st-key-hdr_row [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; }
+    .st-key-hdr_right { height: 100% !important; justify-content: flex-start !important; }
+
     /* 예약 이력 · 최근 활동 기록: 위 배너들과 같은 폭 안에서 둘이 반씩 나눠 갖는다.
-       높이는 왼쪽의 '대곤 비나 …' 안내 문구 + 범례 두 줄이 차지하는 높이에 맞췄다. */
+       margin-top:auto로 오른쪽 칸의 맨 아래에 붙여, 아래 선이 왼쪽 범례(빈 자리·탑승 완료 …)와 같은 선에 온다. */
     .st-key-hdr_right .st-key-hdr_tools { width: 100% !important; max-width: min(100%, 340px) !important; margin: 4px 0 0 auto !important; }
+    .st-key-hdr_right .st-key-hdr_tools { margin-top: auto !important; }
     .st-key-hdr_tools [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px !important; }
     .st-key-hdr_tools [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; min-width: 0 !important; }
     .st-key-hdr_tools button {
@@ -415,7 +422,8 @@ st.markdown("""
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
-    /* 높이는 왼쪽 상태 배지와 같은 줄 높이로 맞춘다(배지 20px) — 버튼만 도드라져 보이지 않게. */
+    /* 높이는 왼쪽 상태 배지와 같게(웹 24px / 모바일 20px — 아래 모바일 블록에서 덮어씀). */
+    div[class*="st-key-chiprow_"] [data-testid="stElementContainer"] { margin-bottom: 0 !important; }
     div[class*="st-key-chiprow_"] button {
         min-height: 24px !important; height: 24px !important;
         padding: 0 4px !important; font-size: 10px !important; font-weight: 700 !important;
@@ -933,7 +941,9 @@ if IS_MOBILE:
     .st-key-booking_board .stButton { margin-bottom: 0 !important; }
     .st-key-booking_board .stButton button,
     .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
-    .st-key-booking_board .stButton button { min-height: 40px !important; font-size: 15px !important; padding: 3px 2px !important; line-height: 1.15 !important; }
+    /* 카드 버튼·탑승 버튼은 0907 ver.6 크기 그대로 — 폰에서 커진 버튼은 카드 높이만 키운다 */
+    .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; line-height: 1.1 !important; }
+    div[class*="st-key-chiprow_"] button { min-height: 20px !important; height: 20px !important; font-size: 9px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2030,70 +2040,6 @@ def _load_brand_logo_uri():
 
 DAEKHON_LOGO_URI = _load_brand_logo_uri()
 
-# 좌측: 타이틀/버전/실시간 시계 배너  ·  우측: 언어 선택 토글(한국어/ENG)
-_bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
-# 로고 파일이 있으면 이미지, 없으면 이모지 폴백
-brand_mark_html = (f'<img class="brand-logo-img" src="{DAEKHON_LOGO_URI}" alt="DAEKHON VINA"/>'
-                   if DAEKHON_LOGO_URI else '<span class="brand-mark">🐋</span>')
-with _bn_l:
-    # 로고+브랜드명(왼쪽) · 메인 타이틀+버전 묶음(가운데). 시계는 오른쪽 컬럼으로 이동.
-    st.markdown(f"""
-    <div class="top-header-container">
-        <div class="brand-lockup">
-            {brand_mark_html}
-            <span class="brand-name">DAEKHON VINA</span>
-        </div>
-        <div class="title-group">
-            <p class="main-title">{t("app_title")}</p>
-            <span class="clean-timestamp-stamp brand-version">{date_version_str}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-with _bn_r:
-    # 실시간 시계(위) + 언어 토글(아래)을 컴팩트 세로 스택으로 묶어 오른쪽 프레임 끝선에 정렬
-    with st.container(key="hdr_right"):
-        st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
-        st.radio("Language", list(LANG_OPTIONS.keys()), key="lang_toggle",
-                 horizontal=True, label_visibility="collapsed")
-        # 관리자 배너 2종(항목4) — 언어 토글 바로 아래, 폭은 토글 3개를 합친 폭, 높이는 1줄.
-        #  화면 맨 아래에 있던 때는 '지금 관리자 모드인지', '어디서 빠져나가는지'를 스크롤해야 알 수 있었다.
-        #  전체 초기화는 되돌리기가 어려운 동작이라 확인 절차는 팝업(reset_confirm_dialog)으로 뺀다.
-        with st.container(key="hdr_admin"):
-            if st.session_state.get("admin_unlocked"):
-                # ⚠️ key는 admin_lock_btn을 유지해야 한다. JS 브릿지가 이 키로 로그아웃 클릭을 감지해
-                #    localStorage를 즉시 비운다(.st-key-admin_lock_btn button).
-                if st.button(t("admin_exit_short"), key="admin_lock_btn", use_container_width=True):
-                    st.session_state.admin_unlocked = False
-                    st.session_state.admin_keep = False
-                    st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
-                    st.session_state.confirm_reset_all = False
-                    st.toast(t("admin_locked_toast"))
-                    st.rerun()
-                if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
-                             disabled=not st.session_state.bookings):
-                    st.session_state.confirm_reset_all = True
-                    st.rerun()
-            else:
-                if st.button(t("admin_unlock_short"), key="admin_unlock_btn", use_container_width=True):
-                    st.session_state.admin_login_main_open = True
-                    st.session_state.admin_pin_error = False
-                    st.rerun()
-            # 자주 여는 두 가지를 배너 아래 한 줄에 나란히 — 예약 이력(전원) / 최근 활동 기록(관리자만).
-            #  현황판 위에 있던 검색창은 없앴고, 예약 이력 버튼도 여기로 올려 화면 위쪽에 모았다.
-            with st.container(key="hdr_tools"):
-                _tool_cols = st.columns(2 if st.session_state.get("admin_unlocked") else 1)
-                with _tool_cols[0]:
-                    if st.button(t("csv_btn"), use_container_width=True, key="open_export_btn"):
-                        st.session_state.export_open = True
-                        st.rerun()
-                if st.session_state.get("admin_unlocked"):
-                    with _tool_cols[1]:
-                        if st.button(t("audit_title"), use_container_width=True, key="hdr_audit_btn"):
-                            st.session_state.admin_panel_open = "audit"
-                            st.rerun()
-
-st.markdown(f'<div class="sub-title">{t("subtitle")}</div>', unsafe_allow_html=True)
-
 # 좌석 상태 색 — 배치도 좌석 테두리 / 범례 / 예약 카드 배지가 모두 이 두 상수를 참조한다(한 곳에서 관리).
 #  ⚠️ 범례가 모듈 실행 시점에 바로 그려지므로, 상수는 반드시 범례보다 먼저 정의돼야 한다.
 BOOKED_SEAT_LINE = "#40c057"    # 승인 완료(확정) — 초록 실선
@@ -2105,16 +2051,92 @@ BOOKED_SEAT_LINE = "#40c057"    # 승인 완료(확정) — 초록 실선
 #  (핑크 #e64980은 검사를 완전히 통과했지만 '대기'라는 의미 전달이 약해 채택하지 않음)
 PENDING_SEAT_LINE = "#fd7e14"
 
-# 좌석 색상 의미를 한눈에 알려주는 범례(legend) — 배치도 위 안내
-st.markdown(f"""
-<div style="display: flex; flex-direction: row; gap: 18px; align-items: center; flex-wrap: wrap; margin: -8px 0 14px 2px; font-size: 12px; color: #c7ccd6;">
+# 안내 문구(대곤 비나 …)와 좌석 색 범례 — 헤더 왼쪽 칸 안에서 그린다.
+#  이 둘이 헤더 바깥(아래)에 있던 때는, 오른쪽 '예약 이력·최근 활동 기록' 배너를 아무리 내려도
+#  범례와 같은 선에 설 수 없었다(서로 다른 줄이라 맞출 기준선 자체가 없다).
+SUBTITLE_HTML = f'<div class="sub-title">{t("subtitle")}</div>'
+LEGEND_HTML = f"""
+<div class="legend-row" style="display: flex; flex-direction: row; gap: 18px; align-items: center; flex-wrap: wrap; margin: -8px 0 0 2px; font-size: 12px; color: #c7ccd6;">
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#1e293b; border:2px solid #1c7ed6; display:inline-block;"></span>{t("legend_empty")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#1b3b22; border:2px solid {BOOKED_SEAT_LINE}; display:inline-block;"></span>{t("status_approved")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3b2a12; border:2px dashed {PENDING_SEAT_LINE}; display:inline-block;"></span>{t("status_pending")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3a2f15; border:2px solid #fab005; display:inline-block;"></span>{t("legend_selected")}</span>
     <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#2c1a1a; border:2px solid #e03131; display:inline-block;"></span>{t("legend_driver")}</span>
 </div>
-""", unsafe_allow_html=True)
+"""
+
+# 좌측: 타이틀/버전 + 안내 문구 + 범례  ·  우측: 시계 / 언어 토글 / 관리자 배너 / 도구 배너
+with st.container(key="hdr_row"):
+    _bn_l, _bn_r = st.columns([6, 2], vertical_alignment="center")
+    # 로고 파일이 있으면 이미지, 없으면 이모지 폴백
+    brand_mark_html = (f'<img class="brand-logo-img" src="{DAEKHON_LOGO_URI}" alt="DAEKHON VINA"/>'
+                       if DAEKHON_LOGO_URI else '<span class="brand-mark">🐋</span>')
+    with _bn_l:
+        # 로고+브랜드명(왼쪽) · 메인 타이틀+버전 묶음(가운데). 시계는 오른쪽 컬럼으로 이동.
+        st.markdown(f"""
+        <div class="top-header-container">
+            <div class="brand-lockup">
+                {brand_mark_html}
+                <span class="brand-name">DAEKHON VINA</span>
+            </div>
+            <div class="title-group">
+                <p class="main-title">{t("app_title")}</p>
+                <span class="clean-timestamp-stamp brand-version">{date_version_str}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        # 모바일은 예전처럼 헤더 아래에 따로 그린다(폰은 칸이 세로로 쌓여 나란히 설 일이 없다).
+        if not IS_MOBILE:
+            st.markdown(SUBTITLE_HTML, unsafe_allow_html=True)
+            st.markdown(LEGEND_HTML, unsafe_allow_html=True)
+
+    with _bn_r:
+        # 실시간 시계(위) + 언어 토글(아래)을 컴팩트 세로 스택으로 묶어 오른쪽 프레임 끝선에 정렬
+        with st.container(key="hdr_right"):
+            st.markdown(f'<div id="live-digital-clock" class="clean-timestamp-stamp header-clock">{init_time_str}</div>', unsafe_allow_html=True)
+            st.radio("Language", list(LANG_OPTIONS.keys()), key="lang_toggle",
+                     horizontal=True, label_visibility="collapsed")
+            # 관리자 배너 2종(항목4) — 언어 토글 바로 아래, 폭은 토글 3개를 합친 폭, 높이는 1줄.
+            #  화면 맨 아래에 있던 때는 '지금 관리자 모드인지', '어디서 빠져나가는지'를 스크롤해야 알 수 있었다.
+            #  전체 초기화는 되돌리기가 어려운 동작이라 확인 절차는 팝업(reset_confirm_dialog)으로 뺀다.
+            with st.container(key="hdr_admin"):
+                if st.session_state.get("admin_unlocked"):
+                    # ⚠️ key는 admin_lock_btn을 유지해야 한다. JS 브릿지가 이 키로 로그아웃 클릭을 감지해
+                    #    localStorage를 즉시 비운다(.st-key-admin_lock_btn button).
+                    if st.button(t("admin_exit_short"), key="admin_lock_btn", use_container_width=True):
+                        st.session_state.admin_unlocked = False
+                        st.session_state.admin_keep = False
+                        st.session_state.admin_clear_ls = True   # 다음 렌더에서 localStorage 삭제(재복원 방지)
+                        st.session_state.confirm_reset_all = False
+                        st.toast(t("admin_locked_toast"))
+                        st.rerun()
+                    if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
+                                 disabled=not st.session_state.bookings):
+                        st.session_state.confirm_reset_all = True
+                        st.rerun()
+                else:
+                    if st.button(t("admin_unlock_short"), key="admin_unlock_btn", use_container_width=True):
+                        st.session_state.admin_login_main_open = True
+                        st.session_state.admin_pin_error = False
+                        st.rerun()
+                # 자주 여는 두 가지를 배너 아래 한 줄에 나란히 — 예약 이력(전원) / 최근 활동 기록(관리자만).
+                #  현황판 위에 있던 검색창은 없앴고, 예약 이력 버튼도 여기로 올려 화면 위쪽에 모았다.
+                with st.container(key="hdr_tools"):
+                    _tool_cols = st.columns(2 if st.session_state.get("admin_unlocked") else 1)
+                    with _tool_cols[0]:
+                        if st.button(t("csv_btn"), use_container_width=True, key="open_export_btn"):
+                            st.session_state.export_open = True
+                            st.rerun()
+                    if st.session_state.get("admin_unlocked"):
+                        with _tool_cols[1]:
+                            if st.button(t("audit_title"), use_container_width=True, key="hdr_audit_btn"):
+                                st.session_state.admin_panel_open = "audit"
+                                st.rerun()
+
+# 모바일(?m=1)에서만 헤더 아래에 안내 문구·범례를 그린다 — 웹은 위 헤더 왼쪽 칸 안에서 이미 그렸다.
+if IS_MOBILE:
+    st.markdown(SUBTITLE_HTML, unsafe_allow_html=True)
+    st.markdown(LEGEND_HTML, unsafe_allow_html=True)
 
 # ⚡ [OPT1 트리거 지원] 좌석 배치도 내부 프리미엄 가죽 시트 렌더러 (클릭 이벤트 주입)
 def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=False, is_booked=False, tooltip="", sub_label="", admin_login=False, book_state=""):
@@ -2969,6 +2991,20 @@ def owner_gate(car, seat, info):
             st.error(t("owner_err"))
     return False
 
+# ─────────────────────────────────────────────────────────────
+# 현황판 카드 치수 — 웹은 확대판(카드 2열·글자 1.5배), 모바일(?m=1)은 0907 ver.6 그대로.
+#   폰 화면은 폭이 좁아 카드를 2열로 쪼개면 한 칸이 손가락보다 작아지고, 글자를 1.5배로 키우면
+#   '출발날짜: 2026-09-07' 같은 줄이 매번 접힌다 → 모바일에서는 1열 + 원래 글자 크기를 유지한다.
+# ─────────────────────────────────────────────────────────────
+if IS_MOBILE:
+    CARDS_PER_ROW = 1
+    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 15, 12, 12, 11, 10
+    CARD_CHIP_H = 20          # 상태 배지 바깥 높이(테두리 포함) — '탑승' 버튼도 같은 높이로 맞춘다
+else:
+    CARDS_PER_ROW = 2
+    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 22, 18, 18, 16, 15
+    CARD_CHIP_H = 24
+
 # 상태 배지 색 — 차량 카드 배경색의 '보색' 계열로 채운 solid 배지(항목6).
 #   왜 바꿨나: 예전에는 반투명 틴트(알파 0.18~0.22)에 같은 색 글자였다. 그래서 INNOVA(밝은 실버) 카드에서는
 #   주황·호박색 배지가 배경에 묻혀 글자가 거의 읽히지 않았다(실제 화면에서 확인된 문제).
@@ -3025,9 +3061,11 @@ def _status_chip(info, mk="innova"):
     else:
         state, label = "pending", t("status_pending")
     bg, fg = STATUS_CHIP_STYLE.get(mk, STATUS_CHIP_STYLE["innova"])[state]
+    # 높이를 CARD_CHIP_H로 못박는다 — 오른쪽 '탑승' 버튼이 같은 값을 쓰므로 두 배너의 아래 선이 정확히 맞는다.
     return (f'<div style="margin-top:3px;"><span style="display:inline-block; background:{bg}; '
-            f'color:{fg}; border:1px solid {bg}; border-radius:4px; padding:1px 6px; '
-            f'font-size:16px; font-weight:800; letter-spacing:0.2px; white-space:nowrap;">{esc(label)}</span></div>')
+            f'color:{fg}; border:1px solid {bg}; border-radius:4px; padding:0 7px; '
+            f'height:{CARD_CHIP_H - 2}px; line-height:{CARD_CHIP_H - 2}px; box-sizing:content-box; '
+            f'font-size:{CARD_FS_CHIP}px; font-weight:800; letter-spacing:0.2px; white-space:nowrap;">{esc(label)}</span></div>')
 
 
 def _pending_approvals_body():
@@ -4514,11 +4552,11 @@ if st.session_state.bookings or _done_today:
         car_short = _short_car_name(bc_name)    # 'TOYOTA INNOVA (7 SEAT)' → 'INNOVA'
         header_html = (
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
-            f'<span style="color: {c_fg}; font-weight: bold; font-size: 22px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
             f'{car_logo}'
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{car_short}</span>'
             '</span>'
-            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: 18px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
+            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: {CARD_FS_SEAT}px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
             # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
         )
@@ -4535,7 +4573,7 @@ if st.session_state.bookings or _done_today:
                     f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
-            f'font-size:18px; color:{c_fg}; line-height:1.3; margin-bottom:5px;">'
+            f'font-size:{CARD_FS_INFO}px; color:{c_fg}; line-height:1.3; margin-bottom:5px;">'
             + _cell(t('c_applicant'), binfo.get('name', ''))
             + _cell(t('c_date'), binfo.get('date', ''))
             + _cell(t('c_departure'), binfo.get('departure', ''))
@@ -4582,7 +4620,8 @@ if st.session_state.bookings or _done_today:
             #  탑승은 관리자 패널의 '승인'과 완전히 같은 동작이다 — 다만 타는 사람이 카드에서 바로 누를 수 있게
             #  했다. 관리자가 대신 눌러 주기를 기다리느라 상태가 '미탑승'으로 남던 문제를 없앤다.
             with st.container(key=f"chiprow_{cardkey}"):
-                _chip_c, _board_c = st.columns([3, 1], vertical_alignment="center")
+                # bottom 정렬 — 왼쪽 상태 배지와 오른쪽 '탑승' 버튼의 아래 선을 같은 높이에 맞춘다.
+                _chip_c, _board_c = st.columns([3, 1], vertical_alignment="bottom")
                 with _chip_c:
                     st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
                 with _board_c:
@@ -4620,17 +4659,17 @@ if st.session_state.bookings or _done_today:
         c_fg, c_bd = DONE_CARD_FG, DONE_CARD_BD
         header_html = (
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
-            f'<span style="color: {c_fg}; font-weight: bold; font-size: 22px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
             f'{brand_logo(dc_name)}'
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{esc(_short_car_name(dc_name))}</span>'
             '</span>'
             f'<span style="flex: 0 0 auto; background: rgba(0,0,0,0.32); border: 1px solid rgba(255,255,255,0.55); color: #ffffff; '
-            f'padding: 1px 6px; border-radius: 4px; font-size: 18px; font-weight: bold; white-space: nowrap;">'
+            f'padding: 1px 6px; border-radius: 4px; font-size: {CARD_FS_SEAT}px; font-weight: bold; white-space: nowrap;">'
             f'{t("seat_n", n=rec.get("seat", ""))}</span>'
             '</div>'
             # 도착 시각 배지 — 청록 배경 위에서 읽히도록 어두운 청록 + 흰 글자.
             f'<div style="margin-top:3px;"><span style="display:inline-block; background:#06443c; color:#ffffff; '
-            f'border:1px solid #19a08f; border-radius:4px; padding:1px 6px; font-size:15px; font-weight:700; '
+            f'border:1px solid #19a08f; border-radius:4px; padding:1px 6px; font-size:{CARD_FS_DONE}px; font-weight:700; '
             f'white-space:nowrap;">{esc(t("done_at", v=rec.get("arrive", "") or "--:--"))}</span></div>'
             f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">'
         )
@@ -4642,7 +4681,7 @@ if st.session_state.bookings or _done_today:
                     f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
-            f'font-size:18px; color:{c_fg}; line-height:1.35;">'
+            f'font-size:{CARD_FS_INFO}px; color:{c_fg}; line-height:1.35;">'
             + _cell(t('c_applicant'), rec.get('name', ''))
             + _cell(t('c_date'), rec.get('date', ''))
             + _cell(t('c_departure'), rec.get('departure', ''))
@@ -4691,25 +4730,33 @@ if st.session_state.bookings or _done_today:
                         unsafe_allow_html=True)
             if not active_items:
                 st.caption(t("board_active_none"))
-            # 카드를 한 줄에 2장씩 — 카드 폭이 절반이 되어 한 화면에 두 배로 들어온다.
+            # 웹은 한 줄에 2장(카드 폭 절반 → 한 화면에 두 배로 들어옴), 모바일은 ver.6처럼 1장씩.
             #  홀수면 마지막 줄 오른쪽 칸은 비워 둬 2열 틀을 유지한다.
-            for _i in range(0, len(active_items), 2):
-                _pair = active_items[_i:_i + 2]
-                _pc = st.columns(2)
-                for _slot, ((bc_name, bseat), binfo) in enumerate(_pair):
-                    with _pc[_slot]:
-                        _render_booking_card(bc_name, bseat, binfo)
+            if CARDS_PER_ROW == 1:
+                for (bc_name, bseat), binfo in active_items:
+                    _render_booking_card(bc_name, bseat, binfo)
+            else:
+                for _i in range(0, len(active_items), 2):
+                    _pair = active_items[_i:_i + 2]
+                    _pc = st.columns(2)
+                    for _slot, ((bc_name, bseat), binfo) in enumerate(_pair):
+                        with _pc[_slot]:
+                            _render_booking_card(bc_name, bseat, binfo)
         with col_r:
             st.markdown(f'<div class="board-col-title">{_num_up(esc(t("board_done", n=len(done_rows))))}</div>',
                         unsafe_allow_html=True)
             if not done_rows:
                 st.caption(t("board_done_none"))
-            for _i in range(0, len(done_rows), 2):
-                _pair = done_rows[_i:_i + 2]
-                _pc = st.columns(2)
-                for _slot, _rec in enumerate(_pair):
-                    with _pc[_slot]:
-                        _render_done_card(_rec)
+            if CARDS_PER_ROW == 1:
+                for _rec in done_rows:
+                    _render_done_card(_rec)
+            else:
+                for _i in range(0, len(done_rows), 2):
+                    _pair = done_rows[_i:_i + 2]
+                    _pc = st.columns(2)
+                    for _slot, _rec in enumerate(_pair):
+                        with _pc[_slot]:
+                            _render_done_card(_rec)
 
 else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
