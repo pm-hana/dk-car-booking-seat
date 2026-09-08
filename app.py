@@ -1092,7 +1092,14 @@ if IS_MOBILE:
     .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
     /* 카드 버튼·탑승 버튼은 0907 ver.6 크기 그대로 — 폰에서 커진 버튼은 카드 높이만 키운다 */
     .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; line-height: 1.1 !important; }
-    div[class*="st-key-chiprow_"] button { min-height: 20px !important; height: 20px !important; font-size: 12px !important; line-height: 18px !important; padding: 0 4px !important; }
+    /* 탑승 버튼 글자를 오른쪽 좌석 배지와 똑같이(12px·bold·줄높이 18px) — 두 배너가 한 벌로 보이게 */
+    div[class*="st-key-chiprow_"] button {
+        min-height: 20px !important; height: 20px !important;
+        font-size: 12px !important; font-weight: bold !important; line-height: 18px !important;
+        padding: 0 5px !important; letter-spacing: 0 !important;
+    }
+    /* 탑승과 좌석 배지가 맞붙어 한 덩어리로 보이던 것을 띄운다(둘 사이만) */
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { margin-right: 7px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -1953,7 +1960,7 @@ TR = {
         "receipt_err_bad": "사진을 읽을 수 없습니다. jpg·png 형식인지 확인해 주세요.",
         "status_pending": "탑승 대기", "status_approved": "탑승 완료",
         "status_soon": "출발 임박 · 미탑승", "status_over": "출발 시각 초과 · 미탑승",
-        "btn_board": "🙋 탑승",
+        "btn_board": "탑승",
         "approve_title": "🙋 탑승 대기 ({n}건)", "approve_none": "탑승 대기 중인 신청이 없습니다.",
         "approve_btn": "탑승",
         "toast_approved": "🙋 [{name}]님 좌석 {seat} 탑승 처리되었습니다.",
@@ -2094,7 +2101,7 @@ TR = {
         "receipt_err_bad": "Không đọc được ảnh. Vui lòng kiểm tra định dạng jpg·png.",
         "status_pending": "Chờ lên xe", "status_approved": "Đã lên xe",
         "status_soon": "Sắp khởi hành · chưa lên xe", "status_over": "Quá giờ đi · chưa lên xe",
-        "btn_board": "🙋 Lên xe",
+        "btn_board": "Lên xe",
         "approve_title": "🙋 Chờ lên xe ({n})", "approve_none": "Không có đăng ký nào đang chờ lên xe.",
         "approve_btn": "Lên xe",
         "toast_approved": "🙋 Đã ghi nhận [{name}] lên xe ở ghế {seat}.",
@@ -2235,7 +2242,7 @@ TR = {
         "receipt_err_bad": "Could not read the photo. Please check it is a jpg or png file.",
         "status_pending": "Awaiting boarding", "status_approved": "Boarded",
         "status_soon": "Departing soon · not boarded", "status_over": "Past departure · not boarded",
-        "btn_board": "🙋 Board",
+        "btn_board": "Board",
         "approve_title": "🙋 Awaiting boarding ({n})", "approve_none": "No requests are awaiting boarding.",
         "approve_btn": "Board",
         "toast_approved": "🙋 [{name}] boarded at seat {seat}.",
