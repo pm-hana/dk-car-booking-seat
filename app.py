@@ -425,18 +425,17 @@ st.markdown("""
     .bkcard-logo svg { width: 53px !important; height: 34px !important; }
 
     /* 예약 카드 헤더 한 줄: [차량명 3][탑승 1][좌석 배지 1] — 현황판 공통 1:1 강제 규칙을 되돌린다 */
-    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 4px !important; align-items: center !important; }
-    div[class*="st-key-chiprow_"] [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; justify-content: center !important; }
+    /* 예약 카드 헤더: [차량명 3][좌석 배지 + 그 아래 탑승 1] — 현황판 공통 1:1 강제 규칙을 되돌린다 */
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; align-items: flex-start !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
-    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(3) { flex: 1 1 0% !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
     /* '탑승' 버튼은 바로 오른쪽 좌석 배지와 같은 크기(웹 26px·18px / 모바일 20px·12px — 모바일 블록에서 덮어씀) */
     div[class*="st-key-chiprow_"] [data-testid="stElementContainer"] { margin-bottom: 0 !important; }
-    /* 로고·탑승·좌석 세 배너의 눈높이를 맞춘다. 버튼은 Streamlit 자체 여백 때문에 약간 위로 뜨므로
-       레이아웃에 영향 없는 relative 이동으로만 살짝 내린다(margin을 쓰면 줄 높이까지 같이 늘어난다). */
-    div[class*="st-key-chiprow_"] button { position: relative !important; top: 4px !important; }
+    /* 탑승 버튼은 좌석 배지 바로 아래 — 폭은 칸을 꽉 채워 배지와 같고, 사이는 6px 띄운다 */
+    div[class*="st-key-chiprow_"] button { width: 100% !important; margin-top: 6px !important; }
     div[class*="st-key-chiprow_"] button {
         min-height: 26px !important; height: 26px !important;
         padding: 0 6px !important; font-size: 18px !important; font-weight: 700 !important;
@@ -1108,9 +1107,7 @@ if IS_MOBILE:
         font-size: 12px !important; font-weight: bold !important; line-height: 18px !important;
         padding: 0 5px !important; letter-spacing: 0 !important;
     }
-    div[class*="st-key-chiprow_"] button { top: 3px !important; }
-    /* 탑승과 좌석 배지가 맞붙어 한 덩어리로 보이던 것을 띄운다(둘 사이만) */
-    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { margin-right: 7px !important; }
+    div[class*="st-key-chiprow_"] button { margin-top: 5px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -5035,11 +5032,14 @@ if st.session_state.bookings or _done_today:
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{car_short}</span>'
             '</div>'
         )
+        # 좌석 배지는 칸 폭을 꽉 채운다 — 바로 아래 '탑승' 버튼도 칸 폭을 채우므로 두 배너 폭이 저절로 같아진다.
         seat_html = (
-            f'<div style="display: flex; justify-content: flex-end; align-items: center; height: {CARD_SEAT_H}px;">'
-            f'<span style="background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; '
-            f'padding: 0 6px; height: {CARD_SEAT_H - 2}px; line-height: {CARD_SEAT_H - 2}px; box-sizing: content-box; '
-            f'border-radius: 4px; font-size: {CARD_FS_SEAT}px; font-weight: bold; white-space: nowrap;">'
+            f'<div style="display: block; width: 100%;">'
+            f'<span style="display: block; width: 100%; box-sizing: border-box; text-align: center; '
+            f'background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; '
+            f'padding: 0 4px; height: {CARD_SEAT_H}px; line-height: {CARD_SEAT_H - 2}px; '
+            f'border-radius: 4px; font-size: {CARD_FS_SEAT}px; font-weight: bold; white-space: nowrap; '
+            f'overflow: hidden; text-overflow: ellipsis;">'
             f'{t("seat_n", n=bseat)}</span></div>'
         )
         hr_html = f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">' 
@@ -5101,10 +5101,13 @@ if st.session_state.bookings or _done_today:
             #  탑승은 관리자 패널의 '승인'과 완전히 같은 동작이다 — 다만 타는 사람이 카드에서 바로 누를 수 있게
             #  했다. 관리자가 대신 눌러 주기를 기다리느라 상태가 '미탑승'으로 남던 문제를 없앤다.
             with st.container(key=f"chiprow_{cardkey}"):
-                _c_name, _c_board, _c_seat = st.columns([3, 1, 1], vertical_alignment="center")
+                # 오른쪽 칸에 좌석 배지를 두고 그 '아래'에 탑승 버튼을 세로로 붙인다.
+                #  두 배너 모두 칸 폭을 꽉 채우므로 폭이 서로 같고, 오른쪽 끝선도 자동으로 맞는다.
+                _c_name, _c_right = st.columns([3, 1], vertical_alignment="top")
                 with _c_name:
                     st.markdown(name_html, unsafe_allow_html=True)
-                with _c_board:
+                with _c_right:
+                    st.markdown(seat_html, unsafe_allow_html=True)
                     if booking_status(binfo) == STATUS_PENDING:
                         if st.button(t("btn_board"), key=f"board_btn_{bc_name}_{bseat}",
                                      type="primary", use_container_width=True):
@@ -5115,8 +5118,6 @@ if st.session_state.bookings or _done_today:
                                     log_action("approve", bc_name, bseat, cur)
                                     st.toast(t("toast_approved", name=cur.get("name", ""), seat=bseat))
                             st.rerun()
-                with _c_seat:
-                    st.markdown(seat_html, unsafe_allow_html=True)
             # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
             st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
             st.markdown(hr_html, unsafe_allow_html=True)
