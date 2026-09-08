@@ -676,23 +676,36 @@ st.markdown("""
        모든 팝업이 dismissible=False라 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫힌다.
        왼쪽 빈 칸(3) + 버튼 칸(1) 구조 — 팝업 공통 CSS가 컬럼을 1:1로 만들어 버리므로 여기서 되돌린다. */
     div[class*="st-key-dlgx_"] { margin: -10px 0 2px 0 !important; }
-    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 1 1 0% !important; }
-    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 2 1 0% !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 2 1 0% !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
     div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(3) { flex: 1 1 0% !important; }
+    /* 좌석맵 팝업의 버튼 줄은 아래 차량명 프레임(폭 80% 가운데정렬)과 좌우 끝선을 맞춘다 →
+       운행 불가는 차량명 왼쪽 끝선에서 시작하고, 닫기는 차량명 오른쪽 끝선에서 끝난다. */
+    .st-key-dlgx_seatmap { padding: 0 10% !important; }
     /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
     .st-key-oos_open_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; }
     .st-key-oos_open_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
     /* 배치도 위에 겹쳐 뜨는 운행 불가 안내 — 좌석 클릭을 막지 않도록 pointer-events는 끈다 */
     .car-layout-container { position: relative; }
+    /* 배치도 상자를 컨테이너로 삼아, 안내 글자를 상자 폭 기준 비율(cqw)로 잡는다.
+       배치도 안 '7자리 있음' 배지는 뷰박스 160에 font-size 8 = 폭의 5%다 → 5cqw면 어느 크기에서든 같은 글자 크기가 된다. */
+    .car-layout-container { container-type: inline-size; }
     .car-oos-note {
         position: absolute; left: 50%; top: 11%; transform: translateX(-50%);
         width: 80%; box-sizing: border-box; z-index: 3; pointer-events: none;
         background: rgba(176,18,31,0.94); border: 1px solid #ff8787; border-radius: 8px;
-        padding: 5px 8px; color: #ffffff; text-align: center;
-        font-size: 12px; font-weight: 700; line-height: 1.35;
+        padding: 14px 10px; color: #ffffff; text-align: center;
+        min-height: 30cqw;                     /* 상자 높이를 기존의 약 2배로 */
+        display: flex; flex-direction: column; justify-content: center;
+        font-size: clamp(9px, 5cqw, 20px); font-weight: 700; line-height: 1.35;
         overflow-wrap: anywhere; box-shadow: 0 3px 10px rgba(0,0,0,0.5);
     }
-    .car-oos-note .oos-reason { display: block; font-weight: 600; font-size: 11px; margin-top: 2px; }
+    .car-oos-note .oos-reason { display: block; font-weight: 600; font-size: clamp(8px, 4.4cqw, 18px); margin-top: 2px; }
+    /* 운행 불가 차량은 좌석을 누르거나 끌 수 없다. 운전석(admin-login-seat)은 관리자 로그인 입구라 남겨 둔다. */
+    .car-layout-container.is-oos .seat-clickable,
+    .car-layout-container.is-oos .seat-draggable,
+    .car-layout-container.is-oos .seat-droptarget { pointer-events: none !important; cursor: not-allowed !important; }
+    .car-layout-container.is-oos svg { opacity: 0.72; }
     div[class*="st-key-dlgx_"] button {
         min-height: 26px !important; height: 26px !important;
         padding: 0 10px !important; font-size: 12px !important;
@@ -889,6 +902,12 @@ st.markdown("""
         margin: 2px auto 12px !important;
         padding: 2px !important;   /* 안쪽 여백을 줄여 같은 칸 안에서 그림을 더 크게 그린다 */
     }
+    /* 운행 불가 안내는 앱에서 기존 크기 그대로 — 폰 화면에선 지금 크기가 이미 충분히 크다 */
+    .car-oos-note {
+        padding: 5px 8px !important; min-height: 0 !important;
+        font-size: 12px !important; display: block !important;
+    }
+    .car-oos-note .oos-reason { font-size: 11px !important; }
     /* 줄바꿈된 차량 칸 사이 세로 간격 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { row-gap: 16px !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { margin-bottom: 10px !important; }
@@ -970,6 +989,12 @@ if IS_MOBILE:
         margin: 2px auto 12px !important;
         padding: 2px !important;   /* 안쪽 여백을 줄여 같은 칸 안에서 그림을 더 크게 그린다 */
     }
+    /* 운행 불가 안내는 앱에서 기존 크기 그대로 — 폰 화면에선 지금 크기가 이미 충분히 크다 */
+    .car-oos-note {
+        padding: 5px 8px !important; min-height: 0 !important;
+        font-size: 12px !important; display: block !important;
+    }
+    .car-oos-note .oos-reason { font-size: 11px !important; }
     /* 줄바꿈된 차량 칸 사이 세로 간격 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { row-gap: 16px !important; }
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { margin-bottom: 10px !important; }
@@ -1831,6 +1856,7 @@ TR = {
         "oos_empty": "사유를 입력해 주세요.",
         "oos_saved": "🚫 운행 불가로 표시했습니다.", "oos_cleared": "✅ 운행 불가를 해제했습니다.",
         "oos_badge": "운행 불가",
+        "oos_hint": "🚫 운행 불가 차량이라 좌석을 선택할 수 없습니다.",
         "receipt_title": "🧾 영수증 첨부",
         "receipt_desc": "{car} 좌석 {seat} · {name}",
         "receipt_pick": "영수증 사진 선택 (폰은 카메라·앨범, PC는 파일 선택)",
@@ -1971,6 +1997,7 @@ TR = {
         "oos_empty": "Vui lòng nhập lý do.",
         "oos_saved": "🚫 Đã đánh dấu ngừng chạy.", "oos_cleared": "✅ Đã bỏ ngừng chạy.",
         "oos_badge": "Ngừng chạy",
+        "oos_hint": "🚫 Xe đang ngừng chạy nên không thể chọn ghế.",
         "receipt_title": "🧾 Đính kèm hóa đơn",
         "receipt_desc": "{car} Ghế {seat} · {name}",
         "receipt_pick": "Chọn ảnh hóa đơn (điện thoại: máy ảnh·thư viện, PC: chọn tệp)",
@@ -2111,6 +2138,7 @@ TR = {
         "oos_empty": "Please enter a reason.",
         "oos_saved": "🚫 Marked out of service.", "oos_cleared": "✅ Back in service.",
         "oos_badge": "Out of service",
+        "oos_hint": "🚫 This vehicle is out of service — seats cannot be selected.",
         "receipt_title": "🧾 Attach Receipt",
         "receipt_desc": "{car} Seat {seat} · {name}",
         "receipt_pick": "Choose a receipt photo (phone: camera/album, PC: file picker)",
@@ -2612,12 +2640,14 @@ def car_layout_block(display_name, layout_type, extra_style=""):
     """좌석 배치도 상자 HTML. 그 차량이 '운행 불가'로 표시돼 있으면 배치도 위에 사유를 겹쳐 그린다.
     메인 화면과 좌석맵 팝업이 같은 함수를 쓰므로 어디서 보든 같은 안내가 뜬다."""
     note = (load_notice(display_name).get("reason") or "").strip()
-    overlay = ""
+    overlay, oos_cls = "", ""
     if note:
         overlay = (f'<div class="car-oos-note">🚫 {esc(t("oos_badge"))}'
                    f'<span class="oos-reason">{esc(note)}</span></div>')
+        # is-oos가 붙으면 CSS가 좌석의 클릭·드래그를 막는다(운전석은 그대로 — 관리자 로그인 입구).
+        oos_cls = " is-oos"
     style = f' style="{extra_style}"' if extra_style else ""
-    return (f'<div class="car-layout-container"{style}>{overlay}'
+    return (f'<div class="car-layout-container{oos_cls}"{style}>{overlay}'
             f'{render_car_layout(display_name, layout_type, st.session_state.bookings)}</div>')
 
 
@@ -3101,6 +3131,11 @@ migrate_renamed_car_bookings()
 
 selected_seat_trigger = None
 
+def is_out_of_service(display_name):
+    """그 차량이 '운행 불가'로 표시돼 있는가."""
+    return bool((load_notice(display_name).get("reason") or "").strip())
+
+
 def _render_car_body(car_rc, show_name=True):
     """차량 1대: (선택) 이름 프레임 + 배치도 + 선택 트리거 + SEATSEL 숨김버튼.
     선택된 빈자리가 있으면 전역 selected_seat_trigger를 세팅한다."""
@@ -3109,6 +3144,10 @@ def _render_car_body(car_rc, show_name=True):
         st.markdown(f'<div class="car-header-center">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
     # 좌석 배치도 본체
     st.markdown(car_layout_block(car_rc["display_name"], car_rc["layout"]), unsafe_allow_html=True)
+    # 운행 불가 차량은 좌석을 고를 수 없다 — CSS로 클릭을 막는 것에 더해, 서버 쪽에서도
+    #  선택 트리거와 숨김 버튼을 아예 만들지 않는다(CSS만 믿으면 브라우저에서 우회할 수 있다).
+    if is_out_of_service(car_rc["display_name"]):
+        return
     booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
     available_seats = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked_seats]
     # 좌석 선택은 배치도(SVG) 클릭만 사용. 클릭으로 세팅된 selected_seat_state를 읽어 팝업 트리거 구성.
@@ -3391,8 +3430,8 @@ def _dlg_close_btn(name, on_close=None, left=None):
     with st.container(key=f"dlgx_{name}"):
         # 팝업 안에서는 컬럼이 1:1로 강제되므로, 아래 스코프 규칙으로 1:2:1을 되살린다.
         # flex 정렬만으로는 Streamlit 요소 폭(100%)에 눌려 버튼이 왼쪽에 남는다.
-        #   [왼쪽 보조 버튼][빈칸][✕ 닫기]  — 양 끝 버튼은 같은 폭이다.
-        _lt, _sp, _bt = st.columns([1, 2, 1])
+        #   [왼쪽 보조 버튼][빈칸][✕ 닫기]  — 왼쪽 버튼이 닫기의 2배 폭이다.
+        _lt, _sp, _bt = st.columns([2, 1, 1])
         with _lt:
             if left is not None:
                 left()
@@ -4234,12 +4273,15 @@ def seatmap_dialog(car_rc):
         st.button("TAXITITLE", key="taxititle_back", on_click=_taxi_back_to_cap)
     st.markdown(car_layout_block(car, car_rc["layout"], "width:100%!important;"), unsafe_allow_html=True)
     available = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked]
-    if not available:
+    _oos = is_out_of_service(car)
+    if _oos:
+        st.caption(t("oos_hint"))
+    elif not available:
         st.error(t("full"))
     else:
         st.caption(t("seatmap_hint"))
     for seat in range(1, car_rc["seats"] + 1):
-        if f"좌석 {seat}" in available:
+        if not _oos and f"좌석 {seat}" in available:
             st.button(
                 f"SEATSEL::{car}::{seat}",
                 key=f"seatsel_{car}_{seat}",
