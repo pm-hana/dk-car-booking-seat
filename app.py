@@ -701,13 +701,33 @@ st.markdown("""
     div[class*="st-key-input_user_"] [data-baseweb="select"] > div:first-child {
         min-height: 60px !important; height: 60px !important; font-size: 15px !important;
     }
-    /* 출발 날짜·출발 시간·도착 시간: 값을 가운데 정렬한다.
+    /* 출발 날짜·출발 시간·도착 시간: 값을 각 칸 한가운데에 놓는다.
        글자 크기는 다른 입력칸과 같은 15px(0908 ver.10 크기) — 2배(30px)로 키웠더니
        드롭다운 목록·라벨·화살표까지 따라 커져 보정 규칙이 줄줄이 붙었고, 값만 커서 되레 균형이 깨졌다. */
     div[class*="st-key-input_user_departure_date"] input,
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] div,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] div {
         font-size: 15px !important; font-weight: 700 !important; text-align: center !important;
+    }
+    /* ⚠️ 시간 칸(baseweb select)은 값이 flex 아이템이라 text-align만으로는 왼쪽에 붙어 있다.
+       ① 값 칸을 flex 가운데 정렬하고
+       ② 오른쪽 화살표를 absolute로 띄워 값 칸이 폭을 온전히 다 쓰게 한다
+          (화살표가 자리를 차지하면 글자가 그만큼 왼쪽으로 밀려 '칸 한가운데'가 되지 않는다). */
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div {
+        position: relative !important;
+    }
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child {
+        width: 100% !important; justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important;
+    }
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:nth-child(2),
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:nth-child(2) {
+        position: absolute !important; right: 8px !important; top: 50% !important; transform: translateY(-50%) !important;
+    }
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] input,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] input {
+        text-align: center !important;
     }
 
     /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
