@@ -880,15 +880,15 @@ st.markdown("""
 
         /* 차량 선택 타일: 좁은 창에서는 웹의 가로 1열을 '접어서' 2열 2행으로 — 4개가 한 줄에 들어가면 너무 작다 */
         .st-key-car_nav_grid { max-width: 100% !important; }
-        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 8px !important; }
-        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 4px) !important; }
-        .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
-        .car-nav-tile .car-nav-logo { font-size: 28px; }
-        .car-nav-tile .car-nav-logo svg { width: 44px !important; height: 28px !important; }
-        .car-nav-tile .car-nav-logo img { max-height: 28px !important; }
+        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 4px !important; }
+        .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 2px) !important; }
+        .car-nav-tile .car-name-frame { max-width: none !important; padding: 6px !important; gap: 5px; border-radius: 10px; }
+        .car-nav-tile .car-nav-logo { font-size: 22px; }
+        .car-nav-tile .car-nav-logo svg { width: 35px !important; height: 22px !important; }
+        .car-nav-tile .car-nav-logo img { max-height: 22px !important; }
         /* 좁은 창(≤768px)에서는 타일이 화면 절반 폭으로 줄어 24px면 내용이 타일 밖으로 넘친다.
            이 구간만 20px로 낮춘다 — 네 차량끼리는 여전히 같은 크기다. */
-        .car-nav-tile .car-title-text { font-size: 20px !important; }
+        .car-nav-tile .car-title-text { font-size: 16px !important; }
 
         /* 차량 박스: 화면 폭 88%·세로비율(160:250)로, 가운데 */
         .car-layout-container { width: 88% !important; height: auto !important; aspect-ratio: 160 / 250 !important; max-height: 62vh; margin: 2px auto 6px !important; padding: 6px !important; }
@@ -900,7 +900,7 @@ st.markdown("""
         max-height: none !important;
         aspect-ratio: 160 / 250 !important;
         margin: 2px auto 12px !important;
-        padding: 2px !important;   /* 안쪽 여백을 줄여 같은 칸 안에서 그림을 더 크게 그린다 */
+        padding: 0 !important;     /* 안쪽 여백을 없애 같은 칸 안에서 그림을 최대한 크게 그린다 */
     }
     /* 운행 불가 안내는 앱에서 기존 크기 그대로 — 폰 화면에선 지금 크기가 이미 충분히 크다 */
     .car-oos-note {
@@ -960,16 +960,18 @@ if IS_MOBILE:
     /* 차량 선택 타일 — 모바일(?m=1)은 간소화 버전: 웹의 가로 1열을 '접어서' 2×2로 표시하고
        화면 폭을 꽉 채워 탭 영역을 키운다(웹은 4개 한 줄, 모바일은 2×2로 서로 다르게 간다). */
     .st-key-car_nav_grid { max-width: 100% !important; }
-    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 8px !important; }
-    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 4px) !important; }
-    .car-nav-tile .car-name-frame { max-width: none !important; padding: 8px !important; gap: 6px; border-radius: 12px; }
-    .car-nav-tile .car-nav-logo { font-size: 42px; }
-    .car-nav-tile .car-nav-logo svg { width: 66px !important; height: 42px !important; }
-    .car-nav-tile .car-nav-logo img { max-height: 42px !important; }
-    .car-nav-tile .car-title-text { font-size: 20px !important; }
-    .car-nav-tile .car-nav-info { padding: 4px 7px; border-radius: 7px; }
-    .car-nav-tile .cni-driver { font-size: 12px; }
-    .car-nav-tile .cni-line { font-size: 10.5px; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 4px !important; }
+    .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 0 0 calc(50% - 2px) !important; }
+    /* 타일 안 내용도 폭과 같은 비율(×0.8)로 줄인다 — 내용 높이가 그대로면 정사각형이 세로로 늘어나
+       '높이도 20% 축소'가 되지 않는다. */
+    .car-nav-tile .car-name-frame { max-width: none !important; padding: 6px !important; gap: 5px; border-radius: 10px; }
+    .car-nav-tile .car-nav-logo { font-size: 34px; }
+    .car-nav-tile .car-nav-logo svg { width: 53px !important; height: 34px !important; }
+    .car-nav-tile .car-nav-logo img { max-height: 34px !important; }
+    .car-nav-tile .car-title-text { font-size: 16px !important; }
+    .car-nav-tile .car-nav-info { padding: 3px 5px; border-radius: 6px; }
+    .car-nav-tile .cni-driver { font-size: 10px; }
+    .car-nav-tile .cni-line { font-size: 8.5px; }
     /* 관리자 타일: 폰에서도 3열 유지하되 글자·여백을 줄여 정사각형이 찌그러지지 않게 */
     .st-key-admin_tiles { max-width: 100% !important; }
     .st-key-admin_tiles [data-testid="stHorizontalBlock"] { gap: 6px !important; }
@@ -987,7 +989,7 @@ if IS_MOBILE:
         max-height: none !important;
         aspect-ratio: 160 / 250 !important;
         margin: 2px auto 12px !important;
-        padding: 2px !important;   /* 안쪽 여백을 줄여 같은 칸 안에서 그림을 더 크게 그린다 */
+        padding: 0 !important;     /* 안쪽 여백을 없애 같은 칸 안에서 그림을 최대한 크게 그린다 */
     }
     /* 운행 불가 안내는 앱에서 기존 크기 그대로 — 폰 화면에선 지금 크기가 이미 충분히 크다 */
     .car-oos-note {
@@ -4333,13 +4335,13 @@ if _tile_nth:
     if _map_nth:
         _wide += f"{_map_nth} {{ flex: 1.25 1 0% !important; }}"
     # 좁은 화면·앱: 차량이 [타일][배치도] 2칸씩 줄바꿈된다. 두 칸이 한 줄을 나눠 쓰므로 합이 100%다.
-    #   타일 42.5 → 38.25% (요청대로 정확히 10% 축소), 배치도는 남은 폭을 모두 가져가 57.5 → 61.75%.
-    #   칸 폭만으로는 배치도가 7%밖에 못 크므로, 배치도 상자의 안쪽 여백을 6 → 2px로 줄여
-    #   실제 그림이 차지하는 폭을 더 확보한다(합쳐서 약 10% 확대).
+    #   타일 38.25 → 30.6% (요청대로 정확히 20% 축소), 배치도는 남은 폭을 모두 가져가 61.75 → 69.4%.
+    #   ⚠️ 합이 100%로 묶여 있어 배치도는 칸 폭만으로 +12%까지밖에 못 큰다.
+    #      모자란 몫은 칸 사이 간격(8 → 4px)과 배치도 상자 안쪽 여백(2 → 0px)을 없애 실제 그림 폭으로 돌린다.
     # 둘 다 정사각형·고정 비율이라 폭이 줄고 늘면 높이도 같은 비율로 따라온다.
-    _narrow = f"{_tile_nth} {{ flex: 0 0 calc(38.25% - 4px) !important; }}"
+    _narrow = f"{_tile_nth} {{ flex: 0 0 calc(30.6% - 2px) !important; }}"
     if _map_nth:
-        _narrow += f"{_map_nth} {{ flex: 0 0 calc(61.75% - 4px) !important; }}"
+        _narrow += f"{_map_nth} {{ flex: 0 0 calc(69.4% - 2px) !important; }}"
     st.markdown(
         "<style>"
         + (f"@media (min-width: 900px) {{{_wide}}}@media (max-width: 899px) {{{_narrow}}}"
