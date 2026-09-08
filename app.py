@@ -419,17 +419,20 @@ st.markdown("""
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     /* 예약 카드 '상태 배지 + 탑승 버튼' 줄: 배지(2) : 버튼(1). 현황판 공통 1:1 강제 규칙을 되돌린다. */
-    /* 두 칸의 '아래 선'을 맞춘다 — Streamlit의 bottom 정렬만으로는 칸 안 요소 여백 때문에 어긋난다 */
-    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; align-items: flex-end !important; }
-    div[class*="st-key-chiprow_"] [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; justify-content: flex-end !important; }
+    /* 예약 카드 헤더 한 줄: [차량명 3][탑승 1][좌석 배지 1] — 현황판 공통 1:1 강제 규칙을 되돌린다 */
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 4px !important; align-items: center !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; justify-content: center !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
-    /* 높이·글자를 왼쪽 상태 배지와 똑같이 맞춘다(웹 24px·16px / 모바일 20px·11px — 모바일 블록에서 덮어씀). */
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(3) { flex: 1 1 0% !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
+    /* '탑승' 버튼은 바로 오른쪽 좌석 배지와 같은 크기(웹 26px·18px / 모바일 20px·12px — 모바일 블록에서 덮어씀) */
     div[class*="st-key-chiprow_"] [data-testid="stElementContainer"] { margin-bottom: 0 !important; }
     div[class*="st-key-chiprow_"] button {
-        min-height: 24px !important; height: 24px !important;
-        padding: 0 7px !important; font-size: 16px !important; font-weight: 800 !important;
-        line-height: 22px !important; letter-spacing: 0.2px !important;
+        min-height: 26px !important; height: 26px !important;
+        padding: 0 6px !important; font-size: 18px !important; font-weight: 700 !important;
+        line-height: 24px !important; letter-spacing: 0 !important;
         border-radius: 4px !important; white-space: nowrap !important;
     }
 
@@ -1089,7 +1092,7 @@ if IS_MOBILE:
     .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
     /* 카드 버튼·탑승 버튼은 0907 ver.6 크기 그대로 — 폰에서 커진 버튼은 카드 높이만 키운다 */
     .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; line-height: 1.1 !important; }
-    div[class*="st-key-chiprow_"] button { min-height: 20px !important; height: 20px !important; font-size: 11px !important; line-height: 18px !important; padding: 0 5px !important; }
+    div[class*="st-key-chiprow_"] button { min-height: 20px !important; height: 20px !important; font-size: 12px !important; line-height: 18px !important; padding: 0 4px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2478,21 +2481,30 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
     svg.append('</g>')
     return "".join(svg)
 
-def render_dest_badge(x, y, w, dest):
+def render_dest_badge(x, y, w, dest, approved=False):
     """예약된 좌석 바로 위에 붙는 목적지 배지(좌석 배치도 전용).
     좌석 안에는 신청자 이름이 들어가므로 '어디로 가는 자리인지'는 위쪽 작은 배지로 따로 보여준다
     — 배치도만 보고도 같은 방향끼리 묶어 태울 수 있다.
     좌석 사이 세로 간격(20px) 안에 들어가도록 높이 11px로 잡고, 긴 목적지는 잘라 낸다.
-    pointer-events는 꺼 둔다 — 배지가 좌석의 클릭·드래그를 가로채면 안 된다."""
+    pointer-events는 꺼 둔다 — 배지가 좌석의 클릭·드래그를 가로채면 안 된다.
+
+    색은 아래 좌석과 같은 규칙을 따른다 — 탑승 전이면 '탑승 대기' 색(주황 파선),
+    탑승 완료면 '탑승 완료' 색(초록 실선). 배지와 좌석 색이 다르면 어느 자리 것인지 되짚어야 한다.
+    파선/실선을 함께 쓰는 이유는 좌석과 같다: 적록 색각에서 두 색의 분리도가 경계 구간이라
+    색 하나에만 기대지 않는다."""
     txt = dest if len(dest) <= 5 else dest[:5] + "…"
     bw = max(24.0, min(46.0, len(txt) * 6.2 + 8))
     bx = x + w / 2 - bw / 2
     by = y - 13
+    if approved:
+        fill, line, ink, dash = "#1b3b22", BOOKED_SEAT_LINE, "#8ce99a", ""
+    else:
+        fill, line, ink, dash = "#3b2a12", PENDING_SEAT_LINE, "#ffc078", ' stroke-dasharray="3 2"'
     return (f'<g style="pointer-events:none">'
             f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="11" rx="5.5" '
-            f'fill="#10243a" stroke="#4dabf7" stroke-width="0.8"/>'
+            f'fill="{fill}" stroke="{line}" stroke-width="0.9"{dash}/>'
             f'<text x="{x + w / 2:.1f}" y="{by + 7.9:.1f}" font-family="sans-serif" font-size="6.5" '
-            f'font-weight="bold" fill="#a5d8ff" text-anchor="middle">{esc(txt)}</text></g>')
+            f'font-weight="bold" fill="{ink}" text-anchor="middle">{esc(txt)}</text></g>')
 
 
 # ─────────────────────────────────────────────────────────────
@@ -2833,7 +2845,8 @@ def render_car_layout(car_name, layout_type, bookings):
             # 예약된 좌석 위에 목적지 배지를 얹는다(좌석 뒤에 그리면 가려지므로 좌석 다음에 그린다).
             _dest = str(car_bookings.get(sid, {}).get("destination", "")).strip()
             if _dest:
-                svg.append(render_dest_badge(sx, sy, SW, _dest))
+                _done = booking_status(car_bookings.get(sid)) == STATUS_APPROVED
+                svg.append(render_dest_badge(sx, sy, SW, _dest, approved=_done))
 
         # 잔여 좌석 수 배지 — 운전석과의 간격을 좌석 행 간격만큼 벌리기 위해 y=70에 배치
         remaining = sum(1 for _sid, _sx, _sy in seat_map[layout_type] if _sid not in car_bookings)
@@ -3306,11 +3319,13 @@ def owner_gate(car, seat, info):
 if IS_MOBILE:
     CARDS_PER_ROW = 1
     CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 15, 12, 12, 11, 10
-    CARD_CHIP_H = 20          # 상태 배지 바깥 높이(테두리 포함) — '탑승' 버튼도 같은 높이로 맞춘다
+    CARD_CHIP_H = 20          # 상태 배지 바깥 높이(테두리 포함)
+    CARD_SEAT_H = 20          # 좌석 배지 바깥 높이 — 옆의 '탑승' 버튼이 같은 높이를 쓴다
 else:
     CARDS_PER_ROW = 2
     CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 22, 18, 18, 16, 15
     CARD_CHIP_H = 24
+    CARD_SEAT_H = 26
 
 # 상태 배지 색 — 차량 카드 배경색의 '보색' 계열로 채운 solid 배지(항목6).
 #   왜 바꿨나: 예전에는 반투명 틴트(알파 0.18~0.22)에 같은 색 글자였다. 그래서 INNOVA(밝은 실버) 카드에서는
@@ -4981,15 +4996,22 @@ if st.session_state.bookings or _done_today:
         # 헤더: 차량 로고 + 짧은 차량명(INNOVA/SEDONA/VF5/TAXI n) + 좌석 배지 + 구분선. 카드 상단 전체폭.
         car_logo = brand_logo(bc_name)          # 브랜드 인라인 SVG/이미지 로고
         car_short = _short_car_name(bc_name)    # 'TOYOTA INNOVA (7 SEAT)' → 'INNOVA'
-        header_html = (
-            '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
-            f'<span style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
+        # 헤더 줄은 [로고+차량명] / [탑승 버튼] / [좌석 배지] 3칸으로 나눠 그린다.
+        #  탑승 버튼을 아랫줄에서 이 줄로 올린 이유: 버튼이 한 줄을 통째로 차지하는 바람에
+        #  탑승 대기 카드만 탑승 완료 카드보다 한 줄 더 높아, 같은 줄에 선 두 카드의 아래 선이 어긋났다.
+        name_html = (
+            f'<div style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; min-width: 0; '
+            f'display: flex; align-items: center; height: {CARD_SEAT_H}px;">'
             f'{car_logo}'
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{car_short}</span>'
-            '</span>'
-            f'<span style="flex: 0 0 auto; background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: {CARD_FS_SEAT}px; font-weight: bold; white-space: nowrap;">{t("seat_n", n=bseat)}</span>'
             '</div>'
-            # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
+        )
+        seat_html = (
+            f'<div style="display: flex; justify-content: flex-end; align-items: center; height: {CARD_SEAT_H}px;">'
+            f'<span style="background: {BOOKED_SEAT_LINE}; border: 1px solid {BOOKED_SEAT_LINE}; color: #ffffff; '
+            f'padding: 0 6px; height: {CARD_SEAT_H - 2}px; line-height: {CARD_SEAT_H - 2}px; box-sizing: content-box; '
+            f'border-radius: 4px; font-size: {CARD_FS_SEAT}px; font-weight: bold; white-space: nowrap;">'
+            f'{t("seat_n", n=bseat)}</span></div>'
         )
         hr_html = f'<hr style="border: 0; border-top: 1px solid {c_bd}; margin: 4px 0;">' 
 
@@ -5046,16 +5068,14 @@ if st.session_state.bookings or _done_today:
 
         # 카드 배경 CSS는 _booking_cards_css()가 두 열 바깥에서 한 번에 내보낸다(여기서 주입하지 않는다).
         with st.container(key=cardkey):
-            st.markdown(header_html, unsafe_allow_html=True)
-            # 좌석 배지 아래 줄: 왼쪽=상태 배지, 오른쪽='탑승' 버튼.
+            # 헤더 한 줄: 차량명 / '탑승' 버튼 / 좌석 배지.
             #  탑승은 관리자 패널의 '승인'과 완전히 같은 동작이다 — 다만 타는 사람이 카드에서 바로 누를 수 있게
             #  했다. 관리자가 대신 눌러 주기를 기다리느라 상태가 '미탑승'으로 남던 문제를 없앤다.
             with st.container(key=f"chiprow_{cardkey}"):
-                # bottom 정렬 — 왼쪽 상태 배지와 오른쪽 '탑승' 버튼의 아래 선을 같은 높이에 맞춘다.
-                _chip_c, _board_c = st.columns([3, 1], vertical_alignment="bottom")
-                with _chip_c:
-                    st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
-                with _board_c:
+                _c_name, _c_board, _c_seat = st.columns([3, 1, 1], vertical_alignment="center")
+                with _c_name:
+                    st.markdown(name_html, unsafe_allow_html=True)
+                with _c_board:
                     if booking_status(binfo) == STATUS_PENDING:
                         if st.button(t("btn_board"), key=f"board_btn_{bc_name}_{bseat}",
                                      type="primary", use_container_width=True):
@@ -5066,6 +5086,10 @@ if st.session_state.bookings or _done_today:
                                     log_action("approve", bc_name, bseat, cur)
                                     st.toast(t("toast_approved", name=cur.get("name", ""), seat=bseat))
                             st.rerun()
+                with _c_seat:
+                    st.markdown(seat_html, unsafe_allow_html=True)
+            # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
+            st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
             st.markdown(hr_html, unsafe_allow_html=True)
             st.markdown(info_grid, unsafe_allow_html=True)          # 정보 2열 그리드(위)
             # 버튼은 정보 아래 가로 분할 — 택시는 '영수증 첨부'가 하나 더 붙어 4분할, 나머지는 3분할.
