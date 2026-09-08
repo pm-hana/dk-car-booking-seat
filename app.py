@@ -732,11 +732,11 @@ st.markdown("""
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 0% !important; width: auto !important; min-width: 0 !important; }
     .car-nav-tile { margin: 0 0 10px 0 !important; }
     /* 정사각형 본체: 로고(위) + 이름(아래) 세로 스택 */
-    /* 운행 정보 글자를 50% 키운 만큼 타일도 240 → 270px로 넓혀 여백을 확보한다.
-       내용 높이(로고 51 + 이름 24 + 정보 3줄 ≈ 90 + 간격·패딩) ≈ 215px로 270px 정사각형 안에 여유 있게 들어간다. */
+    /* 타일 최대 크기를 270 → 202px(75%)로 줄였다 — 남은 폭은 옆의 좌석 배치도가 가져간다.
+       실제로 봐야 하는 건 빈자리이지 차량 이름이 아니므로, 이름 타일은 알아볼 만큼만 두고 배치도를 키운다. */
     .car-nav-tile .car-name-frame {
         width: 100% !important;
-        max-width: 270px !important;
+        max-width: 202px !important;
         margin: 0 auto !important;
         aspect-ratio: 1 / 1;
         flex-direction: column;
@@ -1698,7 +1698,7 @@ TR = {
         "backup_snap_info": "보관된 직전 상태: {at} · {n}건",
         "backup_no_snap": "되돌릴 수 있는 직전 상태가 없습니다.",
         "save_failed": "⚠️ 저장에 실패했습니다. 방금 변경한 내용이 서버에 반영되지 않았을 수 있습니다. 새로고침 후 다시 확인해 주세요.",
-        "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기", "audit_act_approve": "배차 승인",
+        "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기", "audit_act_approve": "탑승 처리",
         "audit_act_receipt": "영수증 첨부", "audit_act_receipt_del": "영수증 삭제",
         "btn_receipt": "영수증 첨부", "btn_receipt_done": "영수증 ✓",
         "receipt_title": "🧾 영수증 첨부",
@@ -1714,14 +1714,14 @@ TR = {
         "receipt_err_lib": "이미지 처리 모듈(Pillow)이 설치되지 않아 사진을 저장할 수 없습니다.",
         "receipt_err_big": "사진이 너무 커서 저장할 수 없습니다. 더 작게 찍거나 잘라서 다시 올려 주세요.",
         "receipt_err_bad": "사진을 읽을 수 없습니다. jpg·png 형식인지 확인해 주세요.",
-        "status_pending": "승인 대기", "status_approved": "탑승 완료",
+        "status_pending": "탑승 대기", "status_approved": "탑승 완료",
         "status_soon": "출발 임박 · 미탑승", "status_over": "출발 시각 초과 · 미탑승",
         "btn_board": "🙋 탑승",
-        "approve_title": "✅ 승인 대기 ({n}건)", "approve_none": "승인 대기 중인 신청이 없습니다.",
-        "approve_btn": "승인",
-        "toast_approved": "✅ [{name}]님 좌석 {seat} 배차가 승인되었습니다.",
-        "pending_banner": "⏳ 승인 대기 {n}건",
-        "pending_banner_urgent": "⏳ 승인 대기 {n}건 · 이 중 출발 임박·초과 {u}건",
+        "approve_title": "🙋 탑승 대기 ({n}건)", "approve_none": "탑승 대기 중인 신청이 없습니다.",
+        "approve_btn": "탑승",
+        "toast_approved": "🙋 [{name}]님 좌석 {seat} 탑승 처리되었습니다.",
+        "pending_banner": "⏳ 탑승 대기 {n}건",
+        "pending_banner_urgent": "⏳ 탑승 대기 {n}건 · 이 중 출발 임박·초과 {u}건",
         "stats_title": "📊 기간 요약", "stats_total": "탑승 건수", "stats_cars": "이용 차량",
         "stats_top_dest": "최다 목적지", "stats_by_car": "차량별 탑승",
         "stats_top_dests": "목적지 TOP 5", "stats_by_hour": "출발 시간대", "stats_hour": "{h}시",
@@ -1735,7 +1735,7 @@ TR = {
         "admin_lock": "🔒 관리자 잠금", "admin_locked_toast": "🔒 관리자 모드를 종료했습니다.",
         "admin_mode_on": "🔑 관리자 모드 사용 중 — 아래 버튼으로 종료하면 일반 화면으로 돌아갑니다.",
         "admin_exit": "🔓 관리자 모드 종료 (메인 화면으로)",
-        "admin_locked_banner": "🔒 관리자 잠금 상태입니다. 승인·백업·활동기록 등 관리 기능은 잠금을 해제해야 보입니다.",
+        "admin_locked_banner": "🔒 관리자 잠금 상태입니다. 활동 기록 등 관리 기능은 잠금을 해제해야 보입니다.",
         "admin_unlock_btn": "🔑 관리자 잠금 해제 (PASSWORD 입력)",
         "admin_exit_short": "🔓 관리자 모드 종료", "admin_unlock_short": "🔑 관리자 모드",
         "audit_act_migrate": "예약 이관",
@@ -1830,7 +1830,7 @@ TR = {
         "backup_snap_info": "Trạng thái đã lưu: {at} · {n} đăng ký",
         "backup_no_snap": "Không có trạng thái nào để hoàn tác.",
         "save_failed": "⚠️ Lưu thất bại. Thay đổi vừa rồi có thể chưa được ghi lên máy chủ. Vui lòng tải lại trang và kiểm tra.",
-        "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác", "audit_act_approve": "Duyệt xe",
+        "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác", "audit_act_approve": "Lên xe",
         "audit_act_receipt": "Đính kèm hóa đơn", "audit_act_receipt_del": "Xóa hóa đơn",
         "btn_receipt": "Hóa đơn", "btn_receipt_done": "Hóa đơn ✓",
         "receipt_title": "🧾 Đính kèm hóa đơn",
@@ -1846,14 +1846,14 @@ TR = {
         "receipt_err_lib": "Chưa cài mô-đun xử lý ảnh (Pillow) nên không thể lưu ảnh.",
         "receipt_err_big": "Ảnh quá lớn nên không lưu được. Vui lòng chụp nhỏ hơn hoặc cắt bớt rồi tải lại.",
         "receipt_err_bad": "Không đọc được ảnh. Vui lòng kiểm tra định dạng jpg·png.",
-        "status_pending": "Chờ duyệt", "status_approved": "Đã lên xe",
+        "status_pending": "Chờ lên xe", "status_approved": "Đã lên xe",
         "status_soon": "Sắp khởi hành · chưa lên xe", "status_over": "Quá giờ đi · chưa lên xe",
         "btn_board": "🙋 Lên xe",
-        "approve_title": "✅ Chờ duyệt ({n})", "approve_none": "Không có đăng ký nào đang chờ duyệt.",
-        "approve_btn": "Duyệt",
-        "toast_approved": "✅ Đã duyệt xe ghế {seat} cho [{name}].",
-        "pending_banner": "⏳ {n} đăng ký đang chờ duyệt",
-        "pending_banner_urgent": "⏳ {n} đăng ký chờ duyệt · trong đó {u} sắp/đã quá giờ đi",
+        "approve_title": "🙋 Chờ lên xe ({n})", "approve_none": "Không có đăng ký nào đang chờ lên xe.",
+        "approve_btn": "Lên xe",
+        "toast_approved": "🙋 Đã ghi nhận [{name}] lên xe ở ghế {seat}.",
+        "pending_banner": "⏳ {n} đăng ký đang chờ lên xe",
+        "pending_banner_urgent": "⏳ {n} đăng ký chờ lên xe · trong đó {u} sắp/đã quá giờ đi",
         "stats_title": "📊 Tổng quan kỳ", "stats_total": "Số chuyến", "stats_cars": "Số xe sử dụng",
         "stats_top_dest": "Điểm đến nhiều nhất", "stats_by_car": "Chuyến theo xe",
         "stats_top_dests": "TOP 5 điểm đến", "stats_by_hour": "Khung giờ đi", "stats_hour": "{h}h",
@@ -1867,7 +1867,7 @@ TR = {
         "admin_lock": "🔒 Khóa quản trị", "admin_locked_toast": "🔒 Đã thoát chế độ quản trị.",
         "admin_mode_on": "🔑 Đang ở chế độ quản trị — nhấn nút bên dưới để quay lại màn hình thường.",
         "admin_exit": "🔓 Thoát chế độ quản trị (về màn hình chính)",
-        "admin_locked_banner": "🔒 Đang khóa quản trị. Các chức năng duyệt·sao lưu·nhật ký chỉ hiện sau khi mở khóa.",
+        "admin_locked_banner": "🔒 Đang khóa quản trị. Nhật ký hoạt động chỉ hiện sau khi mở khóa.",
         "admin_unlock_btn": "🔑 Mở khóa quản trị (nhập PASSWORD)",
         "admin_exit_short": "🔓 Thoát quản trị", "admin_unlock_short": "🔑 Quản trị",
         "audit_act_migrate": "Chuyển đăng ký",
@@ -1962,7 +1962,7 @@ TR = {
         "backup_snap_info": "Saved state: {at} · {n} bookings",
         "backup_no_snap": "No saved state available to undo.",
         "save_failed": "⚠️ Save failed. Your latest change may not have reached the server. Please reload and check again.",
-        "audit_act_restore": "Restored backup", "audit_act_undo": "Undone", "audit_act_approve": "Approved",
+        "audit_act_restore": "Restored backup", "audit_act_undo": "Undone", "audit_act_approve": "Boarded",
         "audit_act_receipt": "Receipt attached", "audit_act_receipt_del": "Receipt removed",
         "btn_receipt": "Receipt", "btn_receipt_done": "Receipt ✓",
         "receipt_title": "🧾 Attach Receipt",
@@ -1978,14 +1978,14 @@ TR = {
         "receipt_err_lib": "The image library (Pillow) is not installed, so the photo cannot be saved.",
         "receipt_err_big": "The photo is too large to store. Please take a smaller one or crop it and try again.",
         "receipt_err_bad": "Could not read the photo. Please check it is a jpg or png file.",
-        "status_pending": "Pending", "status_approved": "Boarded",
+        "status_pending": "Awaiting boarding", "status_approved": "Boarded",
         "status_soon": "Departing soon · not boarded", "status_over": "Past departure · not boarded",
         "btn_board": "🙋 Board",
-        "approve_title": "✅ Pending approval ({n})", "approve_none": "No requests are waiting for approval.",
-        "approve_btn": "Approve",
-        "toast_approved": "✅ [{name}]'s seat {seat} has been approved.",
-        "pending_banner": "⏳ {n} request(s) pending approval",
-        "pending_banner_urgent": "⏳ {n} pending · {u} departing soon or overdue",
+        "approve_title": "🙋 Awaiting boarding ({n})", "approve_none": "No requests are awaiting boarding.",
+        "approve_btn": "Board",
+        "toast_approved": "🙋 [{name}] boarded at seat {seat}.",
+        "pending_banner": "⏳ {n} request(s) awaiting boarding",
+        "pending_banner_urgent": "⏳ {n} awaiting boarding · {u} departing soon or overdue",
         "stats_title": "📊 Period summary", "stats_total": "Rides", "stats_cars": "Vehicles used",
         "stats_top_dest": "Top destination", "stats_by_car": "Rides by vehicle",
         "stats_top_dests": "Top 5 destinations", "stats_by_hour": "Departure hour", "stats_hour": "{h}h",
@@ -1999,7 +1999,7 @@ TR = {
         "admin_lock": "🔒 Lock admin", "admin_locked_toast": "🔒 Exited admin mode.",
         "admin_mode_on": "🔑 Admin mode is on — use the button below to return to the normal screen.",
         "admin_exit": "🔓 Exit admin mode (back to main)",
-        "admin_locked_banner": "🔒 Admin is locked. Approval, backup and activity log appear only after unlocking.",
+        "admin_locked_banner": "🔒 Admin is locked. The activity log appears only after unlocking.",
         "admin_unlock_btn": "🔑 Unlock admin (enter PASSWORD)",
         "admin_exit_short": "🔓 Exit admin", "admin_unlock_short": "🔑 Admin mode",
         "audit_act_migrate": "Moved bookings",
@@ -2510,9 +2510,11 @@ def render_car_layout(car_name, layout_type, bookings):
         return STATUS_PENDING if booking_status(info) == STATUS_PENDING else STATUS_APPROVED
 
     # 좌석 배치: 운전석 + 인승별 승객석 좌표 (실사 사진 차실 x29~136 / y96~242에 맞춤)
-    #   3열 X: 좌 35 / 중 66 / 우 97,  3행 Y: 앞 104 / 중 151 / 뒤 198,  좌석 32x32
+    #   3열 X: 좌 35 / 중 66 / 우 97,  3행 Y: 앞 92 / 중 144 / 뒤 196,  좌석 32x32
     #   SW=좌석 폭(기존 32에서 10% 축소한 29 → 열 간격 유지 시 좌우 겹침 방지), SH=좌석 높이(유지)
-    LX, MX, RX, R1, R2, R3, SW, SH = 35, 66, 97, 104, 151, 198, 29, 32
+    #   ⚠️ 행 간격(pitch)은 47 → 52로 넓혔다(좌석 사이 빈 공간 15 → 20px). 앞뒤 줄이 붙어 보이던 문제를 없앤다.
+    #      실내 바닥은 y 54 ~ (차체 하단-14)=230 이라 아래로는 못 내린다 → 앞줄을 위로 올려 간격을 확보했다.
+    LX, MX, RX, R1, R2, R3, SW, SH = 35, 66, 97, 92, 144, 196, 29, 32
     seat_map = {
         "2-3-3": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, MX, R3), (7, RX, R3)],
         "2-2-3": [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, MX, R3), (6, RX, R3)],
@@ -2521,6 +2523,12 @@ def render_car_layout(car_name, layout_type, bookings):
         #   [ 2 ][ 3 ][ 4 ]
         #   2행은 차체 뒤쪽(R3)에 두고 사이에 점선을 그어 앞/뒤 열을 구분한다(실제 세단 배치와 동일).
         "2-3":   [(1, RX, R1), (2, LX, R3), (3, MX, R3), (4, RX, R3)],
+        # TAXI 7인승: 운전석 옆은 비우고 승객석 6개를 뒤쪽 2행 × 3열로 채운다.
+        #   [운전석][   ]
+        #   [ 1 ][ 2 ][ 3 ]
+        #   [ 4 ][ 5 ][ 6 ]
+        #   2-2-3(세도나형)과 달리 좌우 폭을 꽉 쓰는 격자라 좌석 번호를 한눈에 세기 쉽다.
+        "2x3":   [(1, LX, R2), (2, MX, R2), (3, RX, R2), (4, LX, R3), (5, MX, R3), (6, RX, R3)],
     }
     if layout_type in seat_map:
         # 운전석 아래에 표시할 운전자 이름 — 메인 타일과 같은 CAR_INFO를 참조한다.
@@ -2530,8 +2538,9 @@ def render_car_layout(car_name, layout_type, bookings):
         #   INNOVA·SEDONA 운전석은 클릭 시 관리자 로그인 팝업이 뜨도록 admin_login=True
         _admin_car = ("INNOVA" in car_name) or ("SEDONA" in car_name)
         svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, sub_label=driver_name, admin_login=_admin_car))
-        if layout_type == "2-3":
-            svg.append('  <line x1="33" y1="150" x2="129" y2="150" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
+        if layout_type in ("2-3", "2x3"):
+            # 앞줄(운전석 열)과 뒷줄을 나누는 점선 — 새 행 좌표(앞줄 아래끝 124 / 뒷줄 위 144)의 가운데
+            svg.append('  <line x1="33" y1="134" x2="129" y2="134" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
         for sid, sx, sy in seat_map[layout_type]:
             svg.append(render_premium_seat(sx, sy, SW, SH, get_seat_label(sid), sid, car_name,
                                            is_booked=(sid in car_bookings), tooltip=get_seat_tip(sid),
@@ -2645,7 +2654,7 @@ elif "car" in query_params and "seat" in query_params:
 #     메인 화면에는 TAXI 타일 하나만 두고, 신청할 때 인승(5인승=4자리 / 7인승=6자리)을 고른 뒤
 #     이미 부른 택시의 빈자리를 쓰거나 새 택시를 부르면 TAXI1·TAXI2… 번호가 자동으로 붙는다.
 #     → 실제 택시 목록은 아래 taxi_fleet()이 '예약이 있는 택시'에서 되짚어 만든다.
-TAXI_CAPS = {4: "2-3", 6: "2-2-3"}   # 승객석 수 → 좌석 배치 (4석=5인승 세단 / 6석=7인승 MPV)
+TAXI_CAPS = {4: "2-3", 6: "2x3"}     # 승객석 수 → 좌석 배치 (4석=5인승 세단 / 6석=7인승 2×3 격자)
 TAXI_CAP_ORDER = [4, 6]              # 인승 선택 버튼에 보여줄 순서
 cars_data = [
     {"name": "TOYOTA INNOVA", "layout": "2-3-3", "seats": 7},
@@ -4031,17 +4040,18 @@ for _rc in resolved_cars:
 #  차량 한 대가 [타이틀][배치도] 한 덩어리로 읽히도록 묶음 안쪽을 넓게 잡는 배치다.
 #  ⚠️ 모바일(?m=1)·좁은 화면은 2칸씩 줄바꿈하므로 이 여백을 적용하지 않는다(줄바꿈이 깨진다).
 if not IS_MOBILE:
-    _tile_nth = ", ".join(
-        f'.st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({i + 1})'
-        for i, (_k, _r) in enumerate(_main_cells) if _k == "tile"
-    )
+    def _nth(i):
+        return f'.st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({i + 1})'
+
+    _tile_nth = ", ".join(_nth(i) for i, (_k, _r) in enumerate(_main_cells) if _k == "tile")
+    _map_nth = ", ".join(_nth(i) for i, (_k, _r) in enumerate(_main_cells) if _k == "map")
     if _tile_nth:
-        st.markdown(
-            "<style>@media (min-width: 900px) {"
-            f"{_tile_nth} {{ margin-right: calc(var(--dk-gap-b) * -0.25) !important; }}"
-            "}</style>",
-            unsafe_allow_html=True,
-        )
+        # 타이틀 칸은 좁게(0.75) / 배치도 칸은 넓게(1.25) — 타일은 이름·기사 정보만 담으면 되고,
+        # 실제로 봐야 하는 건 빈자리이므로 남는 폭을 배치도 쪽으로 옮긴다.
+        _rules = f"{_tile_nth} {{ flex: 0.75 1 0% !important; margin-right: calc(var(--dk-gap-b) * -0.25) !important; }}"
+        if _map_nth:
+            _rules += f"{_map_nth} {{ flex: 1.25 1 0% !important; }}"
+        st.markdown(f"<style>@media (min-width: 900px) {{{_rules}}}</style>", unsafe_allow_html=True)
 
 with st.container(key="car_nav_grid"):
     _cols = st.columns(len(_main_cells))
@@ -4762,15 +4772,12 @@ else:
     # 제목·CSV는 위 헤더에서 이미 항상 렌더되므로, 빈 상태에서는 안내 문구만 표시.
     st.markdown(f'<div style="font-size: 12px; color: #8e929e; text-align: center; padding: 10px;">{t("no_bookings")}</div>', unsafe_allow_html=True)
 
-# ⚡ [관리자] 전체 초기화 · 백업/복원 · 활동 기록 — 관리자 로그인(admin_unlocked) 후에만 노출/동작
-#   ⚠️ 예약이 0건일 때도 반드시 보여야 한다. '초기화 직후'가 바로 되돌리기가 필요한 순간인데,
-#      이 블록이 `if 예약이 있으면:` 안에 있으면 초기화하자마자 되돌리기 버튼에 닿을 수 없다.
-#      (그래서 예약 유무와 무관하게 항상 렌더되도록 바깥으로 뺐다)
-#   · 관리자 모드 종료 / 전체 예약 초기화 버튼은 헤더(언어 토글 아래)로 옮겼다(항목4).
-#     여기에는 관리 기능 타일(승인 대기 / 백업·복원 / 활동 기록)만 남는다.
-if st.session_state.get("admin_unlocked"):
-    st.markdown('<hr style="border: 0; border-top: 1px solid #2d2f34; margin: 12px 0 8px 0;">', unsafe_allow_html=True)
-    _render_admin_tiles()
+# 화면 아래쪽 관리자 타일은 모두 없앴다.
+#   · 탑승 대기: 탑승 처리는 카드의 '탑승' 버튼에서 바로 하므로 대기 목록 타일이 필요 없다.
+#   · 백업·복원: 요청에 따라 배너를 삭제했다.
+#     ⚠️ 이로써 '전체 예약 초기화'를 되돌리는 화면 경로가 사라졌다. 초기화 직전 스냅샷은 계속 저장되므로
+#        되돌리기가 필요해지면 이 타일만 다시 살리면 된다(_render_admin_tiles / _backup_tools_body 코드는 남겨 뒀다).
+#   · 최근 활동 기록: 헤더(전체 예약 초기화 아래)로 옮겼다.
 
 # 출발 임박 강제 알림(항목6) — 1분 단위 감시를 켜 두고, 구간에 든 배차가 있으면 팝업을 띄운다.
 _depart_alert_watch()
