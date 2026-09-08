@@ -205,7 +205,7 @@ st.markdown("""
         /* ⚠️ 예전에는 -44px로 끌어올려 크롬 X와 같은 줄에 맞췄다. 지금은 팝업이 dismissible=False라
            크롬 X가 없고 우리가 그린 '✕ 닫기'가 한 줄을 차지한다 → 그대로 두면 제목이 그 위로 올라타
            차량 제목 바와 겹쳐 보인다(실제 화면에서 확인). 끌어올림을 없앤다. */
-        margin: 0 0 10px 0 !important;
+        margin: 0 0 28px 0 !important;   /* 제목과 아래 줄 사이를 한 줄만큼 띄운다 */
         padding-right: 0 !important;
     }
 
@@ -685,17 +685,42 @@ st.markdown("""
     /* 좌석 배지를 왼쪽에 넓게 두는 변형(dlgx_w_) — [왼쪽 내용 4][✕ 닫기 1] */
     div[class*="st-key-dlgx_w_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 4 1 0% !important; }
     div[class*="st-key-dlgx_w_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
-    /* 좌석 배지: 어느 차량 몇 번 자리인지 — 메인 네이밍 바와 같은 배지형 */
+    /* 좌석 배지: 어느 차량 몇 번 자리인지 — 메인 네이밍 바와 같은 배지형.
+       높이를 32px로 못박아 오른쪽 '✕ 닫기'와 같은 높이로 선다(아래 dlgx_w_ 규칙이 같은 값을 쓴다). */
     .dlg-seat-badge span {
         display: inline-block; font-size: 14px; font-weight: 700;
-        padding: 5px 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+        height: 30px; line-height: 20px; padding: 5px 12px; box-sizing: border-box;
+        border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
+    /* 좌석 배지가 있는 줄의 닫기 버튼은 배지와 같은 높이(32px = 배지 30px + 테두리 2px) */
+    div[class*="st-key-dlgx_w_"] button { min-height: 32px !important; height: 32px !important; }
     /* 신청 폼 입력창 높이 50% 확대 — 폰에서도 손가락으로 정확히 짚을 수 있게 (기본 약 40px → 60px) */
     div[class*="st-key-input_user_"] input,
     div[class*="st-key-input_user_"] [data-baseweb="input"],
     div[class*="st-key-input_user_"] [data-baseweb="select"] > div:first-child {
         min-height: 60px !important; height: 60px !important; font-size: 15px !important;
+    }
+    /* 출발 날짜·출발 시간·도착 시간: 숫자를 2배로 키우고 가운데 정렬 —
+       세 칸은 '값'만 읽으면 되는 자리라 글자를 키워도 넘치지 않고, 오히려 오입력을 줄인다.
+       (라벨은 아래에서 원래 크기로 되돌린다 — 같은 위젯 안이라 함께 커지기 때문) */
+    div[class*="st-key-input_user_departure_date"] input,
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"],
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] div,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"],
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] div {
+        font-size: 30px !important; font-weight: 700 !important; text-align: center !important;
+    }
+    /* 드롭다운 화살표는 글자 크기를 따라 커지지 않게 고정 */
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] svg,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] svg {
+        width: 20px !important; height: 20px !important; flex: 0 0 auto !important;
+    }
+    /* 시간 드롭다운 목록은 원래 크기로 — 목록까지 30px이면 한 화면에 몇 줄 안 들어온다 */
+    div[data-baseweb="popover"] [role="option"] { font-size: 15px !important; text-align: left !important; }
+    /* 항목 번호·라벨(4. 출발 날짜 등)은 원래 크기 유지 */
+    div[class*="st-key-input_user_"] [data-testid="stWidgetLabel"] * {
+        font-size: 13px !important; font-weight: 600 !important; text-align: left !important;
     }
 
     /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
