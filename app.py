@@ -434,6 +434,9 @@ st.markdown("""
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
     /* '탑승' 버튼은 바로 오른쪽 좌석 배지와 같은 크기(웹 26px·18px / 모바일 20px·12px — 모바일 블록에서 덮어씀) */
     div[class*="st-key-chiprow_"] [data-testid="stElementContainer"] { margin-bottom: 0 !important; }
+    /* 로고·탑승·좌석 세 배너의 눈높이를 맞춘다. 버튼은 Streamlit 자체 여백 때문에 약간 위로 뜨므로
+       레이아웃에 영향 없는 relative 이동으로만 살짝 내린다(margin을 쓰면 줄 높이까지 같이 늘어난다). */
+    div[class*="st-key-chiprow_"] button { position: relative !important; top: 4px !important; }
     div[class*="st-key-chiprow_"] button {
         min-height: 26px !important; height: 26px !important;
         padding: 0 6px !important; font-size: 18px !important; font-weight: 700 !important;
@@ -1105,6 +1108,7 @@ if IS_MOBILE:
         font-size: 12px !important; font-weight: bold !important; line-height: 18px !important;
         padding: 0 5px !important; letter-spacing: 0 !important;
     }
+    div[class*="st-key-chiprow_"] button { top: 3px !important; }
     /* 탑승과 좌석 배지가 맞붙어 한 덩어리로 보이던 것을 띄운다(둘 사이만) */
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { margin-right: 7px !important; }
     .car-title-text { font-size: 16px !important; }
@@ -3341,13 +3345,13 @@ def owner_gate(car, seat, info):
 # ─────────────────────────────────────────────────────────────
 if IS_MOBILE:
     CARDS_PER_ROW = 1
-    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 30, 12, 12, 11, 10
+    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 20, 12, 12, 11, 10
     CARD_CHIP_H = 20          # 상태 배지 바깥 높이(테두리 포함)
     CARD_SEAT_H = 32          # 좌석 배지 바깥 높이 — 옆 '탑승' 버튼(카드 버튼 규칙상 32px)과 같은 높이
     CARD_LOGO_H = 24          # 카드 헤더 차량 로고 높이
 else:
     CARDS_PER_ROW = 2
-    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 44, 18, 18, 16, 15
+    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 35, 18, 18, 16, 15
     CARD_CHIP_H = 24
     CARD_SEAT_H = 40          # 좌석 배지 바깥 높이 — 옆 '탑승' 버튼(카드 버튼 규칙상 40px)과 같은 높이
     CARD_LOGO_H = 34          # 카드 헤더 차량 로고 높이
