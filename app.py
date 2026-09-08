@@ -695,7 +695,7 @@ st.markdown("""
         width: 80%; box-sizing: border-box; z-index: 3; pointer-events: none;
         background: rgba(176,18,31,0.94); border: 1px solid #ff8787; border-radius: 8px;
         padding: 14px 10px; color: #ffffff; text-align: center;
-        min-height: 30cqw;                     /* 상자 높이를 기존의 약 2배로 */
+        min-height: 20cqw;                     /* 상자 높이 — 30cqw는 배치도를 너무 가려 20cqw로 낮췄다 */
         display: flex; flex-direction: column; justify-content: center;
         font-size: clamp(9px, 5cqw, 20px); font-weight: 700; line-height: 1.35;
         overflow-wrap: anywhere; box-shadow: 0 3px 10px rgba(0,0,0,0.5);
