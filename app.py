@@ -419,15 +419,18 @@ st.markdown("""
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     /* 예약 카드 '상태 배지 + 탑승 버튼' 줄: 배지(2) : 버튼(1). 현황판 공통 1:1 강제 규칙을 되돌린다. */
-    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    /* 두 칸의 '아래 선'을 맞춘다 — Streamlit의 bottom 정렬만으로는 칸 안 요소 여백 때문에 어긋난다 */
+    div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 6px !important; align-items: flex-end !important; }
+    div[class*="st-key-chiprow_"] [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; justify-content: flex-end !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
-    /* 높이는 왼쪽 상태 배지와 같게(웹 24px / 모바일 20px — 아래 모바일 블록에서 덮어씀). */
+    /* 높이·글자를 왼쪽 상태 배지와 똑같이 맞춘다(웹 24px·16px / 모바일 20px·11px — 모바일 블록에서 덮어씀). */
     div[class*="st-key-chiprow_"] [data-testid="stElementContainer"] { margin-bottom: 0 !important; }
     div[class*="st-key-chiprow_"] button {
         min-height: 24px !important; height: 24px !important;
-        padding: 0 4px !important; font-size: 10px !important; font-weight: 700 !important;
-        border-radius: 5px !important; white-space: nowrap !important;
+        padding: 0 7px !important; font-size: 16px !important; font-weight: 800 !important;
+        line-height: 22px !important; letter-spacing: 0.2px !important;
+        border-radius: 4px !important; white-space: nowrap !important;
     }
 
     /* 같은 font-size라도 숫자는 한글보다 작아 보인다(글자 높이 차이) → 숫자만 조금 키워 눈으로 크기를 맞춘다. */
@@ -1086,7 +1089,7 @@ if IS_MOBILE:
     .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
     /* 카드 버튼·탑승 버튼은 0907 ver.6 크기 그대로 — 폰에서 커진 버튼은 카드 높이만 키운다 */
     .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; line-height: 1.1 !important; }
-    div[class*="st-key-chiprow_"] button { min-height: 20px !important; height: 20px !important; font-size: 9px !important; }
+    div[class*="st-key-chiprow_"] button { min-height: 20px !important; height: 20px !important; font-size: 11px !important; line-height: 18px !important; padding: 0 5px !important; }
     .car-title-text { font-size: 16px !important; }
     .car-header-center { min-height: 26px !important; }
 
@@ -2475,6 +2478,23 @@ def render_premium_seat(x, y, w, h, label, seat_id, car_display_name, is_driver=
     svg.append('</g>')
     return "".join(svg)
 
+def render_dest_badge(x, y, w, dest):
+    """예약된 좌석 바로 위에 붙는 목적지 배지(좌석 배치도 전용).
+    좌석 안에는 신청자 이름이 들어가므로 '어디로 가는 자리인지'는 위쪽 작은 배지로 따로 보여준다
+    — 배치도만 보고도 같은 방향끼리 묶어 태울 수 있다.
+    좌석 사이 세로 간격(20px) 안에 들어가도록 높이 11px로 잡고, 긴 목적지는 잘라 낸다.
+    pointer-events는 꺼 둔다 — 배지가 좌석의 클릭·드래그를 가로채면 안 된다."""
+    txt = dest if len(dest) <= 5 else dest[:5] + "…"
+    bw = max(24.0, min(46.0, len(txt) * 6.2 + 8))
+    bx = x + w / 2 - bw / 2
+    by = y - 13
+    return (f'<g style="pointer-events:none">'
+            f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="11" rx="5.5" '
+            f'fill="#10243a" stroke="#4dabf7" stroke-width="0.8"/>'
+            f'<text x="{x + w / 2:.1f}" y="{by + 7.9:.1f}" font-family="sans-serif" font-size="6.5" '
+            f'font-weight="bold" fill="#a5d8ff" text-anchor="middle">{esc(txt)}</text></g>')
+
+
 # ─────────────────────────────────────────────────────────────
 # 🚗 차량 모델별 3D 상단뷰(Top-View) 섀시 렌더러
 #   · 모델마다 실루엣(길이·폭·코너 라운딩), 도색, 후드/트렁크 비율이 다르다.
@@ -2800,7 +2820,9 @@ def render_car_layout(car_name, layout_type, bookings):
         # 운전석: 이름이 있으면 'Driver' 아래 줄로 함께 박스 세로 중앙 정렬(이름은 골드 #fab005)
         #   INNOVA·SEDONA 운전석은 클릭 시 관리자 로그인 팝업이 뜨도록 admin_login=True
         _admin_car = ("INNOVA" in car_name) or ("SEDONA" in car_name)
-        svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, sub_label=driver_name, admin_login=_admin_car))
+        # 운전석에는 이름을 넣지 않는다 — 기사 이름은 왼쪽 차량 타일에 이미 크게 적혀 있어 중복이고,
+        #  이름을 빼면 '운전석' 글자가 좌석 한가운데로 온다(보조 라벨이 있으면 위로 밀린다).
+        svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, admin_login=_admin_car))
         if layout_type in ("2-3", "3x2"):
             # 앞줄(운전석 열)과 뒷줄을 나누는 점선 — 새 행 좌표(앞줄 아래끝 124 / 뒷줄 위 144)의 가운데
             svg.append('  <line x1="33" y1="134" x2="129" y2="134" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
@@ -2808,6 +2830,10 @@ def render_car_layout(car_name, layout_type, bookings):
             svg.append(render_premium_seat(sx, sy, SW, SH, get_seat_label(sid), sid, car_name,
                                            is_booked=(sid in car_bookings), tooltip=get_seat_tip(sid),
                                            book_state=get_seat_state(sid)))
+            # 예약된 좌석 위에 목적지 배지를 얹는다(좌석 뒤에 그리면 가려지므로 좌석 다음에 그린다).
+            _dest = str(car_bookings.get(sid, {}).get("destination", "")).strip()
+            if _dest:
+                svg.append(render_dest_badge(sx, sy, SW, _dest))
 
         # 잔여 좌석 수 배지 — 운전석과의 간격을 좌석 행 간격만큼 벌리기 위해 y=70에 배치
         remaining = sum(1 for _sid, _sx, _sy in seat_map[layout_type] if _sid not in car_bookings)
