@@ -419,6 +419,11 @@ st.markdown("""
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     /* 예약 카드 '상태 배지 + 탑승 버튼' 줄: 배지(2) : 버튼(1). 현황판 공통 1:1 강제 규칙을 되돌린다. */
+    /* 카드 헤더 차량 로고 — 차량명 글자를 키운 만큼 로고도 함께 키운다(웹 34px / 앱 24px) */
+    .bkcard-logo { display: inline-flex; align-items: center; }
+    .bkcard-logo img { height: 34px !important; width: auto !important; }
+    .bkcard-logo svg { width: 53px !important; height: 34px !important; }
+
     /* 예약 카드 헤더 한 줄: [차량명 3][탑승 1][좌석 배지 1] — 현황판 공통 1:1 강제 규칙을 되돌린다 */
     div[class*="st-key-chiprow_"] [data-testid="stHorizontalBlock"] { gap: 4px !important; align-items: center !important; }
     div[class*="st-key-chiprow_"] [data-testid="stColumn"] { display: flex !important; flex-direction: column !important; justify-content: center !important; }
@@ -1092,6 +1097,8 @@ if IS_MOBILE:
     .st-key-booking_board .stButton button * { word-break: keep-all !important; overflow-wrap: normal !important; white-space: normal !important; }
     /* 카드 버튼·탑승 버튼은 0907 ver.6 크기 그대로 — 폰에서 커진 버튼은 카드 높이만 키운다 */
     .st-key-booking_board .stButton button { min-height: 32px !important; font-size: 11px !important; padding: 2px 1px !important; line-height: 1.1 !important; }
+    .bkcard-logo img { height: 24px !important; }
+    .bkcard-logo svg { width: 37px !important; height: 24px !important; }
     /* 탑승 버튼 글자를 오른쪽 좌석 배지와 똑같이(12px·bold·줄높이 18px) — 두 배너가 한 벌로 보이게 */
     div[class*="st-key-chiprow_"] button {
         min-height: 20px !important; height: 20px !important;
@@ -3045,6 +3052,15 @@ def brand_logo(name):
                 '<rect x="5.6" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="12.8" y="6.3" width="3.6" height="3.3" fill="#111"/><rect x="20" y="6.3" width="3.6" height="3.3" fill="#111"/></svg>')
     return '🚙 '
 
+def fmt_date_md(d):
+    """화면에 보여줄 출발 날짜 — 'YYYY-MM-DD' → 'MM-DD'.
+    ⚠️ 표시용으로만 쓴다. 저장(bookings)·탑승 이력·엑셀은 연도가 있는 원본(YYYY-MM-DD)을 그대로 쓴다
+       — 연도가 빠지면 월별 집계와 정렬이 깨진다."""
+    txt = str(d or "").strip()
+    parts = txt.split("-")
+    return f"{parts[1]}-{parts[2]}" if len(parts) == 3 else txt
+
+
 def _short_car_name(display_name):
     """예약 카드용 짧은 차량명: 브랜드 접두어와 '(N SEAT)' 접미어를 제거.
     'TOYOTA INNOVA (7 SEAT)'→'INNOVA', 'HYUNDAI SEDONA (6 SEAT)'→'SEDONA', 'TAXI2 (6 SEAT)'→'TAXI2'."""
@@ -3325,14 +3341,16 @@ def owner_gate(car, seat, info):
 # ─────────────────────────────────────────────────────────────
 if IS_MOBILE:
     CARDS_PER_ROW = 1
-    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 15, 12, 12, 11, 10
+    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 30, 12, 12, 11, 10
     CARD_CHIP_H = 20          # 상태 배지 바깥 높이(테두리 포함)
-    CARD_SEAT_H = 20          # 좌석 배지 바깥 높이 — 옆의 '탑승' 버튼이 같은 높이를 쓴다
+    CARD_SEAT_H = 32          # 좌석 배지 바깥 높이 — 옆 '탑승' 버튼(카드 버튼 규칙상 32px)과 같은 높이
+    CARD_LOGO_H = 24          # 카드 헤더 차량 로고 높이
 else:
     CARDS_PER_ROW = 2
-    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 22, 18, 18, 16, 15
+    CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 44, 18, 18, 16, 15
     CARD_CHIP_H = 24
-    CARD_SEAT_H = 26
+    CARD_SEAT_H = 40          # 좌석 배지 바깥 높이 — 옆 '탑승' 버튼(카드 버튼 규칙상 40px)과 같은 높이
+    CARD_LOGO_H = 34          # 카드 헤더 차량 로고 높이
 
 # 상태 배지 색 — 차량 카드 배경색의 '보색' 계열로 채운 solid 배지(항목6).
 #   왜 바꿨나: 예전에는 반투명 틴트(알파 0.18~0.22)에 같은 색 글자였다. 그래서 INNOVA(밝은 실버) 카드에서는
@@ -5008,8 +5026,8 @@ if st.session_state.bookings or _done_today:
         #  탑승 대기 카드만 탑승 완료 카드보다 한 줄 더 높아, 같은 줄에 선 두 카드의 아래 선이 어긋났다.
         name_html = (
             f'<div style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; min-width: 0; '
-            f'display: flex; align-items: center; height: {CARD_SEAT_H}px;">'
-            f'{car_logo}'
+            f'display: flex; align-items: center; min-height: {CARD_SEAT_H}px; line-height: 1.1;">'
+            f'<span class="bkcard-logo">{car_logo}</span>'
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{car_short}</span>'
             '</div>'
         )
@@ -5035,7 +5053,7 @@ if st.session_state.bookings or _done_today:
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
             f'font-size:{CARD_FS_INFO}px; color:{c_fg}; line-height:1.3; margin-bottom:5px;">'
             + _cell(t('c_applicant'), binfo.get('name', ''))
-            + _cell(t('c_date'), binfo.get('date', ''))
+            + _cell(t('c_date'), fmt_date_md(binfo.get('date', '')))
             + _cell(t('c_departure'), binfo.get('departure', ''))
             + _cell(t('c_time'), binfo.get('time', ''))
             + _cell(t('c_destination'), binfo.get('destination', ''))
@@ -5121,8 +5139,8 @@ if st.session_state.bookings or _done_today:
         c_fg, c_bd = DONE_CARD_FG, DONE_CARD_BD
         header_html = (
             '<div style="font-weight: bold; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 4px;">'
-            f'<span style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center;">'
-            f'{brand_logo(dc_name)}'
+            f'<span style="color: {c_fg}; font-weight: bold; font-size: {CARD_FS_NAME}px; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; line-height: 1.1;">'
+            f'<span class="bkcard-logo">{brand_logo(dc_name)}</span>'
             f'<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{esc(_short_car_name(dc_name))}</span>'
             '</span>'
             f'<span style="flex: 0 0 auto; background: rgba(0,0,0,0.32); border: 1px solid rgba(255,255,255,0.55); color: #ffffff; '
@@ -5145,7 +5163,7 @@ if st.session_state.bookings or _done_today:
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
             f'font-size:{CARD_FS_INFO}px; color:{c_fg}; line-height:1.35;">'
             + _cell(t('c_applicant'), rec.get('name', ''))
-            + _cell(t('c_date'), rec.get('date', ''))
+            + _cell(t('c_date'), fmt_date_md(rec.get('date', '')))
             + _cell(t('c_departure'), rec.get('departure', ''))
             + _cell(t('c_time'), rec.get('time', ''))
             + _cell(t('c_destination'), rec.get('destination', ''))
