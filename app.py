@@ -4058,26 +4058,40 @@ for _rc in nav_cars:
     _main_cells.append(("tile", _rc))
     if not _rc["is_taxi"]:
         _main_cells.append(("map", _rc))          # 자사 차량은 타일 바로 옆에 자기 배치도
-for _rc in resolved_cars:
-    if _rc["is_taxi"]:
-        _main_cells.append(("map", _rc))          # 부른 택시들의 배치도를 TAXI 타일 뒤에 이어 붙인다
+_taxi_maps = [_rc for _rc in resolved_cars if _rc["is_taxi"]]
+if not _taxi_maps:
+    # 아직 아무도 택시를 안 불렀어도 TAXI 자리는 비워 두지 않는다 — 다른 차량처럼 배치도를 세워
+    # 좌석을 바로 누를 수 있게 한다. 기본은 6석(2행 × 3열)이고, 좌석을 누르면 그 자리로 TAXI1이 생긴다.
+    _taxi_maps = [_taxi_rc(1, 6)]
+_main_cells += [("map", _rc) for _rc in _taxi_maps]   # 택시 배치도를 TAXI 타일 뒤에 이어 붙인다
 
-# 타이틀 칸 뒤의 간격만 3배(A·C)로 벌린다 — 기본 gap이 B이므로 추가 여백 2B를 더한다.
-#  차량 한 대가 [타이틀][배치도] 한 덩어리로 읽히도록 묶음 안쪽을 넓게 잡는 배치다.
-#  ⚠️ 모바일(?m=1)·좁은 화면은 2칸씩 줄바꿈하므로 이 여백을 적용하지 않는다(줄바꿈이 깨진다).
-if not IS_MOBILE:
-    def _nth(i):
-        return f'.st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({i + 1})'
+# 칸별 폭을 실제 배열에 맞춰 지정한다(타일 위치는 택시 수에 따라 밀리므로 매번 새로 계산).
+#  · 넓은 화면: [타이틀][배치도]가 한 줄에 늘어서고, 타이틀 뒤 간격만 좁혀 한 덩어리로 읽히게 한다.
+#  · 좁은 화면·앱: 2칸씩 줄바꿈되므로 간격 조정 대신 타일/배치도 폭 비율만 바꾼다.
+def _nth(i):
+    return f'.st-key-car_nav_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child({i + 1})'
 
-    _tile_nth = ", ".join(_nth(i) for i, (_k, _r) in enumerate(_main_cells) if _k == "tile")
-    _map_nth = ", ".join(_nth(i) for i, (_k, _r) in enumerate(_main_cells) if _k == "map")
-    if _tile_nth:
-        # 타이틀 칸은 좁게(0.75) / 배치도 칸은 넓게(1.25) — 타일은 이름·기사 정보만 담으면 되고,
-        # 실제로 봐야 하는 건 빈자리이므로 남는 폭을 배치도 쪽으로 옮긴다.
-        _rules = f"{_tile_nth} {{ flex: 0.75 1 0% !important; margin-right: calc(var(--dk-gap-b) * -0.25) !important; }}"
-        if _map_nth:
-            _rules += f"{_map_nth} {{ flex: 1.25 1 0% !important; }}"
-        st.markdown(f"<style>@media (min-width: 900px) {{{_rules}}}</style>", unsafe_allow_html=True)
+_tile_nth = ", ".join(_nth(i) for i, (_k, _r) in enumerate(_main_cells) if _k == "tile")
+_map_nth = ", ".join(_nth(i) for i, (_k, _r) in enumerate(_main_cells) if _k == "map")
+if _tile_nth:
+    # 넓은 화면: 타이틀 칸은 좁게(0.75) / 배치도 칸은 넓게(1.25) — 타일은 이름·기사 정보만 담으면 되고,
+    # 실제로 봐야 하는 건 빈자리이므로 남는 폭을 배치도 쪽으로 옮긴다.
+    _wide = f"{_tile_nth} {{ flex: 0.75 1 0% !important; margin-right: calc(var(--dk-gap-b) * -0.25) !important; }}"
+    if _map_nth:
+        _wide += f"{_map_nth} {{ flex: 1.25 1 0% !important; }}"
+    # 좁은 화면·앱: 차량이 [타일][배치도] 2칸씩 줄바꿈된다. 반반(50:50)이던 것을
+    # 타일 42.5% / 배치도 57.5%로 옮긴다 → 타일은 15% 작아지고 배치도는 15% 커진다.
+    # 둘 다 정사각형·고정 비율이라 폭이 줄고 늘면 높이도 같은 비율로 따라온다.
+    _narrow = f"{_tile_nth} {{ flex: 0 0 calc(42.5% - 4px) !important; }}"
+    if _map_nth:
+        _narrow += f"{_map_nth} {{ flex: 0 0 calc(57.5% - 4px) !important; }}"
+    st.markdown(
+        "<style>"
+        + (f"@media (min-width: 900px) {{{_wide}}}@media (max-width: 899px) {{{_narrow}}}"
+           if not IS_MOBILE else _narrow)
+        + "</style>",
+        unsafe_allow_html=True,
+    )
 
 with st.container(key="car_nav_grid"):
     _cols = st.columns(len(_main_cells))
