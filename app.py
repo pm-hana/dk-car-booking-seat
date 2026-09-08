@@ -682,6 +682,22 @@ st.markdown("""
     /* 좌석맵 팝업의 버튼 줄은 아래 차량명 프레임(폭 80% 가운데정렬)과 좌우 끝선을 맞춘다 →
        운행 불가는 차량명 왼쪽 끝선에서 시작하고, 닫기는 차량명 오른쪽 끝선에서 끝난다. */
     .st-key-dlgx_seatmap { padding: 0 10% !important; }
+    /* 좌석 배지를 왼쪽에 넓게 두는 변형(dlgx_w_) — [왼쪽 내용 4][✕ 닫기 1] */
+    div[class*="st-key-dlgx_w_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 4 1 0% !important; }
+    div[class*="st-key-dlgx_w_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
+    /* 좌석 배지: 어느 차량 몇 번 자리인지 — 메인 네이밍 바와 같은 배지형 */
+    .dlg-seat-badge span {
+        display: inline-block; font-size: 14px; font-weight: 700;
+        padding: 5px 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    /* 신청 폼 입력창 높이 50% 확대 — 폰에서도 손가락으로 정확히 짚을 수 있게 (기본 약 40px → 60px) */
+    div[class*="st-key-input_user_"] input,
+    div[class*="st-key-input_user_"] [data-baseweb="input"],
+    div[class*="st-key-input_user_"] [data-baseweb="select"] > div:first-child {
+        min-height: 60px !important; height: 60px !important; font-size: 15px !important;
+    }
+
     /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
     .st-key-oos_open_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; }
     .st-key-oos_open_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
@@ -1793,7 +1809,7 @@ TR = {
         "select_ph": "-- 선택 --", "seat_select": "{car} 좌석 선택", "full": "❌ 만차 (잔여 좌석 없음)",
         "seatmap_title": "🚗 좌석 선택", "seatmap_hint": "빈 좌석을 클릭하면 차량 신청 창이 열립니다.",
         "dialog_title": "📝 차량 신청 정보 입력", "form_step_title": "📝 신청 정보 입력",
-        "form_edit": "[{car}] 좌석 {seat} · 차량 예약 수정", "form_new": "[{car}] 좌석 {seat} · 차량 신청",
+        "form_edit": "[{car}] 좌석 {seat} · 차량 예약 수정", "form_new": "[{car}] 좌석 {seat}",
         "dup_error": "⚠️ 중복 신청 거부: [{name}]님은 이미 다른 차량에 배차되어 있습니다!",
         "f_name": "1. 신청자 이름", "f_name_ph": "예: 홍길동 PM",
         "f_dep": "2. 출발지", "f_dep_ph": "예: 본사 오피스",
@@ -1935,7 +1951,7 @@ TR = {
         "select_ph": "-- Chọn --", "seat_select": "Chọn ghế {car}", "full": "❌ Hết chỗ",
         "seatmap_title": "🚗 Chọn ghế", "seatmap_hint": "Nhấn vào ghế trống để mở form đăng ký xe.",
         "dialog_title": "📝 Nhập thông tin đăng ký xe", "form_step_title": "📝 Nhập thông tin",
-        "form_edit": "[{car}] Ghế {seat} · Sửa đăng ký", "form_new": "[{car}] Ghế {seat} · Đăng ký xe",
+        "form_edit": "[{car}] Ghế {seat} · Sửa đăng ký", "form_new": "[{car}] Ghế {seat}",
         "dup_error": "⚠️ Từ chối đăng ký trùng: [{name}] đã được xếp cho xe khác!",
         "f_name": "1. Tên người đăng ký", "f_name_ph": "VD: Nguyễn Văn A (PM)",
         "f_dep": "2. Điểm đi", "f_dep_ph": "VD: Văn phòng trụ sở",
@@ -2076,7 +2092,7 @@ TR = {
         "select_ph": "-- Select --", "seat_select": "{car} seat select", "full": "❌ Full (no seats left)",
         "seatmap_title": "🚗 Select Seat", "seatmap_hint": "Click an empty seat to open the request form.",
         "dialog_title": "📝 Vehicle Request", "form_step_title": "📝 Request Info",
-        "form_edit": "[{car}] Seat {seat} · Edit Request", "form_new": "[{car}] Seat {seat} · New Request",
+        "form_edit": "[{car}] Seat {seat} · Edit Request", "form_new": "[{car}] Seat {seat}",
         "dup_error": "⚠️ Duplicate rejected: [{name}] is already assigned to another vehicle!",
         "f_name": "1. Applicant name", "f_name_ph": "e.g. John Doe (PM)",
         "f_dep": "2. Departure", "f_dep_ph": "e.g. HQ Office",
@@ -3423,17 +3439,22 @@ def _claim_dialog():
     return True
 
 
-def _dlg_close_btn(name, on_close=None, left=None):
+def _dlg_close_btn(name, on_close=None, left=None, left_wide=False):
     """팝업 오른쪽 위 '✕ 닫기' 버튼(항목3).
     모든 팝업을 dismissible=False로 열어 바깥 클릭·ESC로는 닫히지 않게 했으므로 닫는 길은 이 버튼 하나뿐이다
     — 입력 도중 화면 아무 데나 잘못 눌러 작성 내용이 통째로 날아가던 문제를 막는다.
     (dismissible=False면 Streamlit 기본 X가 사라지므로 직접 그린다. 팝업 안 st.rerun()은 팝업을 닫는다.)
-    left: 같은 줄 왼쪽 끝에 함께 그릴 버튼(있으면). 닫기와 같은 폭으로 선다."""
-    with st.container(key=f"dlgx_{name}"):
-        # 팝업 안에서는 컬럼이 1:1로 강제되므로, 아래 스코프 규칙으로 1:2:1을 되살린다.
+    left: 같은 줄 왼쪽 끝에 함께 그릴 내용(있으면).
+    left_wide: True면 왼쪽 칸이 줄의 대부분을 차지한다(좌석 배지처럼 긴 내용을 놓을 때)."""
+    with st.container(key=(f"dlgx_w_{name}" if left_wide else f"dlgx_{name}")):
+        # 팝업 안에서는 컬럼이 1:1로 강제되므로, 아래 스코프 규칙으로 비율을 되살린다.
         # flex 정렬만으로는 Streamlit 요소 폭(100%)에 눌려 버튼이 왼쪽에 남는다.
-        #   [왼쪽 보조 버튼][빈칸][✕ 닫기]  — 왼쪽 버튼이 닫기의 2배 폭이다.
-        _lt, _sp, _bt = st.columns([2, 1, 1])
+        #   기본:      [왼쪽 보조 버튼][빈칸][✕ 닫기]  — 왼쪽 버튼이 닫기의 2배 폭
+        #   left_wide: [왼쪽 내용][✕ 닫기]           — 왼쪽이 줄의 대부분(좌석 배지용)
+        if left_wide:
+            _lt, _bt = st.columns([4, 1], vertical_alignment="center")
+        else:
+            _lt, _sp, _bt = st.columns([2, 1, 1])
         with _lt:
             if left is not None:
                 left()
@@ -3489,6 +3510,18 @@ def _render_admin_tiles():
                 st.rerun()
 
 
+def booking_seat_badge(car_target, seat_target):
+    """신청 폼 상단의 좌석 배지 HTML — '[차량] 좌석 N'.
+    메인 차량 네이밍 바와 같은 배지형(배경=차량색 / 글자=대비색 / 테두리=차량색)이라 어느 차인지 색으로도 읽힌다.
+    '✕ 닫기'와 같은 줄 왼쪽 끝에 세워 팝업 위쪽 두 줄을 한 줄로 줄였다."""
+    title = (t("form_edit", car=car_target, seat=seat_target) if st.session_state.editing_booking
+             else t("form_new", car=car_target, seat=seat_target))
+    mk = next((c["mk"] for c in resolved_cars if c["display_name"] == car_target), "innova")
+    bg, fg, bd = CAR_FRAME_STYLE.get(mk, CAR_FRAME_STYLE["innova"])
+    return (f'<div class="dlg-seat-badge"><span style="background:{bg}; color:{fg}; border:1px solid {bd};">'
+            f'{esc(title)}</span></div>')
+
+
 def _booking_form(car_target, seat_target):
     """차량 신청/수정 입력 폼 본체 — 웹 신청 팝업(booking_dialog)과 앱 좌석맵 팝업에서 공용.
     완료/취소 시 앱 좌석맵 팝업(seatmap_car)도 함께 닫는다."""
@@ -3500,16 +3533,9 @@ def _booking_form(car_target, seat_target):
         if _einfo and not owner_gate(_edit_key[0], _edit_key[1], _einfo):
             return
 
-    form_title = t("form_edit", car=car_target, seat=seat_target) if st.session_state.editing_booking else t("form_new", car=car_target, seat=seat_target)
-    # 이 차량의 메인 네이밍 바 색(배경 그라디언트/대비 텍스트/테두리)을 그대로 가져와 팝업에도 적용
+    # 좌석 배지(어느 차량 몇 번 자리인지)는 '✕ 닫기'와 같은 줄로 옮겼다 → booking_seat_badge()가 그린다.
     _mk = next((c["mk"] for c in resolved_cars if c["display_name"] == car_target), "innova")
     _fbg, _ffg, _fbd = CAR_FRAME_STYLE.get(_mk, CAR_FRAME_STYLE["innova"])
-    # 좌석 타이틀 = 메인 차량 네이밍 바처럼 '배지형'(배경=차량색 / 글자=대비색 / 테두리=차량색) → 4종 모두 가독성 확보
-    st.markdown(f"""
-    <div style="margin-bottom: 12px;">
-        <span style="display: inline-block; background: {_fbg}; color: {_ffg}; border: 1px solid {_fbd}; font-size: 14px; font-weight: 700; padding: 5px 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);">{form_title}</span>
-    </div>
-    """, unsafe_allow_html=True)
     # 신청 완료 버튼 배경 = 메인 차량 네이밍 배경색(대비 텍스트/테두리 동일 적용)
     st.markdown(
         f'<style>.st-key-submit_booking_form_btn button {{ background: {_fbg} !important; color: {_ffg} !important; border: 1px solid {_fbd} !important; }}</style>',
@@ -4227,19 +4253,45 @@ def seatmap_dialog(car_rc):
                 st.button(t("oos_btn"), key=f"oosopen_{car_rc['display_name']}",
                           use_container_width=True,
                           on_click=_oos_open, args=(car_rc["display_name"],))
-    _dlg_close_btn("seatmap", _close_seatmap, left=_oos_left)
+    car = car_rc["display_name"]
     _oos_toast = st.session_state.pop("oos_toast", None)
+    # 어느 화면을 그릴지 '닫기 줄을 그리기 전에' 먼저 판단한다 —
+    #  신청 폼 단계에서는 닫기 줄 왼쪽에 좌석 배지를 함께 세워야 하기 때문이다(제목 → [배지][닫기] 순).
+    _oos_editing = st.session_state.get("oos_target") == car
+    _taxi_pick = car_rc.get("taxi_index") is None and car_rc.get("nav_label") == "TAXI"
+    _admin_view = bool(st.session_state.get("admin_seat_status_open")
+                       or st.session_state.get("admin_login_open"))
+    booked, seat_num = [], None
+    if not (_oos_editing or _taxi_pick or _admin_view):
+        booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car]
+        sel = st.session_state.selected_seat_state.get(car, "-- 선택 --")
+        if sel != "-- 선택 --":
+            try:
+                seat_num = int(sel.split(" ")[1])
+            except Exception:
+                seat_num = None
+    is_form = seat_num is not None and seat_num not in booked
+
+    # 좌석이 선택된 상태면 같은 팝업 안에서 신청 폼을 보여준다(웹 신청 팝업과 같은 구성).
+    if is_form:
+        st.markdown(f'<div class="dlg-step-title">{t("form_step_title")}</div>', unsafe_allow_html=True)
+        _dlg_close_btn("seatmap", _close_seatmap, left_wide=True,
+                       left=lambda: st.markdown(booking_seat_badge(car, seat_num),
+                                                unsafe_allow_html=True))
+        _booking_form(car, seat_num)
+        return
+
+    _dlg_close_btn("seatmap", _close_seatmap, left=_oos_left)
     if _oos_toast:
         st.toast(t("oos_saved") if _oos_toast == "saved" else t("oos_cleared"))
     # 운행 불가 사유를 적는 중이면 좌석 배치도 대신 입력 화면을 보여준다(같은 팝업 안에서 전환).
-    if st.session_state.get("oos_target") == car_rc["display_name"]:
+    if _oos_editing:
         _oos_form(car_rc)
         return
     # 통합 TAXI 타일을 눌렀거나 제목을 다시 눌러 되돌아온 상태 → 인승/택시 선택 화면
-    if car_rc.get("taxi_index") is None and car_rc.get("nav_label") == "TAXI":
+    if _taxi_pick:
         _taxi_picker_view()
         return
-    car = car_rc["display_name"]
     # 관리자 로그인 성공 상태면 → 좌석맵 대신 '좌석 신청 현황' 표 표시(같은 팝업 안)
     if st.session_state.get("admin_seat_status_open"):
         _admin_seat_status_view(car_rc)
@@ -4247,22 +4299,6 @@ def seatmap_dialog(car_rc):
     # 운전석 클릭으로 관리자 로그인 요청 상태면 → 좌석맵 대신 관리자 로그인 폼 표시(같은 팝업 안, 자체 제목 렌더)
     if st.session_state.get("admin_login_open"):
         _admin_login_form()
-        return
-    booked = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car]
-    sel = st.session_state.selected_seat_state.get(car, "-- 선택 --")
-    seat_num = None
-    if sel != "-- 선택 --":
-        try:
-            seat_num = int(sel.split(" ")[1])
-        except Exception:
-            seat_num = None
-    is_form = seat_num is not None and seat_num not in booked
-    # 단계별 커스텀 제목: 신청 폼일 때만 '📝 신청 정보 입력' 제목을 표시. 좌석 배치도(좌석 선택)는 제목 없이 바로 노출.
-    if is_form:
-        st.markdown(f'<div class="dlg-step-title">{t("form_step_title")}</div>', unsafe_allow_html=True)
-    # 좌석이 선택된 상태면 같은 팝업 안에서 신청 폼을 보여준다.
-    if is_form:
-        _booking_form(car, seat_num)
         return
     # 아직 미선택 → 좌석 배치도 + 빈좌석 SEATSEL 숨김버튼(클릭 시 on_seat_click이 좌석 선택 → 폼으로 전환)
     # 택시 제목은 클릭 가능 — 누르면 인승 선택으로 되돌아간다(JS가 숨김 TAXITITLE 버튼을 대신 누른다).
@@ -4384,10 +4420,15 @@ def _reset_booking_selection():
     st.session_state.editing_booking = None
     st.session_state.duplicate_error_msg = None
 
-@st.dialog(t("form_step_title"), dismissible=False, on_dismiss=_reset_booking_selection)
+@st.dialog(" ", dismissible=False, on_dismiss=_reset_booking_selection)
 def booking_dialog(car_target, seat_target):
-    _dlg_close_btn("booking_dialog", _reset_booking_selection)
-    # 신청/수정 팝업('📝 신청 정보 입력') — 공용 폼(_booking_form)을 그대로 사용
+    """신청/수정 팝업 — 공용 폼(_booking_form)을 그대로 쓴다.
+    크롬 제목은 왼쪽 정렬이라 가운데로 맞출 수 없어 공백(' ')으로 두고,
+    좌석맵 팝업과 같은 방식으로 본문 맨 위에 제목을 직접 그린다(.dlg-step-title = 가운데 정렬)."""
+    st.markdown(f'<div class="dlg-step-title">{t("form_step_title")}</div>', unsafe_allow_html=True)
+    _dlg_close_btn("booking_dialog", _reset_booking_selection, left_wide=True,
+                   left=lambda: st.markdown(booking_seat_badge(car_target, seat_target),
+                                            unsafe_allow_html=True))
     _booking_form(car_target, seat_target)
 
 # 앱 좌석맵 팝업 등에서 좌석이 선택되면 selected_seat_state에서 신청 트리거를 도출(웹은 위 _render_car_body에서 세팅됨).
