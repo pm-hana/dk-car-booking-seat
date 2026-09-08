@@ -716,19 +716,30 @@ st.markdown("""
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div {
         position: relative !important;
-        align-items: center !important;   /* 값을 칸 세로 가운데로 — 날짜 칸과 같은 높이에 온다 */
+        height: 60px !important;
+        align-items: center !important;
     }
-    /* ⚠️ justify-content는 가로축이라 세로 위치는 잡히지 않는다. 값 칸이 위에 붙어 있던 원인이 이것이다.
-       → 값 칸을 칸 높이만큼 늘리고 align-items로 세로 가운데를 잡는다. */
+    /* ⚠️ 값이 칸 위쪽에 붙던 문제.
+       flex(align-items)만으로는 잡히지 않는다 — 값 글자가 baseweb 버전에 따라 두세 겹 안쪽 div에 들어 있고,
+       그 안쪽 요소가 자기 줄높이를 따로 갖기 때문이다.
+       → 값 칸과 그 '모든' 하위 요소의 줄높이를 칸 높이(60px)에 맞춰, 구조와 무관하게 세로 가운데가 되게 한다. */
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child {
-        width: 100% !important; height: 100% !important;
+        width: 100% !important; padding: 0 !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
-        padding: 0 !important; line-height: normal !important;
+        text-align: center !important;
     }
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child,
+    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child *,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child * {
+        line-height: 60px !important; height: auto !important; top: auto !important; transform: none !important;
+    }
+    /* 화살표(토글)는 오른쪽 끝 세로 가운데 고정 — 위 줄높이 규칙의 영향을 받지 않게 따로 되돌린다 */
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:nth-child(2),
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:nth-child(2) {
-        position: absolute !important; right: 8px !important; top: 50% !important; transform: translateY(-50%) !important;
+        position: absolute !important; right: 8px !important; top: 50% !important;
+        transform: translateY(-50%) !important; line-height: normal !important; height: auto !important;
     }
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] input,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] input {
