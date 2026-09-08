@@ -3345,12 +3345,14 @@ if IS_MOBILE:
     CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 20, 12, 12, 11, 10
     CARD_CHIP_H = 20          # 상태 배지 바깥 높이(테두리 포함)
     CARD_SEAT_H = 32          # 좌석 배지 바깥 높이 — 옆 '탑승' 버튼(카드 버튼 규칙상 32px)과 같은 높이
+    CARD_ROW2_GAP = 5         # 헤더 둘째 줄(상태 배지 / 탑승) 위 여백 — 좌우가 같은 높이에서 시작하도록
     CARD_LOGO_H = 24          # 카드 헤더 차량 로고 높이
 else:
     CARDS_PER_ROW = 2
     CARD_FS_NAME, CARD_FS_SEAT, CARD_FS_INFO, CARD_FS_CHIP, CARD_FS_DONE = 35, 18, 18, 16, 15
     CARD_CHIP_H = 24
     CARD_SEAT_H = 40          # 좌석 배지 바깥 높이 — 옆 '탑승' 버튼(카드 버튼 규칙상 40px)과 같은 높이
+    CARD_ROW2_GAP = 6         # 헤더 둘째 줄(상태 배지 / 탑승) 위 여백 — 좌우가 같은 높이에서 시작하도록
     CARD_LOGO_H = 34          # 카드 헤더 차량 로고 높이
 
 # 상태 배지 색 — 차량 카드 배경색의 '보색' 계열로 채운 solid 배지(항목6).
@@ -3410,7 +3412,7 @@ def _status_chip(info, mk="innova"):
         state, label = "pending", t("status_pending")
     bg, fg = STATUS_CHIP_STYLE.get(mk, STATUS_CHIP_STYLE["innova"])[state]
     # 높이를 CARD_CHIP_H로 못박는다 — 오른쪽 '탑승' 버튼이 같은 값을 쓰므로 두 배너의 아래 선이 정확히 맞는다.
-    return (f'<div style="margin-top:3px;"><span style="display:inline-block; background:{bg}; '
+    return (f'<div style="margin-top:{CARD_ROW2_GAP}px;"><span style="display:inline-block; background:{bg}; '
             f'color:{fg}; border:1px solid {bg}; border-radius:4px; padding:0 7px; '
             f'height:{CARD_CHIP_H - 2}px; line-height:{CARD_CHIP_H - 2}px; box-sizing:content-box; '
             f'font-size:{CARD_FS_CHIP}px; font-weight:800; letter-spacing:0.2px; white-space:nowrap;">{esc(label)}</span></div>')
@@ -5106,6 +5108,8 @@ if st.session_state.bookings or _done_today:
                 _c_name, _c_right = st.columns([3, 1], vertical_alignment="top")
                 with _c_name:
                     st.markdown(name_html, unsafe_allow_html=True)
+                    # 상태 배지는 차량명 바로 아래 — 오른쪽 칸의 [좌석 배지 / 탑승]과 2행으로 나란히 선다
+                    st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
                 with _c_right:
                     st.markdown(seat_html, unsafe_allow_html=True)
                     if booking_status(binfo) == STATUS_PENDING:
@@ -5118,8 +5122,6 @@ if st.session_state.bookings or _done_today:
                                     log_action("approve", bc_name, bseat, cur)
                                     st.toast(t("toast_approved", name=cur.get("name", ""), seat=bseat))
                             st.rerun()
-            # 승인 상태 배지 — 대기(호박색·임박하면 붉은색) / 승인(초록). 한눈에 '내 배차가 확정됐는지' 알 수 있게.
-            st.markdown(_status_chip(binfo, mk), unsafe_allow_html=True)
             st.markdown(hr_html, unsafe_allow_html=True)
             st.markdown(info_grid, unsafe_allow_html=True)          # 정보 2열 그리드(위)
             # 버튼은 정보 아래 가로 분할 — 택시는 '영수증 첨부'가 하나 더 붙어 4분할, 나머지는 3분할.
