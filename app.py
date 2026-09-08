@@ -676,8 +676,23 @@ st.markdown("""
        모든 팝업이 dismissible=False라 바깥클릭·ESC로는 닫히지 않고 이 버튼으로만 닫힌다.
        왼쪽 빈 칸(3) + 버튼 칸(1) 구조 — 팝업 공통 CSS가 컬럼을 1:1로 만들어 버리므로 여기서 되돌린다. */
     div[class*="st-key-dlgx_"] { margin: -10px 0 2px 0 !important; }
-    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 3 1 0% !important; }
-    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 1 1 0% !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) { flex: 1 1 0% !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) { flex: 2 1 0% !important; }
+    div[class*="st-key-dlgx_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(3) { flex: 1 1 0% !important; }
+    /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
+    .st-key-oos_open_btn button { background: #3a1e1e !important; border-color: #7e2a2a !important; color: #ffc9c9 !important; }
+    .st-key-oos_open_btn button:hover { background: #522727 !important; border-color: #a83232 !important; color: #ffffff !important; }
+    /* 배치도 위에 겹쳐 뜨는 운행 불가 안내 — 좌석 클릭을 막지 않도록 pointer-events는 끈다 */
+    .car-layout-container { position: relative; }
+    .car-oos-note {
+        position: absolute; left: 50%; top: 11%; transform: translateX(-50%);
+        width: 80%; box-sizing: border-box; z-index: 3; pointer-events: none;
+        background: rgba(176,18,31,0.94); border: 1px solid #ff8787; border-radius: 8px;
+        padding: 5px 8px; color: #ffffff; text-align: center;
+        font-size: 12px; font-weight: 700; line-height: 1.35;
+        overflow-wrap: anywhere; box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    }
+    .car-oos-note .oos-reason { display: block; font-weight: 600; font-size: 11px; margin-top: 2px; }
     div[class*="st-key-dlgx_"] button {
         min-height: 26px !important; height: 26px !important;
         padding: 0 10px !important; font-size: 12px !important;
@@ -1379,6 +1394,84 @@ def save_receipt(key, data_uri, meta):
     except Exception:
         return False
 
+# ─────────────────────────────────────────────────────────────
+# 🚫 운행 불가 안내 — 관리자가 차량별로 사유를 적어 두면 좌석 배치도 위에 함께 뜬다.
+#   ⚠️ 예약·영수증과 '분리된' 저장소를 쓴다. 예약을 지워도 안내는 남고, 안내를 지워도 예약은 그대로다.
+#      (정비·사고 같은 사유는 그날 예약보다 오래 가는 정보다)
+# ─────────────────────────────────────────────────────────────
+NOTICE_FILE = "notices.json"
+NOTICE_COLLECTION = "notices"
+
+
+def notice_key(car_display_name):
+    """차량 표시명에서 '(N SEAT)'를 떼어 낸 이름이 키다 — 정원 설정이 바뀌어도 안내가 끊기지 않는다."""
+    return str(car_display_name).split(" (")[0].strip().upper()
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def load_notices_all():
+    """차량별 운행 불가 안내 전체. 메인 화면이 차량 수만큼 조회하므로 10초만 캐시한다."""
+    db = _get_db()
+    if db is not None:
+        try:
+            return {d.id: (d.to_dict() or {}) for d in db.collection(NOTICE_COLLECTION).stream()}
+        except Exception:
+            pass
+    return _read_json_dict(NOTICE_FILE)
+
+
+def load_notice(car_display_name):
+    """그 차량의 운행 불가 안내. 없으면 빈 dict."""
+    return load_notices_all().get(notice_key(car_display_name), {}) or {}
+
+
+def _notices_changed():
+    try:
+        load_notices_all.clear()
+    except Exception:
+        pass
+
+
+def save_notice(car_display_name, reason):
+    """운행 불가 사유를 적어 둔다(같은 차량이면 덮어쓴다). 성공하면 True."""
+    key = notice_key(car_display_name)
+    rec = {"reason": reason, "at": now_vn().strftime("%Y-%m-%d %H:%M"), "by": current_actor()}
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(NOTICE_COLLECTION).document(_safe_doc_id(key)).set(rec)
+            _notices_changed()
+            return True
+        except Exception:
+            pass
+    try:
+        rows = _read_json_dict(NOTICE_FILE)
+        rows[key] = rec
+        _write_json_atomic(NOTICE_FILE, rows)
+        _notices_changed()
+        return True
+    except Exception:
+        return False
+
+
+def clear_notice(car_display_name):
+    """운행 불가 해제 — 안내를 지운다."""
+    key = notice_key(car_display_name)
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(NOTICE_COLLECTION).document(_safe_doc_id(key)).delete()
+        except Exception:
+            pass
+    try:
+        rows = _read_json_dict(NOTICE_FILE)
+        if rows.pop(key, None) is not None:
+            _write_json_atomic(NOTICE_FILE, rows)
+    except Exception:
+        pass
+    _notices_changed()
+
+
 def load_receipt(key):
     """저장된 영수증 1건을 반환. 없으면 빈 dict."""
     db = _get_db()
@@ -1729,6 +1822,15 @@ TR = {
         "audit_act_restore": "백업 복원", "audit_act_undo": "되돌리기", "audit_act_approve": "탑승 처리",
         "audit_act_receipt": "영수증 첨부", "audit_act_receipt_del": "영수증 삭제",
         "btn_receipt": "영수증 첨부", "btn_receipt_done": "영수증 ✓",
+        # 운행 불가 안내(관리자 전용)
+        "oos_btn": "🚫 운행 불가",
+        "oos_title": "🚫 운행 불가 사유",
+        "oos_desc": "{car}를 쓸 수 없는 이유를 적어 주세요. 좌석 배치도 위에 모두에게 표시됩니다.",
+        "oos_label": "사유", "oos_ph": "예: 엔진 점검 입고 (9/10 오후 복귀 예정)",
+        "oos_ok": "확인", "oos_clear": "운행 불가 해제",
+        "oos_empty": "사유를 입력해 주세요.",
+        "oos_saved": "🚫 운행 불가로 표시했습니다.", "oos_cleared": "✅ 운행 불가를 해제했습니다.",
+        "oos_badge": "운행 불가",
         "receipt_title": "🧾 영수증 첨부",
         "receipt_desc": "{car} 좌석 {seat} · {name}",
         "receipt_pick": "영수증 사진 선택 (폰은 카메라·앨범, PC는 파일 선택)",
@@ -1861,6 +1963,14 @@ TR = {
         "audit_act_restore": "Khôi phục sao lưu", "audit_act_undo": "Hoàn tác", "audit_act_approve": "Lên xe",
         "audit_act_receipt": "Đính kèm hóa đơn", "audit_act_receipt_del": "Xóa hóa đơn",
         "btn_receipt": "Hóa đơn", "btn_receipt_done": "Hóa đơn ✓",
+        "oos_btn": "🚫 Ngừng chạy",
+        "oos_title": "🚫 Lý do ngừng chạy",
+        "oos_desc": "Vui lòng ghi lý do không dùng được {car}. Nội dung hiện trên sơ đồ ghế cho mọi người.",
+        "oos_label": "Lý do", "oos_ph": "VD: Vào xưởng kiểm tra động cơ (dự kiến về 10/9 chiều)",
+        "oos_ok": "Xác nhận", "oos_clear": "Bỏ ngừng chạy",
+        "oos_empty": "Vui lòng nhập lý do.",
+        "oos_saved": "🚫 Đã đánh dấu ngừng chạy.", "oos_cleared": "✅ Đã bỏ ngừng chạy.",
+        "oos_badge": "Ngừng chạy",
         "receipt_title": "🧾 Đính kèm hóa đơn",
         "receipt_desc": "{car} Ghế {seat} · {name}",
         "receipt_pick": "Chọn ảnh hóa đơn (điện thoại: máy ảnh·thư viện, PC: chọn tệp)",
@@ -1993,6 +2103,14 @@ TR = {
         "audit_act_restore": "Restored backup", "audit_act_undo": "Undone", "audit_act_approve": "Boarded",
         "audit_act_receipt": "Receipt attached", "audit_act_receipt_del": "Receipt removed",
         "btn_receipt": "Receipt", "btn_receipt_done": "Receipt ✓",
+        "oos_btn": "🚫 Out of service",
+        "oos_title": "🚫 Out-of-service reason",
+        "oos_desc": "Write why {car} cannot be used. It is shown to everyone on the seat map.",
+        "oos_label": "Reason", "oos_ph": "e.g. In the shop for an engine check (back Sep 10 PM)",
+        "oos_ok": "Confirm", "oos_clear": "Back in service",
+        "oos_empty": "Please enter a reason.",
+        "oos_saved": "🚫 Marked out of service.", "oos_cleared": "✅ Back in service.",
+        "oos_badge": "Out of service",
         "receipt_title": "🧾 Attach Receipt",
         "receipt_desc": "{car} Seat {seat} · {name}",
         "receipt_pick": "Choose a receipt photo (phone: camera/album, PC: file picker)",
@@ -2490,6 +2608,19 @@ def _render_chassis_legacy_unused(mk):
 
     return "".join(s)
 
+def car_layout_block(display_name, layout_type, extra_style=""):
+    """좌석 배치도 상자 HTML. 그 차량이 '운행 불가'로 표시돼 있으면 배치도 위에 사유를 겹쳐 그린다.
+    메인 화면과 좌석맵 팝업이 같은 함수를 쓰므로 어디서 보든 같은 안내가 뜬다."""
+    note = (load_notice(display_name).get("reason") or "").strip()
+    overlay = ""
+    if note:
+        overlay = (f'<div class="car-oos-note">🚫 {esc(t("oos_badge"))}'
+                   f'<span class="oos-reason">{esc(note)}</span></div>')
+    style = f' style="{extra_style}"' if extra_style else ""
+    return (f'<div class="car-layout-container"{style}>{overlay}'
+            f'{render_car_layout(display_name, layout_type, st.session_state.bookings)}</div>')
+
+
 # 실사형 차량 배치도 섀시 렌더러 (지정 간격 수치 정밀 유지 버전)
 def render_car_layout(car_name, layout_type, bookings):
     car_bookings = {}
@@ -2977,7 +3108,7 @@ def _render_car_body(car_rc, show_name=True):
     if show_name:
         st.markdown(f'<div class="car-header-center">{car_title_frame(car_rc["mk"], car_rc["logo_html"] + car_rc["nav_label"])}</div>', unsafe_allow_html=True)
     # 좌석 배치도 본체
-    st.markdown(f'<div class="car-layout-container">{render_car_layout(car_rc["display_name"], car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
+    st.markdown(car_layout_block(car_rc["display_name"], car_rc["layout"]), unsafe_allow_html=True)
     booked_seats = [s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == car_rc["display_name"]]
     available_seats = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked_seats]
     # 좌석 선택은 배치도(SVG) 클릭만 사용. 클릭으로 세팅된 selected_seat_state를 읽어 팝업 트리거 구성.
@@ -3251,15 +3382,20 @@ def _claim_dialog():
     return True
 
 
-def _dlg_close_btn(name, on_close=None):
+def _dlg_close_btn(name, on_close=None, left=None):
     """팝업 오른쪽 위 '✕ 닫기' 버튼(항목3).
     모든 팝업을 dismissible=False로 열어 바깥 클릭·ESC로는 닫히지 않게 했으므로 닫는 길은 이 버튼 하나뿐이다
     — 입력 도중 화면 아무 데나 잘못 눌러 작성 내용이 통째로 날아가던 문제를 막는다.
-    (dismissible=False면 Streamlit 기본 X가 사라지므로 직접 그린다. 팝업 안 st.rerun()은 팝업을 닫는다.)"""
+    (dismissible=False면 Streamlit 기본 X가 사라지므로 직접 그린다. 팝업 안 st.rerun()은 팝업을 닫는다.)
+    left: 같은 줄 왼쪽 끝에 함께 그릴 버튼(있으면). 닫기와 같은 폭으로 선다."""
     with st.container(key=f"dlgx_{name}"):
-        # 팝업 안에서는 컬럼이 1:1로 강제되므로(공통 CSS), 아래 스코프 규칙으로 3:1을 되살려
-        # 버튼이 오른쪽 끝에 붙게 한다. flex 정렬만으로는 Streamlit 요소 폭(100%)에 눌려 왼쪽에 남는다.
-        _sp, _bt = st.columns([3, 1])
+        # 팝업 안에서는 컬럼이 1:1로 강제되므로, 아래 스코프 규칙으로 1:2:1을 되살린다.
+        # flex 정렬만으로는 Streamlit 요소 폭(100%)에 눌려 버튼이 왼쪽에 남는다.
+        #   [왼쪽 보조 버튼][빈칸][✕ 닫기]  — 양 끝 버튼은 같은 폭이다.
+        _lt, _sp, _bt = st.columns([1, 2, 1])
+        with _lt:
+            if left is not None:
+                left()
         with _bt:
             if st.button(t("dlg_close"), key=f"dlgxbtn_{name}", use_container_width=True):
                 if on_close is not None:
@@ -3462,6 +3598,8 @@ def _close_seatmap():
     st.session_state.taxi_stage = None
     st.session_state.taxi_cap = None
     st.session_state.taxi_draft = None
+    st.session_state.oos_target = None      # 운행 불가 입력 화면도 함께 닫는다
+    st.session_state.oos_error = False
 
 def _open_seatmap(display_name):
     # on_click 콜백 → 위젯 생성 전에 상태 세팅 → 단일 rerun에서 바로 팝업 오픈(이중 rerun 제거로 반응 속도 개선)
@@ -3931,6 +4069,61 @@ def _admin_seat_status_view(car_rc):
                 st.toast(t("admin_locked_toast"))
                 st.rerun()
 
+# ── 운행 불가(관리자 전용) ─────────────────────────────────
+#  ⚠️ 팝업 안에서 st.rerun()을 쓰면 팝업이 닫힌다 → 콜백으로 상태만 바꿔 같은 팝업 안에서 화면을 전환한다.
+#     (Streamlit은 한 rerun에 dialog A → dialog B 전환을 못 하므로 별도 팝업으로 띄우지 않는다)
+def _oos_open(car):
+    st.session_state.oos_target = car
+
+
+def _oos_cancel():
+    st.session_state.oos_target = None
+
+
+def _oos_save(car, widget_key):
+    reason = (st.session_state.get(widget_key) or "").strip()
+    if not reason:
+        st.session_state.oos_error = True      # 빈 사유로는 표시하지 않는다(무엇 때문인지 모르는 안내는 쓸모없다)
+        return
+    save_notice(car, reason)
+    st.session_state.oos_error = False
+    st.session_state.oos_target = None
+    st.session_state.oos_toast = "saved"   # 토스트는 본문에서 띄운다(콜백 안 출력은 경고를 낸다)
+
+
+def _oos_clear(car):
+    clear_notice(car)
+    st.session_state.oos_error = False
+    st.session_state.oos_target = None
+    st.session_state.oos_toast = "cleared"
+
+
+def _oos_form(car_rc):
+    """운행 불가 사유 입력 — 확인을 누르면 좌석 배치도 위에 모두에게 표시된다."""
+    car = car_rc["display_name"]
+    cur = load_notice(car)
+    st.markdown(f'<div class="dlg-step-title">{t("oos_title")}</div>', unsafe_allow_html=True)
+    st.caption(t("oos_desc", car=car_rc["nav_label"]))
+    _key = f"oos_input_{car}"
+    if _key not in st.session_state:
+        st.session_state[_key] = cur.get("reason", "")
+    st.text_area(t("oos_label"), key=_key, placeholder=t("oos_ph"), height=110)
+    if st.session_state.get("oos_error"):
+        st.error(t("oos_empty"))
+    c1, c2 = st.columns(2)
+    with c1:
+        st.button(t("oos_ok"), key=f"oos_ok_{car}", type="primary", use_container_width=True,
+                  on_click=_oos_save, args=(car, _key))
+    with c2:
+        # 이미 표시 중일 때만 해제 버튼을 준다 — 해제 경로가 없으면 한 번 표시한 안내를 영원히 못 지운다.
+        if cur.get("reason"):
+            st.button(t("oos_clear"), key=f"oos_clr_{car}", use_container_width=True,
+                      on_click=_oos_clear, args=(car,))
+        else:
+            st.button(t("btn_cancel"), key=f"oos_cancel_{car}", use_container_width=True,
+                      on_click=_oos_cancel)
+
+
 def _taxi_seats_taken(display_name):
     """그 택시에 이미 신청된 좌석 번호들."""
     return {s_id for (c_name, s_id) in st.session_state.bookings.keys() if c_name == display_name}
@@ -3984,7 +4177,23 @@ def seatmap_dialog(car_rc):
     TAXI는 그 앞에 인승 선택 → 택시 선택 두 단계가 더 붙는다(항목2)."""
     # 팝업 안에서 대상 차량이 바뀔 수 있으므로(택시 선택) 인자 대신 현재 상태로 다시 구한다.
     car_rc = car_rc_for(st.session_state.get("seatmap_car")) or car_rc
-    _dlg_close_btn("seatmap", _close_seatmap)
+    # 자사 차량(INNOVA·SEDONA)만, 그리고 관리자 모드일 때만 '운행 불가' 버튼을 닫기 왼쪽에 함께 세운다.
+    #  택시는 부르지 않으면 그만이라 운행 불가를 표시할 대상이 아니다.
+    _oos_left = None
+    if st.session_state.get("admin_unlocked") and not car_rc.get("is_taxi"):
+        def _oos_left():   # noqa: F811 - 조건부 정의(관리자일 때만 그린다)
+            with st.container(key="oos_open_btn"):
+                st.button(t("oos_btn"), key=f"oosopen_{car_rc['display_name']}",
+                          use_container_width=True,
+                          on_click=_oos_open, args=(car_rc["display_name"],))
+    _dlg_close_btn("seatmap", _close_seatmap, left=_oos_left)
+    _oos_toast = st.session_state.pop("oos_toast", None)
+    if _oos_toast:
+        st.toast(t("oos_saved") if _oos_toast == "saved" else t("oos_cleared"))
+    # 운행 불가 사유를 적는 중이면 좌석 배치도 대신 입력 화면을 보여준다(같은 팝업 안에서 전환).
+    if st.session_state.get("oos_target") == car_rc["display_name"]:
+        _oos_form(car_rc)
+        return
     # 통합 TAXI 타일을 눌렀거나 제목을 다시 눌러 되돌아온 상태 → 인승/택시 선택 화면
     if car_rc.get("taxi_index") is None and car_rc.get("nav_label") == "TAXI":
         _taxi_picker_view()
@@ -4023,7 +4232,7 @@ def seatmap_dialog(car_rc):
     if car_rc.get("is_taxi"):
         st.caption(t("taxi_title_hint"))
         st.button("TAXITITLE", key="taxititle_back", on_click=_taxi_back_to_cap)
-    st.markdown(f'<div class="car-layout-container" style="width:100%!important;">{render_car_layout(car, car_rc["layout"], st.session_state.bookings)}</div>', unsafe_allow_html=True)
+    st.markdown(car_layout_block(car, car_rc["layout"], "width:100%!important;"), unsafe_allow_html=True)
     available = [f"좌석 {seat}" for seat in range(1, car_rc["seats"] + 1) if seat not in booked]
     if not available:
         st.error(t("full"))

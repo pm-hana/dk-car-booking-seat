@@ -43,3 +43,5 @@ DK_모바일예약.url
 *.lnk
 receipts.json
 receipts.json.tmp
+notices.json
+notices.json.tmp
