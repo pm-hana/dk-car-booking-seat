@@ -2953,13 +2953,13 @@ CAR_FRAME_STYLE = {  # 배경·테두리는 각 외관색을 20% 어둡게(×0.8
 #   차량이 바뀌거나 기사가 교체되면 여기만 고치면 화면 전체에 반영된다.
 # ─────────────────────────────────────────────────────────────
 CAR_INFO = {
-    "TOYOTA INNOVA":  {"driver": "TUAN", "plate": "98H 047 00", "phone": "0983.993.330"},
+    "TOYOTA INNOVA":  {"driver": "TUAN", "plate": "98H 047 00", "phone": "0983993330"},
     "HYUNDAI SEDONA": {"driver": "SON",  "plate": "99A 667 46", "phone": "0977956965"},
-    "TAXI1":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
-    "TAXI2":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
+    "TAXI1":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972631361"},
+    "TAXI2":          {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972631361"},
     # 택시는 신청할 때마다 TAXI3·TAXI4…가 자동으로 늘어난다 → 번호별 항목이 없어도
     # 이 공통 항목(가장 짧은 키라 마지막에 검사됨)이 운행 정보를 대신 돌려준다.
-    "TAXI":           {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972.631.361"},
+    "TAXI":           {"driver": "LUAN", "plate": "99E 002 46", "phone": "0972631361"},
 }
 
 def car_info(name):
