@@ -701,26 +701,13 @@ st.markdown("""
     div[class*="st-key-input_user_"] [data-baseweb="select"] > div:first-child {
         min-height: 60px !important; height: 60px !important; font-size: 15px !important;
     }
-    /* 출발 날짜·출발 시간·도착 시간: 숫자를 2배로 키우고 가운데 정렬 —
-       세 칸은 '값'만 읽으면 되는 자리라 글자를 키워도 넘치지 않고, 오히려 오입력을 줄인다.
-       (라벨은 아래에서 원래 크기로 되돌린다 — 같은 위젯 안이라 함께 커지기 때문) */
+    /* 출발 날짜·출발 시간·도착 시간: 값을 가운데 정렬한다.
+       글자 크기는 다른 입력칸과 같은 15px(0908 ver.10 크기) — 2배(30px)로 키웠더니
+       드롭다운 목록·라벨·화살표까지 따라 커져 보정 규칙이 줄줄이 붙었고, 값만 커서 되레 균형이 깨졌다. */
     div[class*="st-key-input_user_departure_date"] input,
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"],
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] div,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"],
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] div {
-        font-size: 30px !important; font-weight: 700 !important; text-align: center !important;
-    }
-    /* 드롭다운 화살표는 글자 크기를 따라 커지지 않게 고정 */
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] svg,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] svg {
-        width: 20px !important; height: 20px !important; flex: 0 0 auto !important;
-    }
-    /* 시간 드롭다운 목록은 원래 크기로 — 목록까지 30px이면 한 화면에 몇 줄 안 들어온다 */
-    div[data-baseweb="popover"] [role="option"] { font-size: 15px !important; text-align: left !important; }
-    /* 항목 번호·라벨(4. 출발 날짜 등)은 원래 크기 유지 */
-    div[class*="st-key-input_user_"] [data-testid="stWidgetLabel"] * {
-        font-size: 13px !important; font-weight: 600 !important; text-align: left !important;
+        font-size: 15px !important; font-weight: 700 !important; text-align: center !important;
     }
 
     /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
