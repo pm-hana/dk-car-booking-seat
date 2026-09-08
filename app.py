@@ -872,6 +872,7 @@ st.markdown("""
         max-height: none !important;
         aspect-ratio: 160 / 250 !important;
         margin: 2px auto 12px !important;
+        padding: 2px !important;   /* 안쪽 여백을 줄여 같은 칸 안에서 그림을 더 크게 그린다 */
     }
     /* 줄바꿈된 차량 칸 사이 세로 간격 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { row-gap: 16px !important; }
@@ -952,6 +953,7 @@ if IS_MOBILE:
         max-height: none !important;
         aspect-ratio: 160 / 250 !important;
         margin: 2px auto 12px !important;
+        padding: 2px !important;   /* 안쪽 여백을 줄여 같은 칸 안에서 그림을 더 크게 그린다 */
     }
     /* 줄바꿈된 차량 칸 사이 세로 간격 */
     .st-key-car_nav_grid [data-testid="stHorizontalBlock"] { row-gap: 16px !important; }
@@ -2544,12 +2546,11 @@ def render_car_layout(car_name, layout_type, bookings):
     seat_map = {
         "2-3-3": [(1, RX, R1), (2, LX, R2), (3, MX, R2), (4, RX, R2), (5, LX, R3), (6, MX, R3), (7, RX, R3)],
         "2-2-3": [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3), (5, MX, R3), (6, RX, R3)],
-        # TAXI 5인승(승객석 4석): 2열 × 3행 격자. 좌우 두 줄만 쓰고 가운데 열은 비운다.
+        # TAXI 5인승(승객석 4석): 앞줄은 운전석 옆 1석, 뒷줄은 3석 — 실제 세단 택시와 같은 배치.
         #   [운전석][ 1 ]
-        #   [  2  ][ 3 ]
-        #   [  4  ][   ]
-        #   예전 '2-3'(운전석+1 / 2·3·4 한 줄)은 뒷줄 3칸이 붙어 보였다 → 2열로 펴 좌석 간격을 벌렸다.
-        "2x3":   [(1, RX, R1), (2, LX, R2), (3, RX, R2), (4, LX, R3)],
+        #   [ 2 ][ 3 ][ 4 ]
+        #   뒷줄은 차체 뒤쪽(R3)에 두고 사이에 점선을 그어 앞/뒤 열을 구분한다.
+        "2-3":   [(1, RX, R1), (2, LX, R3), (3, MX, R3), (4, RX, R3)],
         # TAXI 7인승(승객석 6석): 3열 × 2행 격자. 운전석 옆은 비우고 뒤쪽 두 줄을 꽉 채운다.
         #   [운전석][   ]
         #   [ 1 ][ 2 ][ 3 ]
@@ -2564,7 +2565,7 @@ def render_car_layout(car_name, layout_type, bookings):
         #   INNOVA·SEDONA 운전석은 클릭 시 관리자 로그인 팝업이 뜨도록 admin_login=True
         _admin_car = ("INNOVA" in car_name) or ("SEDONA" in car_name)
         svg.append(render_premium_seat(LX, R1, SW, SH, t("seat_driver"), 0, car_name, is_driver=True, sub_label=driver_name, admin_login=_admin_car))
-        if layout_type in ("2x3", "3x2"):
+        if layout_type in ("2-3", "3x2"):
             # 앞줄(운전석 열)과 뒷줄을 나누는 점선 — 새 행 좌표(앞줄 아래끝 124 / 뒷줄 위 144)의 가운데
             svg.append('  <line x1="33" y1="134" x2="129" y2="134" stroke="#3a4150" stroke-width="1" stroke-dasharray="3 3" />')
         for sid, sx, sy in seat_map[layout_type]:
@@ -2680,7 +2681,7 @@ elif "car" in query_params and "seat" in query_params:
 #     메인 화면에는 TAXI 타일 하나만 두고, 신청할 때 인승(5인승=4자리 / 7인승=6자리)을 고른 뒤
 #     이미 부른 택시의 빈자리를 쓰거나 새 택시를 부르면 TAXI1·TAXI2… 번호가 자동으로 붙는다.
 #     → 실제 택시 목록은 아래 taxi_fleet()이 '예약이 있는 택시'에서 되짚어 만든다.
-TAXI_CAPS = {4: "2x3", 6: "3x2"}     # 승객석 수 → 좌석 배치 (4석=5인승 2열×3행 / 6석=7인승 3열×2행)
+TAXI_CAPS = {4: "2-3", 6: "3x2"}     # 승객석 수 → 좌석 배치 (4석=5인승 앞1·뒤3 / 6석=7인승 3열×2행)
 TAXI_CAP_ORDER = [4, 6]              # 인승 선택 버튼에 보여줄 순서
 cars_data = [
     {"name": "TOYOTA INNOVA", "layout": "2-3-3", "seats": 7},
@@ -4061,8 +4062,9 @@ for _rc in nav_cars:
 _taxi_maps = [_rc for _rc in resolved_cars if _rc["is_taxi"]]
 if not _taxi_maps:
     # 아직 아무도 택시를 안 불렀어도 TAXI 자리는 비워 두지 않는다 — 다른 차량처럼 배치도를 세워
-    # 좌석을 바로 누를 수 있게 한다. 기본은 6석(2행 × 3열)이고, 좌석을 누르면 그 자리로 TAXI1이 생긴다.
-    _taxi_maps = [_taxi_rc(1, 6)]
+    # 좌석을 바로 누를 수 있게 한다. 기본은 5인승 4석([운전석][1] / [2][3][4])이고,
+    # 좌석을 누르면 그 자리로 TAXI1이 생긴다. 7인승이 필요하면 TAXI 타일에서 인승을 골라 새로 부른다.
+    _taxi_maps = [_taxi_rc(1, 4)]
 _main_cells += [("map", _rc) for _rc in _taxi_maps]   # 택시 배치도를 TAXI 타일 뒤에 이어 붙인다
 
 # 칸별 폭을 실제 배열에 맞춰 지정한다(타일 위치는 택시 수에 따라 밀리므로 매번 새로 계산).
@@ -4079,12 +4081,14 @@ if _tile_nth:
     _wide = f"{_tile_nth} {{ flex: 0.75 1 0% !important; margin-right: calc(var(--dk-gap-b) * -0.25) !important; }}"
     if _map_nth:
         _wide += f"{_map_nth} {{ flex: 1.25 1 0% !important; }}"
-    # 좁은 화면·앱: 차량이 [타일][배치도] 2칸씩 줄바꿈된다. 반반(50:50)이던 것을
-    # 타일 42.5% / 배치도 57.5%로 옮긴다 → 타일은 15% 작아지고 배치도는 15% 커진다.
+    # 좁은 화면·앱: 차량이 [타일][배치도] 2칸씩 줄바꿈된다. 두 칸이 한 줄을 나눠 쓰므로 합이 100%다.
+    #   타일 42.5 → 38.25% (요청대로 정확히 10% 축소), 배치도는 남은 폭을 모두 가져가 57.5 → 61.75%.
+    #   칸 폭만으로는 배치도가 7%밖에 못 크므로, 배치도 상자의 안쪽 여백을 6 → 2px로 줄여
+    #   실제 그림이 차지하는 폭을 더 확보한다(합쳐서 약 10% 확대).
     # 둘 다 정사각형·고정 비율이라 폭이 줄고 늘면 높이도 같은 비율로 따라온다.
-    _narrow = f"{_tile_nth} {{ flex: 0 0 calc(42.5% - 4px) !important; }}"
+    _narrow = f"{_tile_nth} {{ flex: 0 0 calc(38.25% - 4px) !important; }}"
     if _map_nth:
-        _narrow += f"{_map_nth} {{ flex: 0 0 calc(57.5% - 4px) !important; }}"
+        _narrow += f"{_map_nth} {{ flex: 0 0 calc(61.75% - 4px) !important; }}"
     st.markdown(
         "<style>"
         + (f"@media (min-width: 900px) {{{_wide}}}@media (max-width: 899px) {{{_narrow}}}"
