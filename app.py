@@ -716,10 +716,15 @@ st.markdown("""
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div {
         position: relative !important;
+        align-items: center !important;   /* 값을 칸 세로 가운데로 — 날짜 칸과 같은 높이에 온다 */
     }
+    /* ⚠️ justify-content는 가로축이라 세로 위치는 잡히지 않는다. 값 칸이 위에 붙어 있던 원인이 이것이다.
+       → 값 칸을 칸 높이만큼 늘리고 align-items로 세로 가운데를 잡는다. */
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child {
-        width: 100% !important; justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important;
+        width: 100% !important; height: 100% !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        padding: 0 !important; line-height: normal !important;
     }
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:nth-child(2),
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:nth-child(2) {
@@ -728,6 +733,15 @@ st.markdown("""
     div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] input,
     div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] input {
         text-align: center !important;
+    }
+    /* 4·5·6 항목 라벨도 값과 같이 가운데 정렬 — 값이 가운데인데 라벨만 왼쪽이면 축이 어긋나 보인다 */
+    div[class*="st-key-input_user_departure_date"] [data-testid="stWidgetLabel"],
+    div[class*="st-key-input_user_departure_time_tick"] [data-testid="stWidgetLabel"],
+    div[class*="st-key-input_user_arrival_time_tick"] [data-testid="stWidgetLabel"],
+    div[class*="st-key-input_user_departure_date"] [data-testid="stWidgetLabel"] > div,
+    div[class*="st-key-input_user_departure_time_tick"] [data-testid="stWidgetLabel"] > div,
+    div[class*="st-key-input_user_arrival_time_tick"] [data-testid="stWidgetLabel"] > div {
+        width: 100% !important; text-align: center !important; justify-content: center !important;
     }
 
     /* 운행 불가 버튼: 붉은 톤으로 '평소 누를 버튼이 아님'을 알린다 */
