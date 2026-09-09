@@ -1306,6 +1306,50 @@ def _encode_bookings(bookings):
     """{(차량, 좌석): {...}} → {'차량||좌석': {...}} (저장·백업 공통 형식)."""
     return {f"{car_name}||{seat_num}": val for (car_name, seat_num), val in bookings.items()}
 
+# ─────────────────────────────────────────────────────────────
+# 🔄 웹 ↔ 앱 실시간 연동 — '마지막으로 뭔가 바뀐 시각' 표식 한 개
+#   Streamlit은 사용자가 뭔가 눌러야만 화면을 다시 그린다. 그래서 다른 기기에서 신청·취소·탑승이
+#   일어나도, 가만히 보고 있는 화면은 새로고침 전까지 옛 내용을 보여 준다.
+#   → 쓰기가 일어날 때마다 이 표식 하나만 갱신하고, 각 화면은 이 표식만 짧게 확인한다.
+#   ⚠️ 예약 전체를 주기적으로 다시 읽는 방식은 쓰지 않는다 — 사람 수 × 예약 수만큼 조회가 늘어
+#      Firestore 무료 한도를 금방 넘긴다. 문서 '한 개'만 읽으면 사람 수만큼만 늘어난다.
+# ─────────────────────────────────────────────────────────────
+SYNC_COLLECTION = "meta"
+SYNC_DOC = "sync"
+SYNC_FILE = "sync_marker.json"
+
+
+def touch_sync_marker():
+    """무언가 바뀌었음을 기록한다(값 자체는 의미 없고 '달라졌는지'만 본다). 실패해도 조용히 넘어간다."""
+    stamp = now_vn().strftime("%Y%m%d%H%M%S%f") + os.urandom(3).hex()
+    db = _get_db()
+    if db is not None:
+        try:
+            db.collection(SYNC_COLLECTION).document(SYNC_DOC).set({"at": stamp})
+            return
+        except Exception:
+            pass
+    try:
+        _write_json_atomic(SYNC_FILE, {"at": stamp})
+    except Exception:
+        pass
+
+
+def read_sync_marker():
+    """현재 변경 표식. 읽기 실패 시 빈 문자열(= 비교하지 않음)."""
+    db = _get_db()
+    if db is not None:
+        try:
+            doc = db.collection(SYNC_COLLECTION).document(SYNC_DOC).get()
+            return str((doc.to_dict() or {}).get("at", "")) if doc.exists else ""
+        except Exception:
+            return ""
+    try:
+        return str(_read_json_dict(SYNC_FILE).get("at", ""))
+    except Exception:
+        return ""
+
+
 def save_bookings(bookings):
     """예약 저장. 성공하면 True.
     ⚠️ 실패를 조용히 삼키면 사용자는 저장된 줄 안다 → 실패 시 플래그를 세워 화면에 경고를 띄운다.
@@ -1325,6 +1369,7 @@ def save_bookings(bookings):
             for doc_id in existing_ids - set(desired.keys()):
                 batch.delete(col.document(doc_id))
             batch.commit()
+            touch_sync_marker()      # 다른 기기 화면이 바로 따라오도록 변경을 알린다
             return True
         except Exception:
             pass  # Firestore 오류 시 아래 파일 모드로 대체 저장
@@ -1334,6 +1379,7 @@ def save_bookings(bookings):
         with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(desired, f, ensure_ascii=False, indent=4)
         os.replace(tmp_file, DB_FILE)
+        touch_sync_marker()
         return True
     except Exception:
         st.session_state.save_failed = True   # 다음 렌더에서 화면 상단에 경고 표시
@@ -1367,6 +1413,7 @@ def archive_booking(car_name, seat_num, info, status="완료"):
         try:
             db.collection(HISTORY_COLLECTION).add(record)
             _invalidate()
+            touch_sync_marker()
             return
         except Exception:
             pass  # Firestore 오류 시 파일 폴백
@@ -1382,6 +1429,7 @@ def archive_booking(car_name, seat_num, info, status="완료"):
             json.dump(history, f, ensure_ascii=False, indent=4)
         os.replace(tmp_file, HISTORY_FILE)
         _invalidate()
+        touch_sync_marker()
     except Exception:
         pass
 
@@ -1587,6 +1635,7 @@ def save_notice(car_display_name, reason):
         try:
             db.collection(NOTICE_COLLECTION).document(_safe_doc_id(key)).set(rec)
             _notices_changed()
+            touch_sync_marker()
             return True
         except Exception:
             pass
@@ -1595,6 +1644,7 @@ def save_notice(car_display_name, reason):
         rows[key] = rec
         _write_json_atomic(NOTICE_FILE, rows)
         _notices_changed()
+        touch_sync_marker()
         return True
     except Exception:
         return False
@@ -1616,6 +1666,7 @@ def clear_notice(car_display_name):
     except Exception:
         pass
     _notices_changed()
+    touch_sync_marker()
 
 
 def load_receipt(key):
@@ -3976,6 +4027,36 @@ def depart_alert_dialog():
         )
 
 
+def _any_popup_open():
+    """지금 어떤 팝업이 떠 있는가. 전체 리런은 열린 팝업을 닫아 버리므로,
+    자동 갱신·알림은 팝업이 닫힐 때까지 미룬다(입력 중인 신청 내용이 사라지지 않게)."""
+    return any(st.session_state.get(k) for k in (
+        "seatmap_car", "editing_booking", "cancel_target", "arrive_target", "receipt_target",
+        "export_open", "admin_panel_open", "admin_login_main_open", "confirm_reset_all",
+        "depart_alert_open", "oos_target"))
+
+
+@st.fragment(run_every="5s")
+def _live_sync_watch():
+    """웹 ↔ 앱 실시간 연동 — 다른 기기의 변경을 새로고침 없이 따라온다.
+    5초마다 변경 표식(문서 한 개)만 읽어 보고, 내가 그린 화면 이후에 바뀐 게 있으면 전체를 다시 그린다.
+    본문은 매 실행마다 load_bookings()로 예약을 새로 읽으므로, 다시 그리기만 하면 최신 내용이 된다.
+    ⚠️ 예약 전체를 주기적으로 다시 읽지 않는다 — 사람 수 × 예약 수만큼 조회가 늘어 비용이 커진다."""
+    if _any_popup_open():
+        return
+    cur = read_sync_marker()
+    if not cur or cur == st.session_state.get("sync_seen", ""):
+        return
+    # 이력·운행 불가 안내는 캐시를 두고 읽으므로, 함께 비워야 도착 완료 열과 안내도 같이 최신이 된다.
+    for _c in (load_history_cached, load_notices_all):
+        try:
+            _c.clear()
+        except Exception:
+            pass
+    st.session_state.sync_seen = cur
+    st.rerun(scope="app")
+
+
 @st.fragment(run_every="20s")
 def _depart_alert_watch():
     """1분 단위 감시 — 출발 구간에 든 배차가 있으면 앱 전체를 다시 실행해 알림 팝업을 띄운다.
@@ -3989,9 +4070,7 @@ def _depart_alert_watch():
     # ⚠️ 다른 팝업이 열려 있으면 건너뛴다. scope='app' 리런은 열려 있던 팝업을 닫아버리므로,
     #    신청 정보를 입력하던 중에 알림이 끼어들면 작성하던 내용이 통째로 사라진다.
     #    (알림은 그 팝업을 닫는 즉시 다음 확인에서 뜬다 — 구간이 5분이라 놓치지 않는다)
-    if any(st.session_state.get(k) for k in (
-            "seatmap_car", "editing_booking", "cancel_target", "arrive_target", "receipt_target",
-            "export_open", "admin_panel_open", "admin_login_main_open", "confirm_reset_all")):
+    if _any_popup_open():
         return
     if not departing_now():
         return
@@ -5283,6 +5362,12 @@ else:
 #     ⚠️ 이로써 '전체 예약 초기화'를 되돌리는 화면 경로가 사라졌다. 초기화 직전 스냅샷은 계속 저장되므로
 #        되돌리기가 필요해지면 이 타일만 다시 살리면 된다(_render_admin_tiles / _backup_tools_body 코드는 남겨 뒀다).
 #   · 최근 활동 기록: 헤더(전체 예약 초기화 아래)로 옮겼다.
+
+# 지금 그리는 화면이 '어느 시점의 내용'인지 기록해 둔다 — 자동 갱신 감시가 이 값과 비교한다.
+st.session_state.sync_seen = read_sync_marker()
+
+# 웹 ↔ 앱 실시간 연동 — 다른 기기에서 신청·취소·탑승·도착이 생기면 새로고침 없이 따라온다.
+_live_sync_watch()
 
 # 출발 임박 강제 알림(항목6) — 1분 단위 감시를 켜 두고, 구간에 든 배차가 있으면 팝업을 띄운다.
 _depart_alert_watch()

@@ -45,3 +45,5 @@ receipts.json
 receipts.json.tmp
 notices.json
 notices.json.tmp
+sync_marker.json
+sync_marker.json.tmp
