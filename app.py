@@ -148,6 +148,10 @@ st.markdown("""
     @keyframes dkBackdropIn { from { opacity: 0; } to { opacity: 1; } }
     /* 누른 뒤 화면이 바뀔 때까지 '지금 처리 중'임을 알리는 깜빡임 */
     @keyframes dkPressPulse { from { opacity: 0.55; } to { opacity: 1; } }
+    /* 아직 안 탄 자리의 목적지 배지 — 은은히 깜빡여 '아직 확인 안 된 자리'임을 알린다.
+       '탑승'을 누르면 배지가 초록(탑승 완료)으로 바뀌며 이 클래스가 빠져 깜빡임이 멎는다. */
+    @keyframes dkDestPulse { from { opacity: 0.5; } to { opacity: 1; } }
+    .dest-wait { animation: dkDestPulse 1.3s ease-in-out infinite alternate; }
     /* ⚠️ fill-mode를 두지 않는다(both 금지). transform이 끝난 뒤에도 남으면 그 요소가
        position:fixed의 기준(컨테이닝 블록)이 되어, 팝업 안의 숨김 버튼(SEATSEL·CARNAV 등)
        배치 기준이 화면이 아니라 팝업으로 바뀐다. 애니메이션이 끝나면 흔적 없이 원래 상태로 돌아가게 한다. */
@@ -195,7 +199,7 @@ st.markdown("""
         .car-nav-tile:active .car-name-frame,
         .st-key-admin_tiles button:active { transform: none !important; }
         /* 동작 최소화 설정에서는 깜빡임 없이 색만 살짝 바뀌게 한다 */
-        .dk-pressed, .stButton button.dk-pressed { animation: none !important; }
+        .dk-pressed, .stButton button.dk-pressed, .dest-wait { animation: none !important; }
     }
 
     /* ===== 팝업(다이얼로그) 공통: 좁은 화면(폰)에서도 웹과 동일한 구성 유지 ===== */
@@ -2534,9 +2538,12 @@ def render_dest_badge(x, y, w, dest, approved=False):
     by = y - 13
     if approved:
         fill, line, ink, dash = "#1b3b22", BOOKED_SEAT_LINE, "#8ce99a", ""
+        cls = ""
     else:
         fill, line, ink, dash = "#3b2a12", PENDING_SEAT_LINE, "#ffc078", ' stroke-dasharray="3 2"'
-    return (f'<g style="pointer-events:none">'
+        # 아직 안 탄 자리는 은은히 깜빡여 눈에 들어오게 한다 — '탑승'을 누르면 깜빡임이 멎는다.
+        cls = ' class="dest-wait"'
+    return (f'<g{cls} style="pointer-events:none">'
             f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="11" rx="5.5" '
             f'fill="{fill}" stroke="{line}" stroke-width="0.9"{dash}/>'
             f'<text x="{x + w / 2:.1f}" y="{by + 7.9:.1f}" font-family="sans-serif" font-size="6.5" '
@@ -5350,9 +5357,25 @@ try {
         });
 } catch (e) {}
 
+// 눌림 표시(dk-pressed) 정리 — 화면이 갱신됐다는 것은 그 클릭의 처리가 끝났다는 뜻이다.
+//  ⚠️ Streamlit(React)은 내용이 같은 요소를 새로 만들지 않고 그대로 재사용한다.
+//     그래서 JS로 붙인 클래스가 리런 후에도 남아, 팝업을 열었다 닫아도 계속 깜빡이는 일이 있었다.
+//     이 iframe은 리런마다 새로 로드되므로 여기서 한 번 걷어내면 확실히 풀린다.
+try {
+    window.parent.document.querySelectorAll('.dk-pressed')
+        .forEach(el => el.classList.remove('dk-pressed'));
+} catch (e) {}
+
 // 누른 요소에 'dk-pressed'를 붙여, 서버 응답으로 화면이 갈릴 때까지 눌린 상태를 유지한다.
 //  (:active는 손을 떼는 순간 사라져 응답 대기 중에는 아무 반응이 없어 보인다 → 같은 곳을 두 번 누르게 된다)
-const dkPress = (el) => { try { if (el) el.classList.add('dk-pressed'); } catch (e) {} };
+const dkPress = (el) => {
+    try {
+        if (!el) return;
+        el.classList.add('dk-pressed');
+        // 안전장치 — 클릭이 아무 동작도 일으키지 않았을 때(리런 없음) 깜빡임이 영원히 남지 않게 한다
+        setTimeout(() => { try { el.classList.remove('dk-pressed'); } catch (e) {} }, 4000);
+    } catch (e) {}
+};
 
 // Streamlit 기본 버튼도 같은 표시를 받도록 문서 전체에 위임 리스너를 한 번만 건다.
 try {
