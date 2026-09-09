@@ -138,20 +138,24 @@ st.markdown("""
     /* ===== 동작 피드백 ① 팝업이 '펼쳐지며' 열리는 애니메이션 =====
        클릭이 먹었는지 알 수 있게, 팝업이 작게 시작해 살짝 튀며 제자리를 잡는다.
        60% 지점에서 1.02배로 살짝 넘겼다가 1로 돌아오는 오버슈트 → 딱딱하지 않고 경쾌한 느낌. */
+    /* 팝업 등장 — 240ms 오버슈트에서 130ms 단순 확대로 줄였다.
+       튀는 연출(60% 지점 1.02배)은 보기엔 좋지만 '다 뜰 때까지' 기다리는 시간을 늘려
+       느리다는 느낌을 준다. 짧고 곧게 끝내는 편이 실제보다 빠르게 느껴진다. */
     @keyframes dkDialogPop {
-        0%   { opacity: 0; transform: scale(0.90) translateY(10px); }
-        60%  { opacity: 1; transform: scale(1.02) translateY(0); }
+        0%   { opacity: 0; transform: scale(0.96) translateY(6px); }
         100% { opacity: 1; transform: scale(1) translateY(0); }
     }
     @keyframes dkBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+    /* 누른 뒤 화면이 바뀔 때까지 '지금 처리 중'임을 알리는 깜빡임 */
+    @keyframes dkPressPulse { from { opacity: 0.55; } to { opacity: 1; } }
     /* ⚠️ fill-mode를 두지 않는다(both 금지). transform이 끝난 뒤에도 남으면 그 요소가
        position:fixed의 기준(컨테이닝 블록)이 되어, 팝업 안의 숨김 버튼(SEATSEL·CARNAV 등)
        배치 기준이 화면이 아니라 팝업으로 바뀐다. 애니메이션이 끝나면 흔적 없이 원래 상태로 돌아가게 한다. */
     div[role="dialog"] {
-        animation: dkDialogPop 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        animation: dkDialogPop 130ms ease-out;
         transform-origin: center center;
     }
-    [data-testid="stDialog"] { animation: dkBackdropIn 180ms ease-out; }
+    [data-testid="stDialog"] { animation: dkBackdropIn 90ms ease-out; }
 
     /* ===== 동작 피드백 ② 누르는 순간 '눌리는' 느낌 =====
        hover는 살짝 뜨고(기존), active(누름)는 반대로 들어가게 해 터치에도 반응이 보이게 한다.
@@ -167,6 +171,21 @@ st.markdown("""
     .seat-clickable:active, .admin-login-seat:active, .clickable-seat-rect:active { filter: brightness(1.55); }
     .car-nav-click, .seat-clickable, .admin-login-seat { -webkit-tap-highlight-color: transparent; }
 
+    /* ===== 동작 피드백 ③ 누른 뒤 '응답을 기다리는 동안'의 표시 =====
+       :active는 손을 떼는 순간 사라진다. 그런데 팝업은 서버 왕복 뒤에 뜨므로,
+       그 사이 화면이 아무 반응 없어 보여 같은 자리를 두 번 누르게 된다.
+       → JS 브릿지가 누르는 순간 dk-pressed를 붙이고, 다음 렌더에서 DOM이 갈리며 자연히 사라진다.
+         눌린 모양(축소·테두리 강조)에 은은한 깜빡임을 더해 '처리 중'임을 알린다. */
+    .car-nav-click.dk-pressed .car-name-frame,
+    .taxi-title-click.dk-pressed .car-name-frame {
+        transform: scale(0.96) !important;
+        box-shadow: 0 0 0 3px rgba(77,171,247,0.85), 0 4px 14px rgba(0,0,0,0.55) !important;
+        filter: brightness(1.12);
+    }
+    .seat-clickable.dk-pressed, .admin-login-seat.dk-pressed { filter: brightness(1.75); }
+    .dk-pressed, .stButton button.dk-pressed { animation: dkPressPulse 0.45s ease-in-out infinite alternate; }
+    .stButton button.dk-pressed { transform: scale(0.97); filter: brightness(1.1); }
+
     /* ⚠️ 동작 최소화를 켠 사용자(멀미·전정기관 예민)에게는 애니메이션을 끈다 — OS 접근성 설정을 존중 */
     @media (prefers-reduced-motion: reduce) {
         div[role="dialog"], [data-testid="stDialog"] { animation: none !important; }
@@ -175,6 +194,8 @@ st.markdown("""
         .stButton button:active, .stDownloadButton button:active,
         .car-nav-tile:active .car-name-frame,
         .st-key-admin_tiles button:active { transform: none !important; }
+        /* 동작 최소화 설정에서는 깜빡임 없이 색만 살짝 바뀌게 한다 */
+        .dk-pressed, .stButton button.dk-pressed { animation: none !important; }
     }
 
     /* ===== 팝업(다이얼로그) 공통: 좁은 화면(폰)에서도 웹과 동일한 구성 유지 ===== */
@@ -793,9 +814,9 @@ st.markdown("""
     .car-layout-container.is-oos .seat-droptarget { pointer-events: none !important; cursor: not-allowed !important; }
     .car-layout-container.is-oos svg { opacity: 0.72; }
     div[class*="st-key-dlgx_"] button {
-        min-height: 26px !important; height: 26px !important;
-        padding: 0 10px !important; font-size: 12px !important;
-        border-radius: 6px !important;
+        min-height: 52px !important; height: 52px !important;   /* 26 → 52px (2배) — 폰에서 손가락으로 짚기 쉬운 크기 */
+        padding: 0 10px !important; font-size: 14px !important;
+        border-radius: 8px !important;
     }
 
     /* 택시 인승·택시 선택 배너: 고정 폭 안에서 개수가 늘수록 각 칸이 자동으로 좁아진다(가로 병렬).
@@ -5329,6 +5350,22 @@ try {
         });
 } catch (e) {}
 
+// 누른 요소에 'dk-pressed'를 붙여, 서버 응답으로 화면이 갈릴 때까지 눌린 상태를 유지한다.
+//  (:active는 손을 떼는 순간 사라져 응답 대기 중에는 아무 반응이 없어 보인다 → 같은 곳을 두 번 누르게 된다)
+const dkPress = (el) => { try { if (el) el.classList.add('dk-pressed'); } catch (e) {} };
+
+// Streamlit 기본 버튼도 같은 표시를 받도록 문서 전체에 위임 리스너를 한 번만 건다.
+try {
+    const pdoc = window.parent.document;
+    if (!pdoc.__dkPressBound) {
+        pdoc.__dkPressBound = true;
+        pdoc.addEventListener('pointerdown', (ev) => {
+            const b = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+            dkPress(b);
+        }, true);
+    }
+} catch (e) {}
+
 const initDragDrop = () => {
     const parentDoc = window.parent.document;
     const draggables = parentDoc.querySelectorAll('.seat-draggable');
@@ -5349,6 +5386,7 @@ const initDragDrop = () => {
         if (el.getAttribute('data-admin-bound') === 'true') return;
         el.setAttribute('data-admin-bound', 'true');
         el.addEventListener('click', () => {
+            dkPress(el);
             const car = el.getAttribute('data-car');
             const token = 'ADMINLOGIN::' + car;
             const btns = parentDoc.querySelectorAll('button');
@@ -5415,6 +5453,7 @@ const initDragDrop = () => {
         if (el.getAttribute('data-nav-bound') === 'true') return;
         el.setAttribute('data-nav-bound', 'true');
         el.addEventListener('click', () => {
+            dkPress(el);
             const idx = el.getAttribute('data-navidx');
             const token = 'CARNAV::' + idx;
             const btns = parentDoc.querySelectorAll('button');
@@ -5429,6 +5468,7 @@ const initDragDrop = () => {
         if (el.getAttribute('data-taxi-bound') === 'true') return;
         el.setAttribute('data-taxi-bound', 'true');
         el.addEventListener('click', () => {
+            dkPress(el);
             const btns = parentDoc.querySelectorAll('button');
             for (const b of btns) {
                 if ((b.innerText || b.textContent || '').trim() === 'TAXITITLE') { b.click(); return; }
@@ -5442,6 +5482,7 @@ const initDragDrop = () => {
         el.setAttribute('data-click-bound', 'true');
 
         el.addEventListener('click', (e) => {
+            dkPress(el);
             const car = el.getAttribute('data-car');
             const seat = el.getAttribute('data-seat');
             const token = 'SEATSEL::' + car + '::' + seat;
