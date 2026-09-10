@@ -5019,7 +5019,7 @@ def seat_info_dialog(car, seat):
                 _dh, _dm = (int(x) for x in str(info.get("time", "")).split(":")[:2])
             except Exception:
                 _dh, _dm = 0, 0
-            st.session_state.arrive_input_tick = datetime.time(_dh % 24, _dm % 60)
+            set_time_widget("arv", _dh, _dm)
             _close_seat_info()
             st.rerun()
     with _b4:
@@ -5148,8 +5148,9 @@ def arrival_dialog(car, seat):
         f'{esc(t("arrive_desc", car=car, seat=seat, name=info.get("name", "")))}</div>',
         unsafe_allow_html=True,
     )
-    # 6. 도착 시간 (기본값은 도착 완료 클릭 시각의 5분 슬롯; 위젯 상태로 유지)
-    a_time = st.time_input(t("f_arrive"), step=300, key="arrive_input_tick")
+    # 도착 시각 — 신청 폼과 같은 시계 UI(브라우저 기본 선택기)를 쓴다.
+    #  여기만 옛 목록형(5분 간격 288줄)으로 남아 있어 폰에서 한참 굴려야 했다.
+    a_time = time_picker(t("f_arrive"), "arv")
     if st.button(t("arrive_done"), type="primary", use_container_width=True, key="arrive_done_btn"):
         # 값 변경 직전 권한 재확인
         if not (can_manage_booking(info) or (car, seat) in st.session_state.get("verified_bookings", set())):
@@ -5331,7 +5332,7 @@ if st.session_state.bookings or _done_today:
                     _dh, _dm = _dh % 24, _dm % 60
                 except Exception:
                     _dh, _dm = 0, 0
-                st.session_state.arrive_input_tick = datetime.time(_dh, _dm)
+                set_time_widget("arv", _dh, _dm)
                 st.rerun()
 
         def _btn_receipt():
