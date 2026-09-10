@@ -739,58 +739,17 @@ st.markdown("""
     div[class*="st-key-input_user_"] [data-baseweb="select"] > div:first-child {
         min-height: 60px !important; height: 60px !important; font-size: 15px !important;
     }
-    /* 출발 날짜·출발 시간·도착 시간: 값을 각 칸 한가운데에 놓는다.
-       글자 크기는 다른 입력칸과 같은 15px(0908 ver.10 크기) — 2배(30px)로 키웠더니
-       드롭다운 목록·라벨·화살표까지 따라 커져 보정 규칙이 줄줄이 붙었고, 값만 커서 되레 균형이 깨졌다. */
+    /* 출발 날짜·출발 시간·도착 시간: 값을 각 칸 한가운데에 굵게.
+       시간 칸은 <input type="time">이라 baseweb 셀렉트용 보정(값 칸 flex 정렬·화살표 절대배치 등)이
+       더는 필요 없어 모두 걷어냈다 — 브라우저 기본 시계 선택기가 자체 UI를 그린다. */
     div[class*="st-key-input_user_departure_date"] input,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] div,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] div {
+    div[class*="st-key-input_user_tp_"] input {
         font-size: 15px !important; font-weight: 700 !important; text-align: center !important;
     }
-    /* ⚠️ 시간 칸(baseweb select)은 값이 flex 아이템이라 text-align만으로는 왼쪽에 붙어 있다.
-       ① 값 칸을 flex 가운데 정렬하고
-       ② 오른쪽 화살표를 absolute로 띄워 값 칸이 폭을 온전히 다 쓰게 한다
-          (화살표가 자리를 차지하면 글자가 그만큼 왼쪽으로 밀려 '칸 한가운데'가 되지 않는다). */
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div {
-        position: relative !important;
-        height: 60px !important;
-        align-items: center !important;
+    /* 브라우저가 시간 칸에 붙이는 시계 아이콘 — 어두운 배경에서 보이도록 반전 */
+    div[class*="st-key-input_user_tp_"] input::-webkit-calendar-picker-indicator {
+        filter: invert(1) opacity(0.75); cursor: pointer;
     }
-    /* ⚠️ 값이 칸 위쪽에 붙던 문제.
-       flex(align-items)만으로는 잡히지 않는다 — 값 글자가 baseweb 버전에 따라 두세 겹 안쪽 div에 들어 있고,
-       그 안쪽 요소가 자기 줄높이를 따로 갖기 때문이다.
-       → 값 칸과 그 '모든' 하위 요소의 줄높이를 칸 높이(60px)에 맞춰, 구조와 무관하게 세로 가운데가 되게 한다. */
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child {
-        width: 100% !important; padding: 0 !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-        text-align: center !important;
-    }
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child *,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child * {
-        line-height: 60px !important; height: auto !important; top: auto !important; transform: none !important;
-    }
-    /* 화살표(토글)는 오른쪽 끝 세로 가운데 고정 — 위 줄높이 규칙의 영향을 받지 않게 따로 되돌린다 */
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:nth-child(2),
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:nth-child(2) {
-        position: absolute !important; right: 8px !important; top: 50% !important;
-        transform: translateY(-50%) !important; line-height: normal !important; height: auto !important;
-    }
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] input,
-    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] input {
-        text-align: center !important;
-    }
-    /* 시간 선택기(시 / 분) — 두 칸을 붙여 한 덩어리로 보이게 하고, 라벨은 위에 한 줄로 둔다 */
-    .tp-label {
-        font-size: 13px; font-weight: 600; color: #b6bcc7;
-        text-align: center; margin: 0 0 6px 0; line-height: 1.4;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    div[class*="st-key-tprow_"] [data-testid="stHorizontalBlock"] { gap: 4px !important; flex-wrap: nowrap !important; }
-    div[class*="st-key-tprow_"] [data-testid="stColumn"] { flex: 1 1 0% !important; min-width: 0 !important; }
 
     /* 4·5·6 항목 라벨도 값과 같이 가운데 정렬 — 값이 가운데인데 라벨만 왼쪽이면 축이 어긋나 보인다 */
     div[class*="st-key-input_user_departure_date"] [data-testid="stWidgetLabel"],
@@ -3736,35 +3695,31 @@ def booking_seat_badge(car_target, seat_target):
             f'{esc(title)}</span></div>')
 
 
-TP_HOURS = [f"{i:02d}" for i in range(24)]
-TP_MINS = [f"{i:02d}" for i in range(0, 60, 5)]
+def parse_hhmm(txt):
+    """'HH:MM' 문자열 → datetime.time. 형식이 어긋나면 00:00."""
+    try:
+        h, m = str(txt).strip().split(":")[:2]
+        return datetime.time(int(h) % 24, int(m) % 60)
+    except Exception:
+        return datetime.time(0, 0)
 
 
 def set_time_widget(prefix, hh, mm):
-    """시간 선택기(시·분 두 칸)의 기본값을 미리 채운다.
+    """시간 칸의 기본값을 미리 채운다.
     ⚠️ 위젯이 만들어지기 '전에' 불러야 반영된다(콜백·리런 앞단에서 호출)."""
-    st.session_state[f"input_user_tp_{prefix}_h"] = f"{int(hh) % 24:02d}"
-    st.session_state[f"input_user_tp_{prefix}_m"] = f"{((int(mm) // 5) * 5) % 60:02d}"
+    st.session_state[f"input_user_tp_{prefix}"] = f"{int(hh) % 24:02d}:{int(mm) % 60:02d}"
 
 
 def time_picker(label, prefix):
-    """시·분을 따로 고르는 시간 선택기.
-    st.time_input은 5분 간격 목록이 288줄이라, 폰에서 원하는 시각까지 한참 굴려야 했다
-    → '시' 24개와 '분' 12개 두 짧은 목록으로 나눠 두 번만 누르면 끝나게 한다."""
-    hk, mk = f"input_user_tp_{prefix}_h", f"input_user_tp_{prefix}_m"
-    st.session_state.setdefault(hk, "00")
-    st.session_state.setdefault(mk, "00")
-    st.markdown(f'<div class="tp-label">{esc(label)}</div>', unsafe_allow_html=True)
-    with st.container(key=f"tprow_{prefix}"):
-        hc, mc = st.columns(2)
-        with hc:
-            h = st.selectbox(label + " H", TP_HOURS, key=hk, label_visibility="collapsed")
-        with mc:
-            m = st.selectbox(label + " M", TP_MINS, key=mk, label_visibility="collapsed")
-    try:
-        return datetime.time(int(h), int(m))
-    except Exception:
-        return datetime.time(0, 0)
+    """시간 입력 한 칸(HH:MM).
+    겉보기는 보통 입력칸이지만, JS 브릿지가 이 칸을 <input type="time">으로 바꿔 놓는다.
+      · 폰에서는 브라우저(OS) 기본 '시계' 선택기가 뜬다 — 시침을 돌려 시와 분을 고르는 그 화면이다.
+      · 팝업 위에 겹쳐 뜨므로 신청 폼을 벗어나지 않고, 타이핑 키보드도 올라오지 않는다.
+    ⚠️ 값을 JS로 억지로 밀어 넣지 않고 '같은 input의 타입만' 바꾼다 —
+       Streamlit이 원래 쓰던 그 입력칸이라 값 전달 경로가 그대로 유지된다(직접 주입은 잘 깨진다)."""
+    key = f"input_user_tp_{prefix}"
+    st.session_state.setdefault(key, "00:00")
+    return parse_hhmm(st.text_input(label, key=key, placeholder="HH:MM"))
 
 
 def _booking_form(car_target, seat_target):
@@ -5483,12 +5438,13 @@ components.html("""
 //    (초기화는 스크립트 로드당 1회뿐 → initDragDrop의 setTimeout 루프에선 재초기화 안 되므로 중복 바인딩 없음)
 try {
     window.parent.document
-        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound],[data-nokbd]')
+        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound],[data-nokbd],[data-timeui]')
         .forEach(el => {
             el.removeAttribute('data-nav-bound'); el.removeAttribute('data-admin-bound');
             el.removeAttribute('data-click-bound'); el.removeAttribute('data-drag-bound');
             el.removeAttribute('data-drop-bound'); el.removeAttribute('data-logout-bound');
             el.removeAttribute('data-taxi-bound'); el.removeAttribute('data-nokbd');
+            el.removeAttribute('data-timeui');
         });
 } catch (e) {}
 
@@ -5523,6 +5479,46 @@ try {
         }, true);
     }
 } catch (e) {}
+
+// ⚡ 신청 폼의 날짜·시간 칸을 '브라우저 기본 선택기'로 손질한다.
+//   · 날짜: 누르면 달력이 떠야 하는데 폰에서는 가상 키보드까지 올라와 달력을 가렸다
+//           → inputmode="none"으로 '키보드로 입력하지 않는 칸'임을 알린다(달력은 그대로 열린다).
+//             readonly는 쓰지 않는다 — 브라우저에 따라 달력 자체가 안 열린다.
+//   · 시간: input의 type을 time으로 바꾼다. 그러면 폰에서 OS 기본 '시계' 선택기(시침을 돌려 고르는 화면)가
+//           팝업 위에 겹쳐 뜬다. 값은 Streamlit이 원래 쓰던 그 input에 그대로 들어가므로
+//           값을 JS로 억지로 밀어 넣을 필요가 없다(직접 주입 방식은 React 상태와 어긋나 잘 깨진다).
+//   ⚠️ 신청 폼은 팝업이라 이 스크립트보다 늦게 그려질 수 있다 → 한 번만 훑지 않고 0.4초마다 점검한다.
+//      이미 손본 칸은 data-* 표식으로 건너뛰므로 반복 비용이 거의 없다.
+const dkTuneInputs = () => {
+    try {
+        const pdoc = window.parent.document;
+        pdoc.querySelectorAll('div[class*="st-key-input_user_departure_date"] input').forEach(el => {
+            if (el.getAttribute('data-nokbd') === 'true') return;
+            el.setAttribute('data-nokbd', 'true');
+            el.setAttribute('inputmode', 'none');
+            el.setAttribute('autocomplete', 'off');
+        });
+        pdoc.querySelectorAll('div[class*="st-key-input_user_tp_"] input').forEach(el => {
+            if (el.getAttribute('data-timeui') === 'true') return;
+            el.setAttribute('data-timeui', 'true');
+            try { el.type = 'time'; } catch (e) {}
+            el.setAttribute('step', '300');          // 5분 단위
+            el.setAttribute('inputmode', 'none');
+            el.setAttribute('autocomplete', 'off');
+            // 시계에서 고르고 창이 닫히는 순간 값이 반영되도록 Enter를 보내 확정한다
+            // (Streamlit 입력칸은 보통 Enter나 포커스를 잃을 때 값을 넘긴다)
+            el.addEventListener('change', () => {
+                try {
+                    el.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true,
+                    }));
+                } catch (e) {}
+            });
+        });
+    } catch (e) {}
+};
+dkTuneInputs();
+setInterval(dkTuneInputs, 400);
 
 const initDragDrop = () => {
     const parentDoc = window.parent.document;
@@ -5619,16 +5615,6 @@ const initDragDrop = () => {
                 if ((b.innerText || b.textContent || '').trim() === token) { b.click(); return; }
             }
         });
-    });
-
-    // ⚡ 날짜 칸: 누르면 달력이 떠야 하는데 폰에서는 가상 키보드까지 함께 올라와 달력을 가린다.
-    //    inputmode="none"으로 '이 칸은 키보드로 입력하지 않는다'고 알려 준다 — 달력은 그대로 열린다.
-    //    (readonly는 쓰지 않는다. 브라우저에 따라 달력 자체가 안 열리는 경우가 있다)
-    parentDoc.querySelectorAll('div[class*="st-key-input_user_departure_date"] input').forEach(el => {
-        if (el.getAttribute('data-nokbd') === 'true') return;
-        el.setAttribute('data-nokbd', 'true');
-        el.setAttribute('inputmode', 'none');
-        el.setAttribute('autocomplete', 'off');
     });
 
     // ⚡ 좌석맵 팝업의 TAXI 제목 클릭 → 숨김 TAXITITLE 버튼을 대신 눌러 '인승 선택'으로 되돌아간다
