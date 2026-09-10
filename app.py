@@ -685,6 +685,7 @@ st.markdown("""
 
     /* 좌석 클릭을 부드러운 rerun으로 처리하기 위한 숨김 버튼 (화면 밖 배치, JS가 대신 클릭) */
     div[class*="st-key-seatsel_"],
+    div[class*="st-key-seatinfo_"],
     div[class*="st-key-adminlogin_"],
     div[class*="st-key-restore_admin"],
     div[class*="st-key-taxititle_"],
@@ -3360,6 +3361,14 @@ def _render_car_body(car_rc, show_name=True):
                 on_click=on_seat_click,
                 args=(car_rc["display_name"], seat),
             )
+        else:
+            # 이미 신청된 좌석 → 누르면 그 예약 팝업이 뜬다(현황판까지 내려가지 않아도 된다)
+            st.button(
+                f"SEATINFO::{car_rc['display_name']}::{seat}",
+                key=f"seatinfo_{car_rc['display_name']}_{seat}",
+                on_click=_open_seat_info,
+                args=(car_rc["display_name"], seat),
+            )
 
 def owner_gate(car, seat, info):
     """값을 바꾸기 '직전'에 통과해야 하는 본인 확인 게이트.
@@ -3900,6 +3909,19 @@ def _taxi_back_to_cap():
     st.session_state.taxi_stage = "cap"
     st.session_state.taxi_cap = None
     st.session_state.taxi_draft = None
+
+def _open_seat_info(car, seat):
+    """좌석 배치도에서 이미 신청된 좌석을 눌렀을 때(숨김 SEATINFO 버튼 콜백).
+    좌석맵 팝업 안에서 눌렀다면 그 팝업을 닫는다 — 한 화면에 팝업은 하나만 열리므로,
+    닫지 않으면 좌석맵이 계속 잡고 있어 예약 팝업이 뜨지 못한다."""
+    st.session_state.seat_info_target = (car, seat)
+    if st.session_state.get("seatmap_car"):
+        _close_seatmap()
+
+
+def _close_seat_info():
+    st.session_state.seat_info_target = None
+
 
 def _open_admin_login():
     # INNOVA·SEDONA 운전석 클릭 콜백.
@@ -4554,6 +4576,14 @@ def seatmap_dialog(car_rc):
                 on_click=on_seat_click,
                 args=(car, seat),
             )
+        elif seat in booked:
+            # 이미 신청된 좌석 → 누르면 그 예약 팝업으로 넘어간다(운행 불가여도 내용은 볼 수 있다)
+            st.button(
+                f"SEATINFO::{car}::{seat}",
+                key=f"seatinfo_{car}_{seat}",
+                on_click=_open_seat_info,
+                args=(car, seat),
+            )
     # INNOVA·SEDONA: 운전석 클릭 시 JS가 대신 누를 숨김 ADMINLOGIN 버튼(→ 관리자 로그인 폼)
     if ("INNOVA" in car) or ("SEDONA" in car):
         st.button(f"ADMINLOGIN::{car}", key=f"adminlogin_{car}", on_click=_open_admin_login)
@@ -4885,6 +4915,124 @@ def excel_export_dialog():
     st.caption(t("export_caption"))
 
 
+def start_edit_booking(car, seat):
+    """예약 수정 준비 — 입력칸에 기존 값을 채우고 수정 모드로 들어간다.
+    현황판 카드의 '예약 수정'과 좌석 배치도에서 연 예약 팝업이 이 한 곳을 함께 쓴다
+    (같은 준비를 두 군데에 적어 두면 한쪽만 고쳐져 값이 어긋난다)."""
+    info = st.session_state.bookings.get((car, seat), {})
+    st.session_state.input_user_real_name = info.get("name", "")
+    st.session_state.input_user_departure_loc = info.get("departure", "")
+    st.session_state.input_user_destination_loc = info.get("destination", "")
+    try:
+        y, mo, d = map(int, info.get("date", "").split("-"))
+        st.session_state.input_user_departure_date = datetime.date(y, mo, d)
+    except Exception:
+        pass
+    try:
+        h, m = map(int, info.get("time", "").split(":"))
+        set_time_widget("dep", h, m)
+    except Exception:
+        pass
+    try:
+        h, m = map(int, info.get("arrive", "").split(":"))
+        set_time_widget("arr", h, m)
+    except Exception:
+        pass
+    st.session_state.selected_seat_state[car] = f"좌석 {seat}"
+    st.session_state.editing_booking = (car, seat)
+    st.session_state.active_booking_car = car
+    st.session_state.duplicate_error_msg = None
+
+
+@st.dialog(" ", dismissible=False, on_dismiss=_close_seat_info)
+def seat_info_dialog(car, seat):
+    """좌석 배치도에서 '이미 신청된 좌석'을 누르면 뜨는 예약 팝업.
+    현황판까지 스크롤해 카드를 찾지 않아도, 배치도에서 바로 내용을 보고 처리할 수 있다.
+    ⚠️ 팝업에서 다른 팝업(취소·도착 완료·영수증)으로 곧장 넘어갈 수 없다(Streamlit 제약).
+       → 대상만 정해 두고 이 팝업을 닫으면, 다음 화면에서 해당 팝업이 열린다."""
+    _dlg_close_btn("seat_info", _close_seat_info)
+    info = st.session_state.bookings.get((car, seat))
+    if not info:
+        # 보는 사이 취소·완료된 예약
+        _close_seat_info()
+        st.rerun()
+        return
+
+    mk = _model_key(car)
+    c_bg, c_fg, c_bd = CAR_CARD_STYLE.get(mk, CAR_CARD_STYLE["innova"])
+
+    def _cell(label, value):
+        return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
+                f'<strong>{label}</strong> {esc(value)}</div>')
+
+    st.markdown(
+        f'<div style="background:{c_bg}; border:1px solid {c_bd}; border-radius:8px; '
+        f'padding:9px 10px; margin-bottom:10px; color:{c_fg};">'
+        f'<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">'
+        f'<span style="display:flex; align-items:center; font-weight:bold; font-size:{CARD_FS_NAME}px; line-height:1.1;">'
+        f'<span class="bkcard-logo">{brand_logo(car)}</span>{esc(_short_car_name(car))}</span>'
+        f'<span style="background:{BOOKED_SEAT_LINE}; border:1px solid {BOOKED_SEAT_LINE}; color:#fff; '
+        f'padding:0 8px; height:{CARD_SEAT_H}px; line-height:{CARD_SEAT_H - 2}px; border-radius:4px; '
+        f'font-size:{CARD_FS_SEAT}px; font-weight:bold; white-space:nowrap;">{t("seat_n", n=seat)}</span>'
+        f'</div>{_status_chip(info, mk)}'
+        f'<hr style="border:0; border-top:1px solid {c_bd}; margin:6px 0;">'
+        f'<div style="display:grid; grid-template-columns:1.35fr 1fr; gap:4px 8px; '
+        f'font-size:{CARD_FS_INFO}px; line-height:1.35;">'
+        + _cell(t('c_applicant'), info.get('name', ''))
+        + _cell(t('c_date'), fmt_date_md(info.get('date', '')))
+        + _cell(t('c_departure'), info.get('departure', ''))
+        + _cell(t('c_time'), info.get('time', ''))
+        + _cell(t('c_destination'), info.get('destination', ''))
+        + _cell(t('c_arrive'), info.get('arrive', ''))
+        + '</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # 아직 안 탄 자리면 '탑승'을 여기서 바로 누를 수 있다(현황판 카드와 같은 동작).
+    if booking_status(info) == STATUS_PENDING:
+        if st.button(t("btn_board"), key=f"si_board_{car}_{seat}", type="primary", use_container_width=True):
+            cur = st.session_state.bookings.get((car, seat))
+            if cur:
+                cur["status"] = STATUS_APPROVED
+                if save_bookings(st.session_state.bookings):
+                    log_action("approve", car, seat, cur)
+            _close_seat_info()
+            st.rerun()
+
+    _b1, _b2 = st.columns(2)
+    with _b1:
+        if st.button(t("btn_edit_bk"), key=f"si_edit_{car}_{seat}", use_container_width=True):
+            start_edit_booking(car, seat)
+            _close_seat_info()
+            st.rerun()
+    with _b2:
+        if st.button(t("btn_cancel_bk"), key=f"si_cancel_{car}_{seat}", use_container_width=True):
+            st.session_state.cancel_target = (car, seat)
+            _close_seat_info()
+            st.rerun()
+
+    _b3, _b4 = st.columns(2)
+    with _b3:
+        if st.button(t("btn_done_bk"), key=f"si_done_{car}_{seat}", use_container_width=True):
+            st.session_state.arrive_target = (car, seat)
+            try:
+                _dh, _dm = (int(x) for x in str(info.get("time", "")).split(":")[:2])
+            except Exception:
+                _dh, _dm = 0, 0
+            st.session_state.arrive_input_tick = datetime.time(_dh % 24, _dm % 60)
+            _close_seat_info()
+            st.rerun()
+    with _b4:
+        # 영수증은 정산이 필요한 택시에만 붙인다(현황판 카드와 같은 규칙).
+        if "TAXI" in str(car).upper():
+            _has = bool(load_receipt(receipt_key(car, seat, info)).get("image"))
+            if st.button(t("btn_receipt_done") if _has else t("btn_receipt"),
+                         key=f"si_receipt_{car}_{seat}", use_container_width=True):
+                st.session_state.receipt_target = (car, seat)
+                _close_seat_info()
+                st.rerun()
+
+
 def _close_cancel():
     st.session_state.cancel_target = None
 
@@ -5048,6 +5196,13 @@ if st.session_state.get("cancel_target") and _claim_dialog():
     _ct_car, _ct_seat = st.session_state.cancel_target
     cancel_dialog(_ct_car, _ct_seat)
 
+# 좌석 배치도에서 신청된 좌석을 눌렀으면 그 예약 팝업을 띄운다.
+#  ⚠️ 취소·도착 완료·영수증보다 '뒤'에 둔다 — 이 팝업에서 그쪽으로 넘어갈 때
+#     같은 화면에서 두 팝업이 동시에 잡히면 안 되기 때문이다(먼저 잡힌 쪽만 열린다).
+if st.session_state.get("seat_info_target") and _claim_dialog():
+    _si_car, _si_seat = st.session_state.seat_info_target
+    seat_info_dialog(_si_car, _si_seat)
+
 # 영수증 첨부 버튼이 눌렸으면 사진 업로드 팝업을 띄운다(택시 전용).
 if st.session_state.get("receipt_target") and _claim_dialog():
     _rc_car, _rc_seat = st.session_state.receipt_target
@@ -5073,26 +5228,7 @@ if st.session_state.bookings or _done_today:
 
     # 예약 수정: 해당 예약을 입력 필드에 로드 후 editing_booking 설정(→ rerun 시 팝업 오픈)
     def _start_edit(bc_name, bseat):
-        info = st.session_state.bookings.get((bc_name, bseat), {})
-        st.session_state.input_user_real_name = info.get("name", "")
-        st.session_state.input_user_departure_loc = info.get("departure", "")
-        st.session_state.input_user_destination_loc = info.get("destination", "")
-        try:
-            y, mo, d = map(int, info.get("date", "").split("-"))
-            st.session_state.input_user_departure_date = datetime.date(y, mo, d)
-        except Exception:
-            pass
-        try:
-            h, m = map(int, info.get("time", "").split(":"))
-            set_time_widget("dep", h, m)
-        except Exception:
-            pass
-        try:
-            h, m = map(int, info.get("arrive", "").split(":"))
-            set_time_widget("arr", h, m)
-        except Exception:
-            pass
-        st.session_state.selected_seat_state[bc_name] = f"좌석 {bseat}"
+        start_edit_booking(bc_name, bseat)
         st.session_state.editing_booking = (bc_name, bseat)
         st.session_state.active_booking_car = bc_name
         st.session_state.duplicate_error_msg = None
@@ -5438,13 +5574,13 @@ components.html("""
 //    (초기화는 스크립트 로드당 1회뿐 → initDragDrop의 setTimeout 루프에선 재초기화 안 되므로 중복 바인딩 없음)
 try {
     window.parent.document
-        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound],[data-nokbd],[data-timeui]')
+        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound],[data-nokbd],[data-timeui],[data-info-bound]')
         .forEach(el => {
             el.removeAttribute('data-nav-bound'); el.removeAttribute('data-admin-bound');
             el.removeAttribute('data-click-bound'); el.removeAttribute('data-drag-bound');
             el.removeAttribute('data-drop-bound'); el.removeAttribute('data-logout-bound');
             el.removeAttribute('data-taxi-bound'); el.removeAttribute('data-nokbd');
-            el.removeAttribute('data-timeui');
+            el.removeAttribute('data-timeui'); el.removeAttribute('data-info-bound');
         });
 } catch (e) {}
 
@@ -5650,11 +5786,32 @@ const initDragDrop = () => {
         });
     });
 
+    // ⚡ 이미 신청된 좌석 클릭 → 대응하는 숨김 SEATINFO 버튼을 대신 눌러 예약 팝업 오픈
+    //   ⚠️ 신청된 좌석은 '드래그로 자리 옮기기'도 되는 요소다. 드래그를 마친 직후에도 클릭이
+    //      따라 발생하는 브라우저가 있어, 방금 드래그했으면(0.4초 이내) 무시한다.
+    draggables.forEach(el => {
+        if (el.getAttribute('data-info-bound') === 'true') return;
+        el.setAttribute('data-info-bound', 'true');
+        el.addEventListener('click', () => {
+            const w = window.parent;
+            if (w.__dkLastDrag && (Date.now() - w.__dkLastDrag) < 400) return;
+            dkPress(el);
+            const car = el.getAttribute('data-car');
+            const seat = el.getAttribute('data-seat');
+            const token = 'SEATINFO::' + car + '::' + seat;
+            const btns = parentDoc.querySelectorAll('button');
+            for (const b of btns) {
+                if ((b.innerText || b.textContent || '').trim() === token) { b.click(); return; }
+            }
+        });
+    });
+
     // 드래그 가능한 좌석 이벤트 바인딩
     draggables.forEach(el => {
         if (el.getAttribute('data-drag-bound') === 'true') return;
         el.setAttribute('data-drag-bound', 'true');
         
+        el.addEventListener('dragend', () => { try { window.parent.__dkLastDrag = Date.now(); } catch (err) {} });
         el.addEventListener('dragstart', (e) => {
             const car = el.getAttribute('data-car');
             const seat = el.getAttribute('data-seat');
