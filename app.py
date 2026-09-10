@@ -743,16 +743,16 @@ st.markdown("""
        글자 크기는 다른 입력칸과 같은 15px(0908 ver.10 크기) — 2배(30px)로 키웠더니
        드롭다운 목록·라벨·화살표까지 따라 커져 보정 규칙이 줄줄이 붙었고, 값만 커서 되레 균형이 깨졌다. */
     div[class*="st-key-input_user_departure_date"] input,
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] div,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] div {
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] div,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] div {
         font-size: 15px !important; font-weight: 700 !important; text-align: center !important;
     }
     /* ⚠️ 시간 칸(baseweb select)은 값이 flex 아이템이라 text-align만으로는 왼쪽에 붙어 있다.
        ① 값 칸을 flex 가운데 정렬하고
        ② 오른쪽 화살표를 absolute로 띄워 값 칸이 폭을 온전히 다 쓰게 한다
           (화살표가 자리를 차지하면 글자가 그만큼 왼쪽으로 밀려 '칸 한가운데'가 되지 않는다). */
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div {
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div {
         position: relative !important;
         height: 60px !important;
         align-items: center !important;
@@ -761,35 +761,44 @@ st.markdown("""
        flex(align-items)만으로는 잡히지 않는다 — 값 글자가 baseweb 버전에 따라 두세 겹 안쪽 div에 들어 있고,
        그 안쪽 요소가 자기 줄높이를 따로 갖기 때문이다.
        → 값 칸과 그 '모든' 하위 요소의 줄높이를 칸 높이(60px)에 맞춰, 구조와 무관하게 세로 가운데가 되게 한다. */
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child {
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child {
         width: 100% !important; padding: 0 !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
         text-align: center !important;
     }
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child,
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:first-child *,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:first-child * {
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child *,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:first-child * {
         line-height: 60px !important; height: auto !important; top: auto !important; transform: none !important;
     }
     /* 화살표(토글)는 오른쪽 끝 세로 가운데 고정 — 위 줄높이 규칙의 영향을 받지 않게 따로 되돌린다 */
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] > div > div:nth-child(2),
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] > div > div:nth-child(2) {
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:nth-child(2),
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] > div > div:nth-child(2) {
         position: absolute !important; right: 8px !important; top: 50% !important;
         transform: translateY(-50%) !important; line-height: normal !important; height: auto !important;
     }
-    div[class*="st-key-input_user_departure_time_tick"] [data-baseweb="select"] input,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-baseweb="select"] input {
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] input,
+    div[class*="st-key-input_user_tp_"] [data-baseweb="select"] input {
         text-align: center !important;
     }
+    /* 시간 선택기(시 / 분) — 두 칸을 붙여 한 덩어리로 보이게 하고, 라벨은 위에 한 줄로 둔다 */
+    .tp-label {
+        font-size: 13px; font-weight: 600; color: #b6bcc7;
+        text-align: center; margin: 0 0 6px 0; line-height: 1.4;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    div[class*="st-key-tprow_"] [data-testid="stHorizontalBlock"] { gap: 4px !important; flex-wrap: nowrap !important; }
+    div[class*="st-key-tprow_"] [data-testid="stColumn"] { flex: 1 1 0% !important; min-width: 0 !important; }
+
     /* 4·5·6 항목 라벨도 값과 같이 가운데 정렬 — 값이 가운데인데 라벨만 왼쪽이면 축이 어긋나 보인다 */
     div[class*="st-key-input_user_departure_date"] [data-testid="stWidgetLabel"],
-    div[class*="st-key-input_user_departure_time_tick"] [data-testid="stWidgetLabel"],
-    div[class*="st-key-input_user_arrival_time_tick"] [data-testid="stWidgetLabel"],
+    div[class*="st-key-input_user_tp_"] [data-testid="stWidgetLabel"],
+    div[class*="st-key-input_user_tp_"] [data-testid="stWidgetLabel"],
     div[class*="st-key-input_user_departure_date"] [data-testid="stWidgetLabel"] > div,
-    div[class*="st-key-input_user_departure_time_tick"] [data-testid="stWidgetLabel"] > div,
-    div[class*="st-key-input_user_arrival_time_tick"] [data-testid="stWidgetLabel"] > div {
+    div[class*="st-key-input_user_tp_"] [data-testid="stWidgetLabel"] > div,
+    div[class*="st-key-input_user_tp_"] [data-testid="stWidgetLabel"] > div {
         width: 100% !important; text-align: center !important; justify-content: center !important;
     }
 
@@ -1967,8 +1976,8 @@ TR = {
         "dup_error": "⚠️ 중복 신청 거부: [{name}]님은 이미 다른 차량에 배차되어 있습니다!",
         "f_name": "1. 신청자 이름", "f_name_ph": "예: 홍길동 PM",
         "f_dep": "2. 출발지", "f_dep_ph": "예: 본사 오피스",
-        "f_dest": "3. 목적지 (위치)", "f_dest_ph": "예: 하노이 박닌 공장",
-        "f_date": "4. 출발 날짜", "f_time": "5. 출발 시간", "f_arrive": "6. 도착 시간",
+        "f_dest": "3. 도착지 (위치)", "f_dest_ph": "예: 하노이 박닌 공장",
+        "f_date": "4. 날짜", "f_time": "5. 출발", "f_arrive": "6. 도착",
         "remember_me": "이 기기에 내 정보 기억 (다음부터 이름·출발지 자동 입력)",
         "btn_update": "수정 완료", "btn_submit": "신청 완료", "btn_cancel": "취소",
         "err_name_dest": "이름과 목적지를 정확히 입력해 주세요!",
@@ -1986,8 +1995,8 @@ TR = {
         "arrive_title": "🏁 도착 완료 처리", "arrive_done": "완료",
         "arrive_desc": "[{car}] 좌석 {seat} · {name}\n도착 시간을 입력하고 완료를 누르면 탑승 이력에 기록됩니다.",
         "no_result": "🔍 [{q}] 검색 결과가 없습니다.",
-        "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "목적지:",
-        "c_date": "출발날짜:", "c_time": "출발시간:", "c_arrive": "도착시간:", "edit_tip": "예약 수정하기",
+        "c_applicant": "신청자:", "c_departure": "출발지:", "c_destination": "도착지:",
+        "c_date": "날짜:", "c_time": "출발:", "c_arrive": "도착:", "edit_tip": "예약 수정하기",
         "btn_edit_bk": "예약 수정", "btn_cancel_bk": "예약 취소", "btn_done_bk": "도착 완료",
         "owner_warn": "⚠️ [{name}]님의 예약입니다. 본인이 맞으면 신청자 이름을 입력해 주세요.",
         "owner_ask": "신청자 이름 확인", "owner_ok": "확인",
@@ -2110,7 +2119,7 @@ TR = {
         "f_name": "1. Tên người đăng ký", "f_name_ph": "VD: Nguyễn Văn A (PM)",
         "f_dep": "2. Điểm đi", "f_dep_ph": "VD: Văn phòng trụ sở",
         "f_dest": "3. Điểm đến (vị trí)", "f_dest_ph": "VD: Nhà máy Bắc Ninh, Hà Nội",
-        "f_date": "4. Ngày đi", "f_time": "5. Giờ đi", "f_arrive": "6. Giờ đến",
+        "f_date": "4. Ngày", "f_time": "5. Đi", "f_arrive": "6. Đến",
         "remember_me": "Ghi nhớ thông tin trên thiết bị này (tự động điền tên·điểm đi lần sau)",
         "btn_update": "Cập nhật", "btn_submit": "Hoàn tất", "btn_cancel": "Hủy",
         "err_name_dest": "Vui lòng nhập chính xác tên và điểm đến!",
@@ -2129,7 +2138,7 @@ TR = {
         "arrive_desc": "[{car}] Ghế {seat} · {name}\nNhập giờ đến rồi nhấn Hoàn tất để ghi vào lịch sử di chuyển.",
         "no_result": "🔍 Không có kết quả cho [{q}].",
         "c_applicant": "Người ĐK:", "c_departure": "Điểm đi:", "c_destination": "Điểm đến:",
-        "c_date": "Ngày đi:", "c_time": "Giờ đi:", "c_arrive": "Giờ đến:", "edit_tip": "Sửa đăng ký",
+        "c_date": "Ngày:", "c_time": "Đi:", "c_arrive": "Đến:", "edit_tip": "Sửa đăng ký",
         "btn_edit_bk": "Sửa ĐK", "btn_cancel_bk": "Hủy ĐK", "btn_done_bk": "Đã đến",
         "owner_warn": "⚠️ Đây là đăng ký của [{name}]. Nếu đúng là bạn, vui lòng nhập tên người đăng ký.",
         "owner_ask": "Xác nhận tên người đăng ký", "owner_ok": "Xác nhận",
@@ -2251,7 +2260,7 @@ TR = {
         "f_name": "1. Applicant name", "f_name_ph": "e.g. John Doe (PM)",
         "f_dep": "2. Departure", "f_dep_ph": "e.g. HQ Office",
         "f_dest": "3. Destination", "f_dest_ph": "e.g. Hanoi Bac Ninh Plant",
-        "f_date": "4. Departure date", "f_time": "5. Departure time", "f_arrive": "6. Arrival time",
+        "f_date": "4. Date", "f_time": "5. Depart", "f_arrive": "6. Arrive",
         "remember_me": "Remember me on this device (auto-fill name & departure next time)",
         "btn_update": "Update", "btn_submit": "Submit", "btn_cancel": "Cancel",
         "err_name_dest": "Please enter a valid name and destination!",
@@ -2270,7 +2279,7 @@ TR = {
         "arrive_desc": "[{car}] Seat {seat} · {name}\nEnter the arrival time and press Done to save it to the ride history.",
         "no_result": "🔍 No results for [{q}].",
         "c_applicant": "Applicant:", "c_departure": "Departure:", "c_destination": "Destination:",
-        "c_date": "Date:", "c_time": "Time:", "c_arrive": "Arrival:", "edit_tip": "Edit booking",
+        "c_date": "Date:", "c_time": "Depart:", "c_arrive": "Arrive:", "edit_tip": "Edit booking",
         "btn_edit_bk": "Edit", "btn_cancel_bk": "Cancel", "btn_done_bk": "Arrived",
         "owner_warn": "⚠️ This booking belongs to [{name}]. If that is you, enter the applicant name.",
         "owner_ask": "Confirm applicant name", "owner_ok": "Confirm",
@@ -3017,12 +3026,12 @@ elif "edit_car" in query_params and "edit_seat" in query_params:
                 pass
             try:
                 h, m = map(int, info.get("time", "").split(":"))
-                st.session_state.input_user_departure_time_tick = datetime.time(h, m)
+                set_time_widget("dep", h, m)
             except Exception:
                 pass
             try:
                 h, m = map(int, info.get("arrive", "").split(":"))
-                st.session_state.input_user_arrival_time_tick = datetime.time(h, m)
+                set_time_widget("arr", h, m)
             except Exception:
                 pass
             # 예약된 차량의 좌석 상태를 타깃팅하여 활성화
@@ -3253,8 +3262,8 @@ def on_seat_click(car_name, seat):
         # 출발 시간 = 실시간(베트남 UTC+7) 기준 '가장 빨리 오는 5분 슬롯'으로 올림(step=5분과 정렬). 예: 19:02 → 19:05.
         _vn_now = now_vn()
         _slot = ((((_vn_now.hour * 60 + _vn_now.minute) + 4) // 5) * 5) % (24 * 60)
-        st.session_state.input_user_departure_time_tick = datetime.time(_slot // 60, _slot % 60)
-        st.session_state.input_user_arrival_time_tick = datetime.time(0, 0)
+        set_time_widget("dep", _slot // 60, _slot % 60)
+        set_time_widget("arr", 0, 0)
     st.session_state.duplicate_error_msg = None
 
 # ── 전 차량 상태(표시명·인승·모델키·로고) 계산 (배치도 렌더와 분리) ──
@@ -3727,6 +3736,37 @@ def booking_seat_badge(car_target, seat_target):
             f'{esc(title)}</span></div>')
 
 
+TP_HOURS = [f"{i:02d}" for i in range(24)]
+TP_MINS = [f"{i:02d}" for i in range(0, 60, 5)]
+
+
+def set_time_widget(prefix, hh, mm):
+    """시간 선택기(시·분 두 칸)의 기본값을 미리 채운다.
+    ⚠️ 위젯이 만들어지기 '전에' 불러야 반영된다(콜백·리런 앞단에서 호출)."""
+    st.session_state[f"input_user_tp_{prefix}_h"] = f"{int(hh) % 24:02d}"
+    st.session_state[f"input_user_tp_{prefix}_m"] = f"{((int(mm) // 5) * 5) % 60:02d}"
+
+
+def time_picker(label, prefix):
+    """시·분을 따로 고르는 시간 선택기.
+    st.time_input은 5분 간격 목록이 288줄이라, 폰에서 원하는 시각까지 한참 굴려야 했다
+    → '시' 24개와 '분' 12개 두 짧은 목록으로 나눠 두 번만 누르면 끝나게 한다."""
+    hk, mk = f"input_user_tp_{prefix}_h", f"input_user_tp_{prefix}_m"
+    st.session_state.setdefault(hk, "00")
+    st.session_state.setdefault(mk, "00")
+    st.markdown(f'<div class="tp-label">{esc(label)}</div>', unsafe_allow_html=True)
+    with st.container(key=f"tprow_{prefix}"):
+        hc, mc = st.columns(2)
+        with hc:
+            h = st.selectbox(label + " H", TP_HOURS, key=hk, label_visibility="collapsed")
+        with mc:
+            m = st.selectbox(label + " M", TP_MINS, key=mk, label_visibility="collapsed")
+    try:
+        return datetime.time(int(h), int(m))
+    except Exception:
+        return datetime.time(0, 0)
+
+
 def _booking_form(car_target, seat_target):
     """차량 신청/수정 입력 폼 본체 — 웹 신청 팝업(booking_dialog)과 앱 좌석맵 팝업에서 공용.
     완료/취소 시 앱 좌석맵 팝업(seatmap_car)도 함께 닫는다."""
@@ -3772,9 +3812,9 @@ def _booking_form(car_target, seat_target):
     with fc1:
         u_date = st.date_input(t("f_date"), key="input_user_departure_date")
     with fc2:
-        u_time = st.time_input(t("f_time"), step=300, key="input_user_departure_time_tick")
+        u_time = time_picker(t("f_time"), "dep")
     with fc3:
-        u_arrive = st.time_input(t("f_arrive"), step=300, key="input_user_arrival_time_tick")
+        u_arrive = time_picker(t("f_arrive"), "arr")
 
     # 공용 PC를 함께 쓰는 경우를 위해 저장 여부를 사용자가 직접 고른다(끄면 저장된 값도 즉시 삭제).
     remember_me = st.checkbox(t("remember_me"), value=True, key="remember_me_cb")
@@ -4587,7 +4627,12 @@ if not _taxi_maps:
     # 좌석을 바로 누를 수 있게 한다. 기본은 5인승 4석([운전석][1] / [2][3][4])이고,
     # 좌석을 누르면 그 자리로 TAXI1이 생긴다. 7인승이 필요하면 TAXI 타일에서 인승을 골라 새로 부른다.
     _taxi_maps = [_taxi_rc(1, 4)]
-_main_cells += [("map", _rc) for _rc in _taxi_maps]   # 택시 배치도를 TAXI 타일 뒤에 이어 붙인다
+# 첫 택시는 위의 통합 TAXI 타일과 짝을 이루고, 두 번째부터는 자기 타일을 하나씩 더 세운다.
+#  → 어느 택시든 [타일][배치도] 한 쌍으로 보여, 앱에서 2칸씩 줄바꿈돼도 짝이 흐트러지지 않는다.
+for _i, _rc in enumerate(_taxi_maps):
+    if _i > 0:
+        _main_cells.append(("tile", _rc))
+    _main_cells.append(("map", _rc))
 
 # 칸별 폭을 실제 배열에 맞춰 지정한다(타일 위치는 택시 수에 따라 밀리므로 매번 새로 계산).
 #  · 넓은 화면: [타이틀][배치도]가 한 줄에 늘어서고, 타이틀 뒤 간격만 좁혀 한 덩어리로 읽히게 한다.
@@ -5084,12 +5129,12 @@ if st.session_state.bookings or _done_today:
             pass
         try:
             h, m = map(int, info.get("time", "").split(":"))
-            st.session_state.input_user_departure_time_tick = datetime.time(h, m)
+            set_time_widget("dep", h, m)
         except Exception:
             pass
         try:
             h, m = map(int, info.get("arrive", "").split(":"))
-            st.session_state.input_user_arrival_time_tick = datetime.time(h, m)
+            set_time_widget("arr", h, m)
         except Exception:
             pass
         st.session_state.selected_seat_state[bc_name] = f"좌석 {bseat}"
@@ -5163,7 +5208,9 @@ if st.session_state.bookings or _done_today:
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
                     f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
-            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
+            # 오른쪽 라벨이 4글자 → 2글자로 줄었다(출발날짜→날짜 등). 그만큼 왼쪽 칸을 넓혀
+            # 신청자·출발지·도착지 값이 두 글자쯤 더 보이게 한다(1.35 : 1).
+            '<div style="display:grid; grid-template-columns:1.35fr 1fr; gap:4px 8px; '
             f'font-size:{CARD_FS_INFO}px; color:{c_fg}; line-height:1.3; margin-bottom:5px;">'
             + _cell(t('c_applicant'), binfo.get('name', ''))
             + _cell(t('c_date'), fmt_date_md(binfo.get('date', '')))
@@ -5274,7 +5321,7 @@ if st.session_state.bookings or _done_today:
             return (f'<div style="min-width:0; overflow-wrap:anywhere;">'
                     f'<strong>{label}</strong> {esc(value)}</div>')
         info_grid = (
-            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; '
+            '<div style="display:grid; grid-template-columns:1.35fr 1fr; gap:4px 8px; '
             f'font-size:{CARD_FS_INFO}px; color:{c_fg}; line-height:1.35;">'
             + _cell(t('c_applicant'), rec.get('name', ''))
             + _cell(t('c_date'), fmt_date_md(rec.get('date', '')))
@@ -5297,9 +5344,12 @@ if st.session_state.bookings or _done_today:
     #  차량별로 짝지어 2열로 깔던 이전 방식은 '무엇이 남았고 무엇이 끝났는지'가 섞여 보이지 않았다.
     with st.container(key="booking_board"):
         def _active_sort_key(kv):
+            """신청한 시각이 빠른 것부터(먼저 신청한 사람이 위). 신청일시가 없는 옛 예약은 맨 뒤로 보낸다.
+            상태·출발시각 대신 신청 순서를 쓰는 이유: 같은 차를 여러 명이 나눠 탈 때
+            '누가 먼저 냈는지'가 자리 배정의 기준이 되기 때문이다."""
             (c_name, s_id), inf = kv
-            return (0 if booking_status(inf) == STATUS_PENDING else 1,
-                    str(inf.get("date", "")), str(inf.get("time", "")), c_name, s_id)
+            created = str(inf.get("created_at", "")).strip()
+            return (1, "", c_name, s_id) if not created else (0, created, c_name, s_id)
 
         active_items = sorted(filtered_items, key=_active_sort_key)
         # 도착 완료도 같은 검색어로 거른다(왼쪽만 걸러지면 검색 결과가 반쪽이 된다).
@@ -5433,12 +5483,12 @@ components.html("""
 //    (초기화는 스크립트 로드당 1회뿐 → initDragDrop의 setTimeout 루프에선 재초기화 안 되므로 중복 바인딩 없음)
 try {
     window.parent.document
-        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound]')
+        .querySelectorAll('[data-nav-bound],[data-admin-bound],[data-click-bound],[data-drag-bound],[data-drop-bound],[data-logout-bound],[data-taxi-bound],[data-nokbd]')
         .forEach(el => {
             el.removeAttribute('data-nav-bound'); el.removeAttribute('data-admin-bound');
             el.removeAttribute('data-click-bound'); el.removeAttribute('data-drag-bound');
             el.removeAttribute('data-drop-bound'); el.removeAttribute('data-logout-bound');
-            el.removeAttribute('data-taxi-bound');
+            el.removeAttribute('data-taxi-bound'); el.removeAttribute('data-nokbd');
         });
 } catch (e) {}
 
@@ -5569,6 +5619,16 @@ const initDragDrop = () => {
                 if ((b.innerText || b.textContent || '').trim() === token) { b.click(); return; }
             }
         });
+    });
+
+    // ⚡ 날짜 칸: 누르면 달력이 떠야 하는데 폰에서는 가상 키보드까지 함께 올라와 달력을 가린다.
+    //    inputmode="none"으로 '이 칸은 키보드로 입력하지 않는다'고 알려 준다 — 달력은 그대로 열린다.
+    //    (readonly는 쓰지 않는다. 브라우저에 따라 달력 자체가 안 열리는 경우가 있다)
+    parentDoc.querySelectorAll('div[class*="st-key-input_user_departure_date"] input').forEach(el => {
+        if (el.getAttribute('data-nokbd') === 'true') return;
+        el.setAttribute('data-nokbd', 'true');
+        el.setAttribute('inputmode', 'none');
+        el.setAttribute('autocomplete', 'off');
     });
 
     // ⚡ 좌석맵 팝업의 TAXI 제목 클릭 → 숨김 TAXITITLE 버튼을 대신 눌러 '인승 선택'으로 되돌아간다
