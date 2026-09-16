@@ -317,6 +317,13 @@ st.markdown("""
     /* 전체 예약 초기화: 되돌리기 어려운 동작이라 경고 톤(노랑) */
     .st-key-reset_all_btn button { background: #3a3016 !important; border-color: #8a6d00 !important; color: #ffe08a !important; }
     .st-key-reset_all_btn button:hover { background: #4d4020 !important; border-color: #b08c00 !important; color: #ffffff !important; }
+    /* 비활성 버튼은 '지금은 눌리지 않는다'가 보여야 한다.
+       위 색상 규칙들이 !important라 비활성일 때도 평소와 똑같이 보였고, 눌러도 반응이 없어
+       고장으로 오해하기 쉬웠다 → 흐리게 + 커서 금지 표시로 상태를 드러낸다.
+       (:disabled는 선택자 우선순위가 위 규칙들보다 높아 순서와 무관하게 적용된다) */
+    .stButton button:disabled, .stButton button[disabled] {
+        opacity: 0.4 !important; filter: grayscale(0.7) !important; cursor: not-allowed !important;
+    }
     /* ===== 관리자 기능 타일: 차량 선택 타일과 같은 정사각형, 가로 한 줄에 3개 =====
        펼침 목록(expander) 3개가 세로로 길게 늘어지던 것을 타일+팝업으로 바꿔 관리자 영역 높이를 줄였다. */
     .st-key-admin_tiles { max-width: 350px !important; margin: 4px auto 0 auto !important; }
@@ -1972,6 +1979,7 @@ TR = {
         "audit_act_done": "도착 완료", "audit_act_reset": "전체 초기화",
         "toast_done": "🏁 [{name}]님 좌석 {seat} 도착 완료로 처리되었습니다.",
         "btn_reset_all": "🗑️ 전체 예약 초기화",
+        "reset_empty": "지금 등록된 예약이 없습니다. 삭제할 내용이 없습니다.",
         "reset_warn": "⚠️ 지금 등록된 예약 {n}건을 모두 삭제합니다. 삭제 직전 상태는 자동 보관되어 '백업·복원'에서 되돌릴 수 있습니다.",
         "backup_title": "💾 백업 · 복원",
         "backup_export": "⬇️ 현재 예약 백업 내려받기 ({n}건)",
@@ -2114,6 +2122,7 @@ TR = {
         "audit_act_done": "Hoàn tất chuyến", "audit_act_reset": "Xóa toàn bộ",
         "toast_done": "🏁 [{name}] ghế {seat} đã được xử lý hoàn tất.",
         "btn_reset_all": "🗑️ Xóa toàn bộ đăng ký",
+        "reset_empty": "Hiện không có đăng ký nào. Không có gì để xóa.",
         "reset_warn": "⚠️ Sẽ xóa toàn bộ {n} đăng ký hiện có. Trạng thái ngay trước khi xóa được lưu tự động và có thể hoàn tác ở mục 'Sao lưu · Khôi phục'.",
         "backup_title": "💾 Sao lưu · Khôi phục",
         "backup_export": "⬇️ Tải bản sao lưu hiện tại ({n} đăng ký)",
@@ -2255,6 +2264,7 @@ TR = {
         "audit_act_done": "Arrived", "audit_act_reset": "Reset all",
         "toast_done": "🏁 [{name}] — seat {seat} marked as arrived.",
         "btn_reset_all": "🗑️ Reset all bookings",
+        "reset_empty": "There are no bookings right now. Nothing to delete.",
         "reset_warn": "⚠️ This deletes all {n} current bookings. The state right before deletion is saved automatically and can be undone in 'Backup · Restore'.",
         "backup_title": "💾 Backup · Restore",
         "backup_export": "⬇️ Download current backup ({n} bookings)",
@@ -2425,8 +2435,11 @@ with st.container(key="hdr_row"):
                         st.session_state.confirm_reset_all = False
                         st.toast(t("admin_locked_toast"))
                         st.rerun()
-                    if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True,
-                                 disabled=not st.session_state.bookings):
+                    # ⚠️ 예약이 0건일 때 버튼을 비활성으로 두지 않는다.
+                    #    위의 색상 규칙이 !important라 비활성이어도 평소와 똑같이 보여서,
+                    #    눌러도 아무 반응이 없는 '고장난 버튼'처럼 보였다.
+                    #    → 항상 누를 수 있게 하고, 지울 게 없으면 팝업이 그렇다고 알려 준다.
+                    if st.button(t("btn_reset_all"), key="reset_all_btn", use_container_width=True):
                         st.session_state.confirm_reset_all = True
                         st.rerun()
                 else:
@@ -4105,7 +4118,15 @@ def reset_confirm_dialog():
     """전체 예약 초기화 확인 팝업. 몇 건이 사라지는지 숫자로 보여주고(실수 방지),
     지우기 직전에 스냅샷을 남겨 관리자 타일의 '백업·복원'으로 되돌릴 수 있게 한다."""
     _dlg_close_btn("reset_confirm", _close_reset_confirm)
-    st.warning(t("reset_warn", n=len(st.session_state.bookings)))
+    _n = len(st.session_state.bookings)
+    if not _n:
+        # 지울 게 없는 경우 — 삭제 버튼을 내밀지 않고 상황만 알려 준다(헛클릭 방지)
+        st.info(t("reset_empty"))
+        if st.button(t("btn_close"), key="reset_all_empty_btn", use_container_width=True):
+            st.session_state.confirm_reset_all = False
+            st.rerun()
+        return
+    st.warning(t("reset_warn", n=_n))
     rc1, rc2 = st.columns(2)
     with rc1:
         if st.button(t("btn_reset_yes"), type="primary", key="reset_all_confirm_btn", use_container_width=True):
